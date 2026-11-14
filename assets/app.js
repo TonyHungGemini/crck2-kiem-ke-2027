@@ -293,10 +293,13 @@ function readLang() {
   } catch (err) {}
   return null;
 }
+function readLangChosen() {
+  try { return !!localStorage.getItem(LANG_KEY); } catch (err) { return false; }
+}
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
-  lang: readLang() || 'vi', langChosen: !!readLang(),
+  lang: readLang() || 'vi', langChosen: readLangChosen(),
 };
 const QUICK_I18N = {
   vi: {
