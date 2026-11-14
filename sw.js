@@ -1,4 +1,4 @@
-const CACHE = 'kk2027-v3';
+const CACHE = 'kk2027-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   './assets/app.js',
   './assets/baseline.js',
   './assets/geo.js',
+  './apps-script/Code.gs',
   './vendor/xlsx.full.min.js',
   './vendor/leaflet/leaflet.js',
   './vendor/leaflet/leaflet.css',
@@ -51,6 +52,19 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  if (url.pathname.endsWith('/apps-script/Code.gs')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }

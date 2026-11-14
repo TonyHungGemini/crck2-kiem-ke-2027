@@ -5,6 +5,7 @@
    Hằng số & tiện ích
    ============================================================ */
 const STORE_KEY = 'crck2.kk2027.v1';
+const SYNC_KEY = 'crck2.kk2027.sync.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
   ['g', 'Cây cạo (G)'],
@@ -71,6 +72,13 @@ function dateVN(iso) {
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
+function dateTimeVN(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 function todayVNText() {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
@@ -105,6 +113,29 @@ function loadDB() {
 }
 let DB = loadDB();
 
+function loadSyncCfg() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}');
+    return {
+      url: typeof d.url === 'string' ? d.url : '',
+      enabled: d.enabled !== false,
+      lastSyncAt: d.lastSyncAt || null,
+      lastResult: d.lastResult || '',
+    };
+  } catch (err) {
+    return { url: '', enabled: true, lastSyncAt: null, lastResult: '' };
+  }
+}
+let syncCfg = loadSyncCfg();
+let syncBusy = false;
+let syncTimer = null;
+
+function saveSyncCfg(patch) {
+  Object.assign(syncCfg, patch);
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); } catch (err) {}
+  updateSyncUi();
+}
+
 function persist() {
   DB.updatedAt = new Date().toISOString();
   try {
@@ -112,6 +143,7 @@ function persist() {
   } catch (err) {
     toast('Không lưu được dữ liệu. Bộ nhớ trình duyệt có thể đã đầy.', 'bad');
   }
+  scheduleSync();
 }
 function lotsKeys() {
   const set = new Set(BASELINE.map(l => l.lot));
@@ -120,7 +152,7 @@ function lotsKeys() {
 }
 function lotMeta(key) {
   return (DB.lots[key] && DB.lots[key].meta) || {
-    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, custom: !BASE_BY_LOT.has(key),
+    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', custom: !BASE_BY_LOT.has(key),
   };
 }
 function lotRows(key) {
@@ -129,7 +161,7 @@ function lotRows(key) {
 function ensureLot(key) {
   if (!DB.lots[key]) {
     DB.lots[key] = {
-      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, custom: !BASE_BY_LOT.has(key) },
+      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', custom: !BASE_BY_LOT.has(key) },
       rows: [],
     };
   }
@@ -454,6 +486,7 @@ function mapPopupHtml(key) {
       <tr><td>2027</td><td>${st.entered.length ? fmt(st.agg.dt) : '—'}</td></tr>
       <tr><td>Lệch</td><td class="${deltaCls}">${delta}</td></tr>
       <tr><td>Số hàng</td><td>${st.entered.length}</td></tr>
+      ${st.meta.done && st.meta.doneAt ? `<tr><td>Hoàn tất</td><td>${esc(dateTimeVN(st.meta.doneAt))}</td></tr>` : ''}
     </table>
     <button class="open-lot" data-openlot="${esc(key)}" type="button">Mở lô</button>
   </div>`;
@@ -571,9 +604,10 @@ function renderLot() {
 
   $('#lotEyebrow').textContent = base ? `Đội ${base.doi} · ${base.id || 'chưa có ID'}` : 'Lô ngoài danh mục';
   $('#lotTitle').textContent = `Lô ${key}`;
+  const doneSuffix = meta.done && meta.doneAt ? ` · Hoàn tất ${dateTimeVN(meta.doneAt)}` : '';
   $('#lotSub').textContent = base
-    ? `${base.clone || '—'} · trồng ${base.year || '—'} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} cây`
-    : 'Không có dữ liệu baseline 2026 để đối chiếu tự động.';
+    ? `${base.clone || '—'} · trồng ${base.year || '—'} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} cây${doneSuffix}`
+    : 'Không có dữ liệu baseline 2026 để đối chiếu tự động.' + doneSuffix;
 
   $('#metaHuong').value = meta.huong || '';
   $('#metaNgay').value = meta.ngay || '';
@@ -913,10 +947,23 @@ function toggleDone() {
   if (!state.lot) return;
   const lot = ensureLot(state.lot);
   lot.meta.done = !lot.meta.done;
+  if (lot.meta.done) {
+    lot.meta.doneAt = new Date().toISOString();
+    lot.meta.doneBy = lot.meta.nguoi || '';
+  } else {
+    lot.meta.doneAt = null;
+    lot.meta.doneBy = '';
+  }
   persist();
   renderLot();
   renderHome();
-  toast(lot.meta.done ? 'Đã đánh dấu hoàn tất lô ' + state.lot : 'Đã mở lại lô ' + state.lot, 'ok');
+  if (lot.meta.done) {
+    toast(`Đã đánh dấu hoàn tất lô ${state.lot} lúc ${dateTimeVN(lot.meta.doneAt)}`, 'ok');
+    syncNow('lot_done', state.lot);
+  } else {
+    toast('Đã mở lại lô ' + state.lot, 'ok');
+    scheduleSync();
+  }
 }
 
 function addRow() {
@@ -1364,7 +1411,7 @@ function exportAll() {
   const wsCheck = makeSheet(check, null, [6, 9, 12, 60, 12, 12, 12]);
   XLSX.utils.book_append_sheet(wb, wsCheck, 'Kiểm tra');
 
-  const progress = [['STT', 'Lô', 'ID lô', 'Đội', 'Diện tích (ha)', 'Số hàng đã nhập', 'Tổng ĐT 2027', 'Tổng 2026', 'Lệch', '% lệch', 'Hoàn tất', 'Trạng thái', 'Lỗi hàng']];
+  const progress = [['STT', 'Lô', 'ID lô', 'Đội', 'Diện tích (ha)', 'Số hàng đã nhập', 'Tổng ĐT 2027', 'Tổng 2026', 'Lệch', '% lệch', 'Hoàn tất', 'Hoàn tất lúc', 'Trạng thái', 'Lỗi hàng']];
   keys.forEach((key, idx) => {
     const st = lotState(key);
     const base = st.base;
@@ -1375,10 +1422,11 @@ function exportAll() {
       idx + 1, key, base ? base.id : '', base ? base.doi : 2, base ? base.area : '',
       st.entered.length, has ? st.agg.dt : '', base ? base.total : '',
       delta, ratio, st.meta.done ? 'Có' : 'Không',
+      st.meta.done && st.meta.doneAt ? dateTimeVN(st.meta.doneAt) : '',
       statusInfo(st).label, st.issues.length + st.dups.length,
     ]);
   });
-  const wsProgress = makeSheet(progress, null, [6, 9, 20, 6, 11, 12, 14, 12, 10, 9, 9, 15, 9], { 4: '#,##0.00', 9: '0.00%' });
+  const wsProgress = makeSheet(progress, null, [6, 9, 20, 6, 11, 12, 14, 12, 10, 9, 9, 18, 15, 9], { 4: '#,##0.00', 9: '0.00%' });
   XLSX.utils.book_append_sheet(wb, wsProgress, 'Tiến độ');
 
   downloadWorkbook(wb, `KK2027_TongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
@@ -1457,6 +1505,232 @@ function resetAll() {
   renderHome();
   if (state.view === 'lot') openHome(false);
   toast('Đã xoá toàn bộ dữ liệu.', 'ok');
+}
+
+/* ============================================================
+   Đồng bộ Google Sheets + mail báo cáo
+   ============================================================ */
+function buildSyncPayload(reason, lotKey) {
+  const keys = lotsKeys();
+  const lots = keys.map(key => {
+    const st = lotState(key);
+    const f = GEO_BY_LOT.get(key);
+    return {
+      lot: key,
+      id: st.base ? st.base.id : '',
+      doi: st.base ? st.base.doi : 2,
+      kv: f ? f.properties.kv : '',
+      area: st.base ? st.base.area : '',
+      clone: st.base ? st.base.clone : '',
+      year: st.base ? st.base.year : '',
+      status: st.level,
+      statusLabel: statusInfo(st).label,
+      entered: st.entered.length,
+      dt: st.entered.length ? st.agg.dt : null,
+      baseTotal: st.base ? st.base.total : null,
+      delta: st.base && st.entered.length ? st.delta : null,
+      done: !!st.meta.done,
+      doneAt: st.meta.doneAt || null,
+      doneBy: st.meta.doneBy || '',
+      nguoi: st.meta.nguoi || '',
+      ngay: st.meta.ngay || '',
+      huong: st.meta.huong || '',
+      ghiChu: st.meta.ghiChu || '',
+      rows: st.entered.map(r => ({ hang: r.hang, dt: r.dt, g: r.g, plus: r.plus, c: r.c, k1: r.k1, k2: r.k2, o: r.o })),
+    };
+  });
+  const entered = lots.filter(l => l.entered > 0).length;
+  const done = lots.filter(l => l.done).length;
+  const warn = lots.filter(l => l.status === 'warn').length;
+  const rows = lots.reduce((s, l) => s + l.entered, 0);
+  const dt = lots.reduce((s, l) => s + (l.dt || 0), 0);
+  const baselineTotal = BASELINE.reduce((s, l) => s + (l.total || 0), 0);
+  const zones = ZONE_ORDER.map(kv => {
+    const s = zoneStats(kv);
+    return {
+      kv, total: s.total, done: s.done.length, doing: s.doing.length,
+      warn: s.warn.length, empty: s.empty.length,
+      emptyLots: s.empty, warnLots: s.warn,
+    };
+  });
+  const eventLot = reason === 'lot_done' && lotKey ? lots.find(l => l.lot === lotKey) : null;
+  return {
+    app: 'crck2-kiem-ke-2027',
+    version: 2,
+    sentAt: new Date().toISOString(),
+    today: todayISO(),
+    reason,
+    event: eventLot ? { type: 'lot_done', lot: eventLot.lot, label: eventLot.statusLabel } : null,
+    totals: { entered, done, warn, rows, dt, baselineTotal, delta: dt - baselineTotal },
+    zones,
+    lots,
+  };
+}
+
+async function postSync(payload) {
+  const url = syncCfg.url.trim();
+  if (!url) throw new Error('Chưa cấu hình URL Apps Script.');
+  const options = {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+    redirect: 'follow',
+  };
+  let res;
+  try {
+    res = await fetch(url, options);
+  } catch (err) {
+    if (err && err.name === 'TypeError' && navigator.onLine !== false) {
+      // CORS chặn đọc phản hồi: request vẫn có thể đã tới Apps Script.
+      // Không gửi lại để tránh trùng mail.
+      return { ok: true, uncertain: true };
+    }
+    throw err;
+  }
+  if (!res.ok) throw new Error('Máy chủ trả về HTTP ' + res.status);
+  let data = null;
+  try { data = await res.json(); } catch (err) {}
+  if (data && data.ok === false) throw new Error(data.error || 'Apps Script báo lỗi.');
+  return data || { ok: true };
+}
+
+function updateSyncUi(message) {
+  const status = $('#syncStatus');
+  const sub = $('#menuSyncSub');
+  const connected = !!syncCfg.url;
+  if (sub) {
+    sub.textContent = !connected
+      ? 'Chưa kết nối'
+      : syncCfg.lastSyncAt
+        ? 'Đã kết nối · ' + dateTimeVN(syncCfg.lastSyncAt)
+        : 'Đã cấu hình URL';
+  }
+  if (!status) return;
+  if (message) {
+    status.textContent = message;
+    status.className = 'sync-status busy';
+    return;
+  }
+  status.className = 'sync-status' + (syncCfg.lastResult.startsWith('Lỗi') ? ' bad' : connected ? ' ok' : '');
+  if (!connected) {
+    status.textContent = 'Chưa kết nối. Dán URL Web App bên dưới để bật đồng bộ.';
+  } else if (syncCfg.lastSyncAt) {
+    status.textContent = `Lần cuối: ${dateTimeVN(syncCfg.lastSyncAt)} · ${syncCfg.lastResult || 'OK'}`;
+  } else {
+    status.textContent = 'Đã cấu hình URL, chưa đồng bộ lần nào.';
+  }
+}
+
+function scheduleSync() {
+  if (!syncCfg.url || !syncCfg.enabled) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncNow('auto'), 5000);
+}
+
+async function syncNow(reason = 'manual', lotKey = null) {
+  if (!syncCfg.url) {
+    if (reason !== 'auto') {
+      toast('Chưa cấu hình URL Apps Script trong menu Đồng bộ Google.', 'bad');
+    }
+    return;
+  }
+  if (reason === 'auto' && !syncCfg.enabled) return;
+  if (syncBusy) {
+    if (reason !== 'auto') {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => syncNow(reason, lotKey), 1500);
+    }
+    return;
+  }
+  clearTimeout(syncTimer);
+  syncBusy = true;
+  updateSyncUi('Đang gửi dữ liệu lên Google…');
+  try {
+    const payload = buildSyncPayload(reason, lotKey);
+    const res = await postSync(payload);
+    saveSyncCfg({
+      lastSyncAt: new Date().toISOString(),
+      lastResult: res && res.uncertain
+        ? 'Đã gửi (không đọc được phản hồi)'
+        : res && res.sheetUrl ? 'OK · ' + res.sheetUrl : 'OK',
+    });
+    if (res && res.uncertain) {
+      toast('Đã gửi tới Google nhưng không đọc được phản hồi. Kiểm tra Google Sheets hoặc hộp thư.', '');
+      return;
+    }
+    if (reason === 'test') {
+      toast(res && res.mail ? 'Kết nối tốt. Đã gửi mail thử, kiểm tra hộp thư.' : 'Kết nối tốt. Đã ghi dữ liệu lên Google Sheets.', 'ok');
+    } else if (reason === 'lot_done') {
+      toast(res && res.mail ? `Đã gửi mail báo cáo lô ${lotKey}.` : `Đã đồng bộ lô ${lotKey} lên Google Sheets.`, 'ok');
+    } else if (reason === 'manual') {
+      toast(res && res.sheetUrl ? 'Đã đồng bộ. Mở Google Sheets trong menu.' : 'Đã đồng bộ Google Sheets.', 'ok');
+    }
+  } catch (err) {
+    saveSyncCfg({ lastResult: 'Lỗi: ' + err.message });
+    if (reason !== 'auto') toast('Đồng bộ lỗi: ' + err.message, 'bad');
+  } finally {
+    syncBusy = false;
+    updateSyncUi();
+  }
+}
+
+function openSyncDialog() {
+  const dlg = $('#syncDialog');
+  if (!dlg) return;
+  $('#syncUrl').value = syncCfg.url || '';
+  $('#syncEnabled').checked = syncCfg.enabled;
+  updateSyncUi();
+  dlg.showModal();
+}
+
+function syncUrlFromInput() {
+  const url = $('#syncUrl').value.trim();
+  if (!url) { toast('Dán URL Web App trước đã.', 'bad'); return null; }
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(url)) {
+    toast('URL phải có dạng https://script.google.com/macros/s/…/exec', 'bad');
+    return null;
+  }
+  return url;
+}
+
+function setupSyncUi() {
+  const dlg = $('#syncDialog');
+  if (!dlg) return;
+  $('#menuSync').addEventListener('click', () => { $('#menuDialog').close(); openSyncDialog(); });
+  $('#btnSyncClose').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+  $('#btnSyncSave').addEventListener('click', () => {
+    const raw = $('#syncUrl').value.trim();
+    if (raw && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(raw)) {
+      toast('URL phải có dạng https://script.google.com/macros/s/…/exec', 'bad');
+      return;
+    }
+    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked });
+    toast(raw ? 'Đã lưu cấu hình đồng bộ.' : 'Đã tắt đồng bộ (chưa có URL).', 'ok');
+  });
+  $('#btnSyncTest').addEventListener('click', async () => {
+    const url = syncUrlFromInput();
+    if (!url) return;
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    await syncNow('test');
+  });
+  $('#btnSyncNow').addEventListener('click', async () => {
+    const url = syncUrlFromInput();
+    if (!url) return;
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    await syncNow('manual');
+  });
+  $('#btnCopyScript').addEventListener('click', async () => {
+    try {
+      const res = await fetch('./apps-script/Code.gs');
+      const text = await res.text();
+      await navigator.clipboard.writeText(text);
+      toast('Đã sao chép Code.gs. Dán vào script.google.com.', 'ok');
+    } catch (err) {
+      toast('Không sao chép được. Bấm "Tải Code.gs" để tải file.', 'bad');
+    }
+  });
+  updateSyncUi();
 }
 
 /* ============================================================
@@ -1547,9 +1821,13 @@ function setupPWA() {
 function init() {
   setupHomeEvents();
   setupDialogs();
+  setupSyncUi();
   setupPWA();
   window.addEventListener('popstate', routeFromHash);
   routeFromHash();
+  if (syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
+    syncTimer = setTimeout(() => syncNow('auto'), 2500);
+  }
 }
 init();
 

@@ -130,7 +130,7 @@
             <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
             <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
             <li>Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.</li>
-            <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng.</li>
+            <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng. Vào menu <b>Đồng bộ Google</b> để tự lưu lên Google Sheets và nhận mail khi lô hoàn tất.</li>
             <li>Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.</li>
           </ol>
         </div>
@@ -281,11 +281,59 @@
       <button class="menu-item" id="menuExport" type="button"><span>Xuất Excel tổng hợp</span><small>95 lô + sheet cảnh báo</small></button>
       <button class="menu-item" id="menuBackup" type="button"><span>Sao lưu dữ liệu (JSON)</span><small>Tải file dự phòng về máy</small></button>
       <button class="menu-item" id="menuRestore" type="button"><span>Phục hồi từ JSON</span><small>Ghi đè dữ liệu đang có</small></button>
+      <button class="menu-item" id="menuSync" type="button"><span>Đồng bộ Google &amp; báo cáo mail</span><small id="menuSyncSub">Chưa kết nối</small></button>
       <button class="menu-item" id="menuInstall" type="button" hidden><span>Cài ứng dụng lên Desktop</span><small>Chạy như app, dùng offline</small></button>
       <button class="menu-item" id="menuDemo" type="button"><span>Điền thử lô 250</span><small>Hàng 01 + 02 từ ảnh phiếu mẫu</small></button>
       <button class="menu-item danger" id="menuReset" type="button"><span>Xoá toàn bộ dữ liệu</span><small>Không thể hoàn tác</small></button>
     </div>
     <p class="footnote">Dữ liệu nằm trong trình duyệt của máy này (localStorage). Đổi máy hoặc xoá dữ liệu trình duyệt sẽ mất, nên hãy sao lưu JSON định kỳ.</p>
+  </div>
+</dialog>
+
+<!-- ================= SYNC DIALOG ================= -->
+<dialog id="syncDialog" class="dialog sync-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow">Google Sheets + Gmail</div>
+        <h3>Đồng bộ &amp; báo cáo mail</h3>
+      </div>
+      <button class="btn btn-icon" id="btnSyncClose" type="button" aria-label="Đóng">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+
+    <div class="sync-body">
+      <p class="sync-lead">Dán URL Web App của Apps Script. App tự ghi dữ liệu vào Google Sheets; khi một lô được đánh dấu <b>hoàn tất</b>, Google gửi mail kèm file Excel báo cáo cho anh.</p>
+
+      <label class="sync-field">URL Web App (Apps Script)
+        <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="sync-check"><input id="syncEnabled" type="checkbox"> Tự đồng bộ sau khi lưu dữ liệu</label>
+
+      <div class="sync-status" id="syncStatus">Chưa kết nối.</div>
+      <div class="sync-actions">
+        <button class="btn btn-sm" id="btnSyncSave" type="button">Lưu cấu hình</button>
+        <button class="btn btn-sm" id="btnSyncTest" type="button">Gửi thử</button>
+        <button class="btn btn-primary btn-sm" id="btnSyncNow" type="button">Đồng bộ ngay</button>
+      </div>
+
+      <details class="sync-guide">
+        <summary>Hướng dẫn cài đặt (5 phút)</summary>
+        <ol>
+          <li>Mở <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <b>Dự án mới</b>.</li>
+          <li>Xoá nội dung mặc định, dán toàn bộ mã <code>Code.gs</code> (bấm <b>Sao chép mã Code.gs</b> bên dưới).</li>
+          <li>Sửa <code>EMAIL_NHAN</code> ở đầu file nếu muốn nhận mail ở địa chỉ khác (mặc định: Gmail đang đăng nhập).</li>
+          <li>Bấm <b>Triển khai → Triển khai mới → Ứng dụng web</b>; chọn <b>Thực thi với tư cách: Tôi</b>; <b>Ai có quyền truy cập: Mọi người</b>. Cấp quyền khi Google hỏi.</li>
+          <li>Sao chép URL dạng <code>…/exec</code> dán vào ô trên, bấm <b>Gửi thử</b>.</li>
+        </ol>
+        <div class="sync-actions">
+          <button class="btn btn-sm" id="btnCopyScript" type="button">Sao chép mã Code.gs</button>
+          <a class="btn btn-sm" href="./apps-script/Code.gs" download>Tải Code.gs</a>
+        </div>
+        <p class="footnote">Lần chạy đầu Google sẽ yêu cầu quyền đọc/ghi Google Sheets và gửi mail. Dữ liệu chỉ nằm trong Drive của anh, không gửi cho bên thứ ba. Mỗi lần bấm “Gửi thử” sẽ gửi 1 mail thử.</p>
+      </details>
+    </div>
   </div>
 </dialog>
 
