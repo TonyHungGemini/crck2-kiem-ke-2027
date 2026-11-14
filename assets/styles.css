@@ -380,6 +380,23 @@ b{font-weight:650}
 .qcheck.idle{color:var(--faint)}
 .quick-summary{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;margin-top:13px;font-size:12.5px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
 .quick-summary b{color:var(--ink);font-family:var(--tab-nums);font-variant-numeric:tabular-nums}
+.quick-progress{display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center;font-size:12.5px;color:var(--muted);margin-top:13px}
+.quick-progress:empty{display:none}
+.quick-progress .qp-gap{color:var(--amber);font-weight:650}
+.quick-progress .qp-ok{color:var(--green);font-weight:650}
+.quick-progress .qp-next{color:var(--accent-strong);font-weight:700}
+.hang-map .card-head{margin-bottom:8px}
+.hang-chips{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 11px}
+.hang-chip{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums;cursor:pointer}
+.hang-chip:hover{border-color:var(--line-strong);background:#fffefb}
+.hang-chip.ok{background:var(--green-soft);color:var(--green);border-color:transparent}
+.hang-chip.bad{background:var(--red-soft);color:var(--red);border-color:transparent}
+.hang-chip.gap{background:transparent;border-style:dashed;border-color:var(--line-strong);color:var(--faint)}
+.hang-chip.add{background:var(--accent-soft);color:var(--accent-strong);border-style:dashed;border-color:var(--accent)}
+.hang-chip.is-next{outline:2px solid var(--accent);outline-offset:1px;font-weight:800}
+.hang-map-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.hang-map-foot b{color:var(--ink);font-family:var(--tab-nums)}
+#rowsBody tr.is-flash td{background:var(--accent-soft);transition:background .3s}
 .dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;flex-wrap:wrap}
 .dialog-foot-actions{display:flex;gap:8px;flex-wrap:wrap}
 .menu-dialog .dialog-shell{width:min(520px,calc(100vw - 28px))}
@@ -477,6 +494,8 @@ b{font-weight:650}
   .meta-grid label.meta-note{grid-column:auto}
   .qgrid input{font-size:15px}
   .quick-summary{gap:10px}
+  .hang-chip{min-width:30px;height:28px;padding:0 6px}
+  .hang-map-foot .btn{width:100%}
   .filters{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
   .chip{flex:none}
 }

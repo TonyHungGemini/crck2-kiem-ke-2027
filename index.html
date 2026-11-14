@@ -128,6 +128,7 @@
             <li>Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi nhãn cho nhân viên người Khmer; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.</li>
             <li>Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
             <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
+            <li>Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.</li>
             <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
             <li>Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.</li>
             <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng. Vào menu <b>Đồng bộ Google</b> để tự lưu lên Google Sheets và nhận mail khi lô hoàn tất.</li>
@@ -228,6 +229,8 @@
         <p class="footnote">Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.</p>
       </div>
 
+      <div class="card hang-map" id="lotHangMap" hidden></div>
+
       <div class="card checks-card" id="lotChecks"></div>
     </section>
   </main>
@@ -262,6 +265,8 @@
       <label><span data-qk="date">Ngày KK</span><input id="quickNgay" type="date"></label>
       <label><span data-qk="person">Người KK</span><input id="quickNguoi" type="text" placeholder="Tên người kiểm kê" data-qk-placeholder="personPh" autocomplete="off"></label>
     </div>
+
+    <div id="quickProgress" class="quick-progress"></div>
 
     <div id="quickPages" class="quick-pages"></div>
 

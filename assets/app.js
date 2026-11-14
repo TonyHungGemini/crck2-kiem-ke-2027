@@ -217,6 +217,26 @@ function missingHangs(rows) {
   for (let h = 1; h <= max; h++) if (!has.has(h)) missing.push(h);
   return missing;
 }
+function resumeHang(key) {
+  const rows = lotRows(key);
+  const gaps = missingHangs(rows);
+  if (gaps.length) return gaps[0];
+  const filled = rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger);
+  return filled.length ? Math.max(...filled) + 1 : 1;
+}
+function quickHangPair(key, seed) {
+  const rows = lotRows(key);
+  const filled = new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger));
+  const gaps = missingHangs(rows);
+  const max = filled.size ? Math.max(...filled) : 0;
+  const secondFrom = first => {
+    const gap = gaps.find(h => h > first);
+    return gap != null ? gap : Math.max(max, first) + 1;
+  };
+  if (Number.isInteger(seed) && seed > 0) return [seed, secondFrom(seed)];
+  if (gaps.length) return [gaps[0], secondFrom(gaps[0])];
+  return [max + 1, max + 2];
+}
 function rowIssuesOf(rows) {
   return rows
     .filter(rowHasData)
@@ -264,7 +284,7 @@ function readQuickLang() {
 }
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
-  quickLot: null, quickFrom: 'home', quickZone: '', quickLang: readQuickLang(),
+  quickLot: null, quickFrom: 'home', quickZone: '', quickLang: readQuickLang(), quickSeed: null,
 };
 const QUICK_I18N = {
   vi: {
@@ -274,7 +294,11 @@ const QUICK_I18N = {
     hangNo: 'Hàng số', totalDT: 'Tổng ĐT',
     checkIdle: 'Chưa nhập', checkMissing: 'Thiếu Tổng ĐT', checkDiff: 'Lệch', checkSum6: 'tổng 6 cột',
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
-    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Lưu phiếu', hint: 'Enter để sang ô kế tiếp.',
+    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter để sang ô kế tiếp.',
+    pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
+    progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
+    progressEntered: 'Đã nhập {n} hàng', progressMissing: 'Còn thiếu hàng {list}',
+    progressContinuous: 'Đã nhập liên tục 1–{max}', progressEntering: 'Đang vào hàng {list}',
     errEmptySheet: 'Chưa nhập số liệu cho tờ này.', errNoHang: 'Tờ {n}: chưa nhập số hàng.',
     warnMissing: 'Hàng {h}: thiếu Tổng ĐT (tổng 6 cột {sum})',
     warnDiff: 'Hàng {h}: Tổng ĐT {dt} lệch {diff} so với tổng 6 cột',
@@ -290,7 +314,11 @@ const QUICK_I18N = {
     hangNo: 'លេខជួរ', totalDT: 'សរុប',
     checkIdle: 'មិនទាន់បញ្ចូល', checkMissing: 'ខ្វះសរុប', checkDiff: 'ខុសគ្នា', checkSum6: 'សរុប 6 ជួរឈរ',
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
-    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុក', hint: 'Enter ដើម្បីទៅប្រអប់បន្ទាប់',
+    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ដើម្បីទៅប្រអប់បន្ទាប់',
+    pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
+    progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
+    progressEntered: 'បានបញ្ចូល {n} ជួរ', progressMissing: 'នៅខ្វះជួរ {list}',
+    progressContinuous: 'បញ្ចូលជាប់គ្នា 1–{max}', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
     errEmptySheet: 'មិនទាន់បញ្ចូលទិន្នន័យសម្រាប់សន្លឹកនេះទេ។', errNoHang: 'សន្លឹក {n}: មិនទាន់បញ្ចូលលេខជួរ។',
     warnMissing: 'ជួរ {h}: ខ្វះសរុប (សរុប 6 ជួរឈរ {sum})',
     warnDiff: 'ជួរ {h}: សរុប {dt} ខុសគ្នា {diff} ពីសរុប 6 ជួរឈរ',
@@ -397,7 +425,7 @@ function renderHome() {
 
 function statusInfo(st) {
   if (st.level === 'empty') return { cls: 'empty', label: 'Chưa nhập', dot: '' };
-  if (st.level === 'doing') return { cls: 'doing', label: 'Đang nhập', dot: 'doing' };
+  if (st.level === 'doing') return { cls: 'doing', label: st.meta.pausedAt ? 'Tạm lưu' : 'Đang nhập', dot: 'doing' };
   if (st.level === 'done') return { cls: 'done', label: st.base ? 'Khớp 2026' : 'Hoàn tất', dot: 'done' };
   if (st.hasError) return { cls: 'warn', label: 'Lỗi dữ liệu', dot: 'warn' };
   return { cls: 'warn', label: st.delta != null ? `Lệch ${signed(st.delta)}` : 'Có cảnh báo', dot: 'warn' };
@@ -416,6 +444,9 @@ function lotRowHtml(key) {
     if (base.id) metaBits.push(base.id);
   } else {
     metaBits.push('Lô ngoài danh mục');
+  }
+  if (st.level === 'doing' && st.meta.pausedAt) {
+    metaBits.push(`tạm lưu · tiếp h.${resumeHang(key)}`);
   }
   let deltaCls = 'muted';
   let deltaText = '—';
@@ -656,9 +687,10 @@ function renderLot() {
   $('#lotEyebrow').textContent = base ? `Đội ${base.doi} · ${base.id || 'chưa có ID'}` : 'Lô ngoài danh mục';
   $('#lotTitle').textContent = `Lô ${key}`;
   const doneSuffix = meta.done && meta.doneAt ? ` · Hoàn tất ${dateTimeVN(meta.doneAt)}` : '';
+  const pauseSuffix = !meta.done && meta.pausedAt ? ` · Tạm lưu ${dateTimeVN(meta.pausedAt)}` : '';
   $('#lotSub').textContent = base
-    ? `${base.clone || '—'} · trồng ${base.year || '—'} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} cây${doneSuffix}`
-    : 'Không có dữ liệu baseline 2026 để đối chiếu tự động.' + doneSuffix;
+    ? `${base.clone || '—'} · trồng ${base.year || '—'} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} cây${doneSuffix}${pauseSuffix}`
+    : 'Không có dữ liệu baseline 2026 để đối chiếu tự động.' + doneSuffix + pauseSuffix;
 
   $('#metaHuong').value = meta.huong || '';
   $('#metaNgay').value = meta.ngay || '';
@@ -668,6 +700,7 @@ function renderLot() {
   const doneBtn = $('#btnToggleDone');
   doneBtn.textContent = meta.done ? 'Mở lại lô' : 'Đánh dấu hoàn tất';
   doneBtn.classList.toggle('btn-primary', !meta.done);
+  $('#btnQuickLot').textContent = !meta.done && st.entered.length ? `Nhập tiếp h.${resumeHang(key)}` : 'Nhập nhanh';
 
   rebuildRowsTable();
   refreshLotDerived();
@@ -791,6 +824,7 @@ function refreshLotDerived() {
   renderCompare({ base, agg, entered: entered.length, delta, meta });
   renderAlerts({ base, agg, entered: entered.length, delta, meta, issues, dups });
   renderChecks({ key, base, agg, entered: entered.length, delta, meta, issues, dups, rows });
+  renderHangMap(key);
 }
 
 function compareRow(label, v26, v27, isTotal, deltaCls) {
@@ -920,6 +954,63 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
   $('#lotChecks').innerHTML = `<h3>Kiểm tra dữ liệu</h3><ul class="check-list">${items.join('')}</ul>`;
 }
 
+function renderHangMap(key) {
+  const host = $('#lotHangMap');
+  if (!host) return;
+  const rows = lotRows(key);
+  const entered = rows.filter(r => rowHasData(r) && Number.isInteger(r.hang));
+  if (!entered.length) { host.hidden = true; host.innerHTML = ''; return; }
+  const max = Math.max(...entered.map(r => r.hang));
+  const byHang = new Map(entered.map(r => [r.hang, r]));
+  const gaps = missingHangs(rows);
+  const issues = rowIssuesOf(rows).length;
+  const resume = gaps.length ? gaps[0] : max + 1;
+  const chips = [];
+  const cap = Math.min(max, 200);
+  for (let h = 1; h <= cap; h++) {
+    const row = byHang.get(h);
+    if (row) {
+      const bad = !!rowIssue(row);
+      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="Hàng ${h} ${bad ? 'lệch tổng' : 'đã khớp'} — bấm để sửa">${h}</button>`);
+    } else {
+      chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill" title="Hàng ${h} chưa nhập — bấm để nhập">${h}</button>`);
+    }
+  }
+  if (!gaps.length) {
+    chips.push(`<button class="hang-chip add is-next" type="button" data-hang="${resume}" data-mode="fill" title="Nhập tiếp hàng ${resume}">+${resume}</button>`);
+  }
+  const missingText = gaps.length
+    ? `Còn thiếu <b>${gaps.length}</b> hàng: <b>${gaps.slice(0, 14).join(', ')}</b>${gaps.length > 14 ? '…' : ''}.`
+    : `Đã nhập liên tục hàng 1–${max}.`;
+  const badgeCls = gaps.length || issues ? 'warn' : 'good';
+  const badgeText = `${entered.length} hàng${gaps.length ? ` · thiếu ${gaps.length}` : ''}${issues ? ` · ${issues} lệch` : ''}`;
+  host.hidden = false;
+  host.innerHTML = `
+    <div class="card-head">
+      <h3>Sơ đồ hàng</h3>
+      <span class="badge ${badgeCls}">${badgeText}</span>
+    </div>
+    <div class="hang-chips">${chips.join('')}</div>
+    <div class="hang-map-foot">
+      <span>${missingText} Ô xanh bấm để sửa hàng; ô viền đứt bấm để nhập hàng thiếu.</span>
+      <button class="btn btn-sm" id="btnHangResume" type="button" data-hang="${resume}">${gaps.length ? `Nhập hàng ${resume}` : `Nhập tiếp hàng ${resume}`}</button>
+    </div>`;
+}
+
+function focusLotRow(uid) {
+  if (!uid) return;
+  const tr = document.querySelector(`#rowsBody tr[data-uid="${CSS.escape(uid)}"]`);
+  if (!tr) return;
+  tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const input = tr.querySelector('input[data-field="dt"]');
+  if (input) {
+    input.focus({ preventScroll: true });
+    input.select();
+  }
+  tr.classList.add('is-flash');
+  setTimeout(() => tr.classList.remove('is-flash'), 1500);
+}
+
 /* ============================================================
    Sự kiện trang chủ
    ============================================================ */
@@ -956,7 +1047,21 @@ function setupHomeEvents() {
   $('#btnBack').addEventListener('click', () => openHome());
   $('#btnQuickHome').addEventListener('click', () => openQuick(false));
   $('#btnQuickHome2').addEventListener('click', () => openQuick(false));
-  $('#btnQuickLot').addEventListener('click', () => openQuick(true));
+  $('#btnQuickLot').addEventListener('click', () => {
+    if (!state.lot) return;
+    openQuick(true, resumeHang(state.lot));
+  });
+  $('#lotHangMap').addEventListener('click', e => {
+    if (!state.lot) return;
+    const resumeBtn = e.target.closest('#btnHangResume');
+    if (resumeBtn) { openQuick(true, Number(resumeBtn.dataset.hang)); return; }
+    const chip = e.target.closest('.hang-chip');
+    if (!chip) return;
+    const hang = Number(chip.dataset.hang);
+    if (chip.dataset.mode === 'fill') { openQuick(true, hang); return; }
+    const row = lotRows(state.lot).find(r => r.hang === hang);
+    if (row) focusLotRow(row.uid);
+  });
   $('#btnExportLot').addEventListener('click', () => exportLot(state.lot));
   $('#btnExportAll').addEventListener('click', exportAll);
   $('#btnToggleDone').addEventListener('click', toggleDone);
@@ -1001,6 +1106,7 @@ function toggleDone() {
   if (lot.meta.done) {
     lot.meta.doneAt = new Date().toISOString();
     lot.meta.doneBy = lot.meta.nguoi || '';
+    lot.meta.pausedAt = null;
   } else {
     lot.meta.doneAt = null;
     lot.meta.doneBy = '';
@@ -1087,11 +1193,6 @@ function pickDefaultQuickLot() {
   const empty = keys.find(k => lotState(k).level === 'empty');
   return empty || keys[0] || '';
 }
-function nextHangPair(key) {
-  const hangs = lotRows(key).map(r => r.hang).filter(Number.isInteger);
-  const start = hangs.length ? Math.max(...hangs) + 1 : 1;
-  return [start, start + 1];
-}
 function zoneOfLot(key) {
   const f = GEO_BY_LOT.get(key);
   return (f && f.properties.kv) || '';
@@ -1118,8 +1219,9 @@ function populateQuickLotSelect(zone) {
   return keys;
 }
 
-function openQuick(fromLot) {
+function openQuick(fromLot, seed) {
   state.quickFrom = fromLot ? 'lot' : 'home';
+  state.quickSeed = fromLot && Number.isInteger(seed) && seed > 0 ? seed : null;
   const sel = $('#quickLot');
   applyQuickLang(state.quickLang);
   populateQuickZoneSelect();
@@ -1198,7 +1300,7 @@ function applyQuickLang(lang) {
 
 function buildQuickCards() {
   const key = state.quickLot;
-  const [h1, h2] = nextHangPair(key);
+  const [h1, h2] = quickHangPair(key, state.quickSeed);
   $('#quickPages').innerHTML = [h1, h2].map((hang, i) => `
     <div class="qcard" data-idx="${i}">
       <div class="qcard-head">
@@ -1256,6 +1358,29 @@ function refreshQuickChecks() {
   });
 }
 
+function renderQuickProgress() {
+  const host = $('#quickProgress');
+  if (!host) return;
+  const key = state.quickLot;
+  if (!key) { host.innerHTML = ''; return; }
+  const rows = lotRows(key);
+  const filled = [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger))].sort((a, b) => a - b);
+  const gaps = missingHangs(rows);
+  const pair = $$('#quickPages .qcard').map(c => readQuickCard(c).hang).filter(Number.isInteger);
+  const bits = [];
+  if (!filled.length) {
+    bits.push(`<span>${esc(qt('progressNone'))}</span>`);
+    if (pair.length) bits.push(`<span class="qp-next">${esc(qtf('progressStart', { h: pair[0] }))}</span>`);
+  } else {
+    bits.push(`<span>${esc(qtf('progressEntered', { n: filled.length }))}</span>`);
+    bits.push(gaps.length
+      ? `<span class="qp-gap">${esc(qtf('progressMissing', { list: gaps.slice(0, 10).join(', ') + (gaps.length > 10 ? '…' : '') }))}</span>`
+      : `<span class="qp-ok">${esc(qtf('progressContinuous', { max: Math.max(...filled) }))}</span>`);
+    if (pair.length) bits.push(`<span class="qp-next">${esc(qtf('progressEntering', { list: pair.join(', ') }))}</span>`);
+  }
+  host.innerHTML = bits.join('');
+}
+
 function refreshQuickSummary() {
   const key = state.quickLot;
   if (!key) return;
@@ -1274,6 +1399,7 @@ function refreshQuickSummary() {
   }
   html += `<span class="muted">${enteredCards.length}/2 ${esc(qt('rowsWithData'))}</span>`;
   $('#quickSummary').innerHTML = html;
+  renderQuickProgress();
 }
 
 function focusNextQuickInput(current) {
@@ -1282,7 +1408,9 @@ function focusNextQuickInput(current) {
   if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
 }
 
-function saveQuick(advance) {
+function saveQuick(mode) {
+  const advance = mode === 'next';
+  const pause = mode === 'pause';
   const key = state.quickLot;
   if (!key) return;
   const lot = ensureLot(key);
@@ -1308,6 +1436,8 @@ function saveQuick(advance) {
 
   lot.meta.ngay = $('#quickNgay').value || '';
   lot.meta.nguoi = $('#quickNguoi').value.trim();
+  if (pause) lot.meta.pausedAt = new Date().toISOString();
+  else if (advance) lot.meta.pausedAt = null;
   entries.forEach(entry => {
     const old = lot.rows.find(r => r.hang === entry.hang);
     if (old) {
@@ -1322,19 +1452,21 @@ function saveQuick(advance) {
   });
   persist();
   const savedHangs = entries.map(e => e.hang).join(', ');
-  toast(qtf('savedRows', { h: savedHangs }), 'ok');
+  if (pause) toast(qtf('pausedSaved', { lot: key, h: resumeHang(key) }), 'ok');
+  else toast(qtf('savedRows', { h: savedHangs }), 'ok');
   renderHome();
   if (state.view === 'lot' && state.lot === key) {
-    rebuildRowsTable();
-    refreshLotDerived();
+    renderLot();
   }
   if (advance) {
+    state.quickSeed = null;
     buildQuickCards();
     setTimeout(() => {
       const first = $('#quickPages .qcard .dt-input');
       if (first) first.focus();
     }, 40);
   } else {
+    state.quickSeed = null;
     $('#quickDialog').close();
   }
 }
@@ -1917,6 +2049,7 @@ function setupDialogs() {
   });
   $('#quickZone').addEventListener('change', e => {
     state.quickZone = e.target.value;
+    state.quickSeed = null;
     const keys = populateQuickLotSelect(state.quickZone);
     const next = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
     $('#quickLot').value = next;
@@ -1924,6 +2057,7 @@ function setupDialogs() {
     setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
   });
   $('#quickLot').addEventListener('change', e => {
+    state.quickSeed = null;
     setQuickLot(e.target.value, true);
     setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
   });
@@ -1945,8 +2079,8 @@ function setupDialogs() {
       focusNextQuickInput(e.target);
     }
   });
-  $('#btnQuickSave').addEventListener('click', () => saveQuick(false));
-  $('#btnQuickSaveNext').addEventListener('click', () => saveQuick(true));
+  $('#btnQuickSave').addEventListener('click', () => saveQuick('pause'));
+  $('#btnQuickSaveNext').addEventListener('click', () => saveQuick('next'));
 
   const menu = $('#menuDialog');
   $('#btnMenu').addEventListener('click', () => menu.showModal());
