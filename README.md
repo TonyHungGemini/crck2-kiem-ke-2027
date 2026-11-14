@@ -6,7 +6,8 @@ Web app tĩnh (PWA) nhập kết quả kiểm kê vườn cây cao su theo dòng
 
 ## Tính năng
 
-- **Nhập nhanh theo tờ**: chọn Khu vực rồi chọn lô, mỗi tờ 2 hàng, chỉ nhập 7 số ở dòng cuối phiếu: `Tổng ĐT, G, +, C, K1, K2, O`. Có nút **VI / ខ្មែរ** đổi nhãn cho nhân viên người Khmer (số và ký hiệu G, +, C, K1, K2, O giữ nguyên).
+- **Nhập nhanh theo tờ**: chọn Khu vực rồi chọn lô, mỗi tờ 2 hàng, chỉ nhập 7 số ở dòng cuối phiếu: `Tổng ĐT, G, +, C, K1, K2, O`.
+- **Chọn ngôn ngữ toàn app**: lần đầu mở app sẽ hỏi chọn **Tiếng Việt / ខ្មែរ**; áp dụng cho toàn bộ giao diện (trang chủ, nhập nhanh, chi tiết lô, bản đồ, menu). Số, số lô và ký hiệu G, +, C, K1, K2, O giữ nguyên; file Excel xuất ra luôn là tiếng Việt. Đổi lại bất cứ lúc nào trong **Menu → Ngôn ngữ**.
 - **Tạm lưu & nhập tiếp**: bấm **Tạm lưu** khi có sự cố (thiếu phiếu…); lô hiện **Sơ đồ hàng** — ô xanh bấm để sửa hàng, ô viền đứt bấm để nhập hàng thiếu, nút **Nhập tiếp h.N** mở lại đúng hàng đang dở.
 - **Tự kiểm tra từng hàng**: báo đỏ nếu `Tổng ĐT ≠ G + (+) + C + K1 + K2 + O`; chặn hàng trùng số.
 - **Đối chiếu 2026 theo lô**: so tổng điểm trồng 2027 với baseline 2026; mọi chênh lệch đều được cảnh báo khi lô được đánh dấu hoàn tất. Đối chiếu thêm từng loại cây để tham khảo.

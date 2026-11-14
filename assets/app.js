@@ -7,14 +7,15 @@
 const STORE_KEY = 'crck2.kk2027.v1';
 const SYNC_KEY = 'crck2.kk2027.sync.v1';
 const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
+const LANG_KEY = 'crck2.kk2027.lang.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
-  ['g', 'Cây cạo (G)'],
-  ['plus', 'Cây +'],
-  ['c', 'Cây C'],
-  ['k1', 'Cây K1'],
-  ['k2', 'Cây K2'],
-  ['o', 'Hố trống (O)'],
+  ['g', 'catG'],
+  ['plus', 'catPlus'],
+  ['c', 'catC'],
+  ['k1', 'catK1'],
+  ['k2', 'catK2'],
+  ['o', 'catO'],
 ];
 const BASELINE = (window.KK_BASELINE && window.KK_BASELINE.lots) || [];
 const BASE_BY_LOT = new Map(BASELINE.map(l => [l.lot, l]));
@@ -182,13 +183,19 @@ function rowIssue(row) {
   if (!rowHasData(row)) return null;
   const sum = rowSum(row);
   if (row.dt == null) {
-    return { level: 'bad', diff: sum, text: `thiếu Tổng ĐT (tổng 6 cột = ${fmt(sum)})` };
+    return { level: 'bad', diff: sum, text: t('issueMissing', { sum: fmt(sum) }) };
   }
   const dt = Number(row.dt) || 0;
   if (dt !== sum) {
-    return { level: 'bad', diff: dt - sum, text: `Tổng ĐT ${fmt(dt)} ≠ tổng 6 cột ${fmt(sum)} (lệch ${signed(dt - sum)})` };
+    return { level: 'bad', diff: dt - sum, text: t('issueDiff', { dt: fmt(dt), sum: fmt(sum), d: signed(dt - sum) }) };
   }
   return null;
+}
+function issueTextVN(row) {
+  const sum = rowSum(row);
+  if (row.dt == null) return `thiếu Tổng ĐT (tổng 6 cột = ${fmt(sum)})`;
+  const dt = Number(row.dt) || 0;
+  return `Tổng ĐT ${fmt(dt)} ≠ tổng 6 cột ${fmt(sum)} (lệch ${signed(dt - sum)})`;
 }
 function aggregate(rows) {
   const a = { dt: 0, g: 0, plus: 0, c: 0, k1: 0, k2: 0, o: 0, count: 0 };
@@ -278,13 +285,18 @@ function toast(message, type) {
 /* ============================================================
    Điều hướng
    ============================================================ */
-function readQuickLang() {
-  try { return localStorage.getItem(QUICK_LANG_KEY) === 'km' ? 'km' : 'vi'; }
-  catch (err) { return 'vi'; }
+function readLang() {
+  try {
+    const v = localStorage.getItem(LANG_KEY);
+    if (v === 'vi' || v === 'km') return v;
+    if (localStorage.getItem(QUICK_LANG_KEY) === 'km') return 'km';
+  } catch (err) {}
+  return null;
 }
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
-  quickLot: null, quickFrom: 'home', quickZone: '', quickLang: readQuickLang(), quickSeed: null,
+  quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
+  lang: readLang() || 'vi', langChosen: !!readLang(),
 };
 const QUICK_I18N = {
   vi: {
@@ -328,8 +340,546 @@ const QUICK_I18N = {
     savedRows: 'បានរក្សាទុកជួរ {h}។',
   },
 };
+const APP_I18N = {
+  vi: {
+    appTitle: 'Kiểm kê 2027 · Đội 2 CRCK2',
+    brandTitle: 'Kiểm kê vườn cây 2027',
+    brandSub: 'Đội 2 · CRCK2 Aphivath',
+    quickEntry: 'Nhập nhanh',
+    menu: 'Menu',
+    close: 'Đóng',
+    language: 'Ngôn ngữ',
+    langVi: 'Tiếng Việt',
+    langKm: 'ខ្មែរ',
+    langTitle: 'Chọn ngôn ngữ',
+    langLead: 'Ngôn ngữ áp dụng cho toàn bộ ứng dụng. Có thể đổi lại trong Menu.',
+    langFoot: 'Số, số lô và ký hiệu G, +, C, K1, K2, O giữ nguyên ở cả hai ngôn ngữ.',
+    heroEyebrow: 'Kiểm kê 0h · 01/01/2027',
+    heroTitle: 'Nhập kết quả theo dòng tổng từng hàng',
+    heroLead: 'Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.',
+    quickBySheet: 'Nhập nhanh theo tờ',
+    exportAll: 'Xuất Excel tổng hợp',
+    statEnteredLots: 'Lô đã nhập',
+    statEnteredSub: '{n} lô đã đánh dấu hoàn tất',
+    statTrees: 'Tổng điểm trồng 2027',
+    statTreesSub: '2026: {base} cây · lệch tạm {delta}',
+    statTreesSubNo: '2026: {base} cây',
+    statRows: 'Hàng đã nhập',
+    statRowsSub: 'Tổng cộng dồn trên {n} lô',
+    statWarn: 'Lô có cảnh báo',
+    statWarnSub: '{done} khớp 2026 · {warn} cần kiểm tra',
+    tabList: 'Danh sách lô',
+    tabMap: 'Bản đồ tiến độ',
+    filterAll: 'Tất cả',
+    filterEmpty: 'Chưa nhập',
+    filterDoing: 'Đang nhập',
+    filterDone: 'Hoàn tất',
+    filterWarn: 'Cảnh báo',
+    searchPh: 'Tìm số lô, ID lô, giống…',
+    addLot: '+ Lô khác',
+    backup: 'Sao lưu',
+    restore: 'Phục hồi',
+    thLot: 'Lô',
+    th2026: '2026',
+    th2027: '2027',
+    thDelta: 'Lệch',
+    thRows: 'Số hàng',
+    thStatus: 'Trạng thái',
+    emptyTitle: 'Không có lô phù hợp',
+    emptySub: 'Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.',
+    guideTitle: 'Hướng dẫn nhanh',
+    guide1: 'Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi ngôn ngữ toàn app; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.',
+    guide2: 'Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.',
+    guide3: 'Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.',
+    guide4: 'Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.',
+    guide5: 'Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.',
+    guide6: 'Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.',
+    guide7: 'Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng. Vào menu <b>Đồng bộ Google</b> để tự lưu lên Google Sheets và nhận mail khi lô hoàn tất.',
+    guide8: 'Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.',
+    mapZonesTitle: 'Tiến độ theo khu vực',
+    all: 'Tất cả',
+    mapTitle: 'Bản đồ 95 lô',
+    legendEmpty: 'Chưa nhập',
+    legendDoing: 'Đang nhập',
+    legendDone: 'Hoàn tất',
+    legendWarn: 'Cảnh báo',
+    mapLoading: 'Đang tải bản đồ…',
+    mapFoot: 'Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.',
+    mapLibError: 'Không tải được thư viện bản đồ.',
+    mapNoGeo: 'Chưa có dữ liệu ranh lô.',
+    zoneDone: '{a}/{b} xong',
+    zoneDoing: '{n} đang nhập',
+    zoneWarn: '{n} cảnh báo',
+    zoneMissing: 'Chưa nhập {n}: <b>{list}</b>',
+    zoneAllDone: 'Đã nhập đủ {a}/{b} lô',
+    zoneWarnList: 'Cảnh báo: <b>{list}</b>',
+    mapBadge: '{done}/{total} lô hoàn tất',
+    openLot: 'Mở lô',
+    backList: 'Danh sách lô',
+    exportLot: 'Xuất Excel lô',
+    markDone: 'Đánh dấu hoàn tất',
+    reopenLot: 'Mở lại lô',
+    compareTitle: 'Đối chiếu 2026 → 2027',
+    metric: 'Chỉ tiêu',
+    metricTotal: 'Tổng ĐT',
+    catG: 'Cây cạo (G)',
+    catPlus: 'Cây +',
+    catC: 'Cây C',
+    catK1: 'Cây K1',
+    catK2: 'Cây K2',
+    catO: 'Hố trống (O)',
+    infoCard: 'Thông tin phiếu',
+    huongLot: 'Hướng lô',
+    huongPh: 'VD: Đông Tây',
+    ngayKK: 'Ngày KK',
+    nguoiKK: 'Người KK',
+    personPh: 'Tên người kiểm kê',
+    ghiChu: 'Ghi chú',
+    ghiChuPh: 'Ghi chú riêng của lô…',
+    rowsTitle: 'Chi tiết theo hàng',
+    addRow: '+ Thêm hàng',
+    thHang: 'Hàng',
+    thTotal: 'Tổng ĐT',
+    thCheck: 'Kiểm tra',
+    total: 'Tổng',
+    rowsFoot: 'Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.',
+    rowMissing: 'Thiếu ĐT',
+    rowDiff: 'Lệch {n}',
+    rowOk: 'Khớp',
+    treeUnit: 'cây',
+    emptyRows: 'Chưa có hàng nào. Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ, hoặc <b>+ Thêm hàng</b> để nhập thủ công.',
+    sumIssues: '{n} hàng lệch tổng',
+    sumOk: 'Đã khớp {n} hàng',
+    rowCount: '{n} hàng đã nhập',
+    calcTitle: 'Điền Tổng ĐT = tổng 6 cột',
+    delRowTitle: 'Xoá hàng',
+    confirmDelRow: 'Xoá hàng {h}? Dữ liệu của hàng này sẽ mất.',
+    toastDone: 'Đã đánh dấu hoàn tất lô {lot} lúc {time}',
+    issueMissing: 'thiếu Tổng ĐT (tổng 6 cột = {sum})',
+    issueDiff: 'Tổng ĐT {dt} ≠ tổng 6 cột {sum} (lệch {d})',
+    hangMapTitle: 'Sơ đồ hàng',
+    hangBadge: '{n} hàng',
+    hangBadgeMissing: ' · thiếu {n}',
+    hangBadgeIssues: ' · {n} lệch',
+    hangMissing: 'Còn thiếu <b>{n}</b> hàng: <b>{list}</b>.',
+    hangContinuous: 'Đã nhập liên tục hàng 1–{max}.',
+    hangHint: ' Ô xanh bấm để sửa hàng; ô viền đứt bấm để nhập hàng thiếu.',
+    hangBtnFill: 'Nhập hàng {h}',
+    hangBtnResume: 'Nhập tiếp hàng {h}',
+    hangChipEdit: 'Hàng {h} {st} — bấm để sửa',
+    hangChipFill: 'Hàng {h} chưa nhập — bấm để nhập',
+    hangChipMatched: 'đã khớp',
+    hangChipDiff: 'lệch tổng',
+    checksTitle: 'Kiểm tra dữ liệu',
+    checksNoData: 'Chưa có dữ liệu để kiểm tra.',
+    checksIssueCount: '{n} hàng lệch tổng:',
+    checksRow: 'hàng {h}',
+    checksAllOk: 'Tất cả hàng đã khớp: Tổng ĐT = G + (+) + C + K1 + K2 + O.',
+    checksNoDup: 'Không có hàng trùng số.',
+    checksDup: '<b>Hàng trùng:</b> {list}.',
+    checksTotalLine: 'Đã nhập <b>{n}</b> hàng · lũy kế <b>{dt}</b> cây.',
+    baselineEqual: 'Tổng so 2026: khớp <b>{n}</b> cây.',
+    baselineDiff: 'Tổng so 2026: 2027 <b>{a}</b> / 2026 <b>{b}</b> · lệch <b>{d}</b> ({p}).',
+    baselineMismatch: 'Baseline 2026 tự lệch <b>{n}</b> cây (tổng 6 cột {sum}).',
+    checksNoBaseline: 'Lô ngoài danh mục, không có baseline 2026.',
+    checksDone: 'Lô đã được đánh dấu hoàn tất.',
+    checksNotDone: 'Lô chưa đánh dấu hoàn tất.',
+    statusEmpty: 'Chưa nhập',
+    statusDoing: 'Đang nhập',
+    statusPaused: 'Tạm lưu',
+    statusDone: 'Hoàn tất',
+    statusMatch2026: 'Khớp 2026',
+    statusError: 'Lỗi dữ liệu',
+    statusWarn: 'Có cảnh báo',
+    statusDiff: 'Lệch {n}',
+    lotOutside: 'Lô ngoài danh mục',
+    metaPlantYear: 'trồng {year}',
+    metaPaused: 'tạm lưu · tiếp h.{h}',
+    compareBadgeNoBase: 'Không baseline',
+    compareBadgeEmpty: 'Chưa nhập',
+    compareBadgeMatch: 'Khớp 2026',
+    compareBadgeWarn: 'Có cảnh báo',
+    compareBadgeDiff: 'Lệch {n}',
+    noBaseNote: 'Lô ngoài danh mục nên không có baseline 2026. Tool vẫn kiểm tra tổng hàng và xuất Excel bình thường.',
+    baselineNote: 'Baseline: kiểm kê 0h 01/01/2026 · {id} · {total} cây. Nguồn: TỔNG HỢP KIỂM KÊ 2025-2026.xlsx.',
+    alertNoRows: '<b>Chưa nhập hàng nào.</b> Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ từ dòng cuối phiếu.',
+    alertIssues: '<b>{n} hàng lệch tổng.</b><br>{first}',
+    alertIssuesMore: '<br>… và {n} hàng khác.',
+    alertDup: '<b>Hàng bị trùng số:</b> {list}. Mỗi hàng chỉ được nhập một lần.',
+    alertNoBase: 'Lô ngoài danh mục: không có baseline 2026 để đối chiếu tổng.',
+    alertAllOk: 'Dữ liệu đang khớp. Nếu đã nhập đủ, bấm <b>Đánh dấu hoàn tất</b> để chốt lô.',
+    alertMsgDiff: 'Tổng 2027 <b>{dt}</b> so với 2026 <b>{base}</b> · lệch <b>{d}</b> ({p}).',
+    alertDoneDiff: '<b>Lô đã hoàn tất nhưng còn lệch.</b> {msg}<br>Kiểm tra lại các hàng đã nhập hoặc phiếu giấy.',
+    alertTempDiff: '<b>Lệch tạm tính.</b> {msg}<br>Nếu lô chưa nhập đủ hàng thì bỏ qua cảnh báo này. Khi nhập xong, đánh dấu hoàn tất để chốt.',
+    alertMatch: '<b>Tổng 2027 khớp 2026:</b> {n}',
+    alertBaseMismatch: '<b>Baseline 2026 có nội bộ lệch {n}.</b> Tổng số cây KK là {total}, nhưng cộng 6 cột chỉ {sum}. Nên kiểm tra lại file 2026 gốc.',
+    checksMissingRow: 'Còn thiếu <b>{n}</b> hàng trong dãy 1–{max}: {list}.',
+    checksMatchTotal: 'Tổng so 2026: khớp <b>{n}</b> cây.',
+    lotEyebrow: 'Đội {doi} · {id}',
+    lotNoId: 'chưa có ID',
+    noBaselineSub: 'Không có dữ liệu baseline 2026 để đối chiếu tự động.',
+    doneSuffix: ' · Hoàn tất {time}',
+    pauseSuffix: ' · Tạm lưu {time}',
+    resumeHangBtn: 'Nhập tiếp h.{h}',
+    menuTitle: 'Menu',
+    menuExport: 'Xuất Excel tổng hợp',
+    menuExportSub: '95 lô + sheet cảnh báo',
+    menuBackup: 'Sao lưu dữ liệu (JSON)',
+    menuBackupSub: 'Tải file dự phòng về máy',
+    menuRestore: 'Phục hồi từ JSON',
+    menuRestoreSub: 'Ghi đè dữ liệu đang có',
+    menuSync: 'Đồng bộ Google & báo cáo mail',
+    menuSyncSub: 'Chưa kết nối',
+    menuInstall: 'Cài ứng dụng lên Desktop',
+    menuInstallSub: 'Chạy như app, dùng offline',
+    menuDemo: 'Điền thử lô 250',
+    menuDemoSub: 'Hàng 01 + 02 từ ảnh phiếu mẫu',
+    menuReset: 'Xoá toàn bộ dữ liệu',
+    menuResetSub: 'Không thể hoàn tác',
+    menuLang: 'Ngôn ngữ',
+    menuFootnote: 'Dữ liệu nằm trong trình duyệt của máy này (localStorage). Đổi máy hoặc xoá dữ liệu trình duyệt sẽ mất, nên hãy sao lưu JSON định kỳ.',
+    syncEyebrow: 'Google Sheets + Gmail',
+    syncTitle: 'Đồng bộ & báo cáo mail',
+    syncLead: 'Dán URL Web App của Apps Script. App tự ghi dữ liệu vào Google Sheets; khi một lô được đánh dấu <b>hoàn tất</b>, Google gửi mail kèm file Excel báo cáo cho anh.',
+    syncUrlLabel: 'URL Web App (Apps Script)',
+    syncEnabled: 'Tự đồng bộ sau khi lưu dữ liệu',
+    syncStatusInit: 'Chưa kết nối.',
+    syncSave: 'Lưu cấu hình',
+    syncTest: 'Gửi thử',
+    syncNow: 'Đồng bộ ngay',
+    syncGuideTitle: 'Hướng dẫn cài đặt (5 phút)',
+    syncStep1: 'Mở <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <b>Dự án mới</b>.',
+    syncStep2: 'Xoá nội dung mặc định, dán toàn bộ mã <code>Code.gs</code> (bấm <b>Sao chép mã Code.gs</b> bên dưới).',
+    syncStep3: 'Sửa <code>EMAIL_NHAN</code> ở đầu file nếu muốn nhận mail ở địa chỉ khác (mặc định: Gmail đang đăng nhập).',
+    syncStep4: 'Bấm <b>Triển khai → Triển khai mới → Ứng dụng web</b>; chọn <b>Thực thi với tư cách: Tôi</b>; <b>Ai có quyền truy cập: Mọi người</b>. Cấp quyền khi Google hỏi.',
+    syncStep5: 'Sao chép URL dạng <code>…/exec</code> dán vào ô trên, bấm <b>Gửi thử</b>.',
+    copyScript: 'Sao chép mã Code.gs',
+    downloadScript: 'Tải Code.gs',
+    syncFootnote: 'Lần chạy đầu Google sẽ yêu cầu quyền đọc/ghi Google Sheets và gửi mail. Dữ liệu chỉ nằm trong Drive của anh, không gửi cho bên thứ ba. Mỗi lần bấm “Gửi thử” sẽ gửi 1 mail thử.',
+    toastNoStore: 'Không lưu được dữ liệu. Bộ nhớ trình duyệt có thể đã đầy.',
+    toastAddedLot: 'Đã thêm lô ngoài danh mục: {lot}',
+    toastLotExists: 'Lô này đã có trong danh sách.',
+    toastReopened: 'Đã mở lại lô {lot}',
+    toastExportOk: 'Đã xuất: {file}',
+    toastExportFail: 'Không xuất được file Excel: {err}',
+    toastNoExportData: 'Lô chưa có dữ liệu để xuất.',
+    toastNoExportAll: 'Chưa có lô nào được nhập dữ liệu.',
+    exportConfirm: 'Lô chưa được đánh dấu hoàn tất. Vẫn xuất file?',
+    addLotPrompt: 'Nhập số lô / tên lô mới (ví dụ: 950):',
+    backupOk: 'Đã tải file sao lưu JSON.',
+    restoreBadFile: 'File không đúng cấu trúc.',
+    restoreConfirm: 'Phục hồi sẽ ghi đè toàn bộ dữ liệu đang có. Tiếp tục?',
+    restoreOk: 'Đã phục hồi dữ liệu từ file.',
+    restoreFail: 'Không đọc được file: {err}',
+    demoConfirm: 'Lô 250 đã có dữ liệu. Ghi đè hàng 1 và 2 bằng dữ liệu mẫu từ ảnh phiếu?',
+    demoDone: 'Đã điền thử 2 hàng lô 250 từ ảnh phiếu mẫu.',
+    resetConfirm: 'Xoá TOÀN BỘ dữ liệu đã nhập trên máy này? Không thể hoàn tác.',
+    resetPrompt: 'Gõ XOA để xác nhận xoá toàn bộ:',
+    resetCancel: 'Đã huỷ xoá.',
+    resetDone: 'Đã xoá toàn bộ dữ liệu.',
+    syncUrlMissing: 'Chưa cấu hình URL Apps Script.',
+    syncHttpError: 'Máy chủ trả về HTTP {code}',
+    syncAppError: 'Apps Script báo lỗi: {err}',
+    syncStatusNone: 'Chưa kết nối',
+    syncStatusConnected: 'Đã kết nối · {time}',
+    syncStatusConfigured: 'Đã cấu hình URL',
+    syncStatusHelp: 'Chưa kết nối. Dán URL Web App bên dưới để bật đồng bộ.',
+    syncStatusNotSynced: 'Đã cấu hình URL, chưa đồng bộ lần nào.',
+    syncNoUrl: 'Chưa cấu hình URL Apps Script trong menu Đồng bộ Google.',
+    syncSending: 'Đang gửi dữ liệu lên Google…',
+    syncNoResponse: 'Đã gửi (không đọc được phản hồi)',
+    syncNoResponseToast: 'Đã gửi tới Google nhưng không đọc được phản hồi. Kiểm tra Google Sheets hoặc hộp thư.',
+    syncTestOkMail: 'Kết nối tốt. Đã gửi mail thử, kiểm tra hộp thư.',
+    syncTestOkSheet: 'Kết nối tốt. Đã ghi dữ liệu lên Google Sheets.',
+    syncOkUrl: 'Đã đồng bộ. Mở Google Sheets trong menu.',
+    syncOk: 'Đã đồng bộ Google Sheets.',
+    syncErrorPrefix: 'Lỗi',
+    syncErrorToast: 'Đồng bộ lỗi: {err}',
+    syncPasteFirst: 'Dán URL Web App trước đã.',
+    syncUrlFormat: 'URL phải có dạng https://script.google.com/macros/s/…/exec',
+    syncSaved: 'Đã lưu cấu hình đồng bộ.',
+    syncDisabled: 'Đã tắt đồng bộ (chưa có URL).',
+    syncLast: 'Lần cuối: {time}',
+    syncLotMail: 'Đã gửi mail báo cáo lô {lot}.',
+    syncLotSheet: 'Đã đồng bộ lô {lot} lên Google Sheets.',
+    copyOk: 'Đã sao chép Code.gs. Dán vào script.google.com.',
+    copyFail: 'Không sao chép được. Bấm "Tải Code.gs" để tải file.',
+    langChange: 'Đổi ngôn ngữ',
+  },
+  km: {
+    appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
+    brandTitle: 'ការរាប់ដើមឈើកៅស៊ូ 2027',
+    brandSub: 'ក្រុមទី 2 · CRCK2 Aphivath',
+    quickEntry: 'បញ្ចូលរហ័ស',
+    menu: 'ម៉ឺនុយ',
+    close: 'បិទ',
+    language: 'ភាសា',
+    langVi: 'ភាសាវៀតណាម',
+    langKm: 'ខ្មែរ',
+    langTitle: 'ជ្រើសរើសភាសា',
+    langLead: 'ភាសានឹងប្រើសម្រាប់កម្មវិធីទាំងមូល។ អាចប្តូរវិញនៅក្នុងម៉ឺនុយ។',
+    langFoot: 'លេខ លេខដីឡូតិ៍ និងសញ្ញា G, +, C, K1, K2, O រក្សាដូចដើមទាំងពីរភាសា។',
+    heroEyebrow: 'ការរាប់ពេល 0 ម៉ោង · 01/01/2027',
+    heroTitle: 'បញ្ចូលលទ្ធផលតាមជួរសរុបនៃជួរនីមួយៗ',
+    heroLead: 'សន្លឹកមួយមាន 2 ជួរ។ បញ្ចូលតែ 7 លេខនៅជួរចុងក្រោយ។ កម្មវិធីពិនិត្យស្វ័យប្រវត្តិ <span class="nowrap">សរុប = G + (+) + C + K1 + K2 + O</span> ហាមជួរស្ទួន និងប្រៀបធៀបនឹងការរាប់ឆ្នាំ 2026។',
+    quickBySheet: 'បញ្ចូលរហ័សតាមសន្លឹក',
+    exportAll: 'នាំចេញ Excel សរុប',
+    statEnteredLots: 'ដីឡូតិ៍បានបញ្ចូល',
+    statEnteredSub: 'ដីឡូតិ៍ {n} បានសម្គាល់រួចរាល់',
+    statTrees: 'សរុបចំណុចដាំ 2027',
+    statTreesSub: '2026: {base} ដើម · ខុសគ្នាបណ្ដោះអាសន្ន {delta}',
+    statTreesSubNo: '2026: {base} ដើម',
+    statRows: 'ជួរបានបញ្ចូល',
+    statRowsSub: 'សរុបលើដីឡូតិ៍ {n}',
+    statWarn: 'ដីឡូតិ៍មានការព្រមាន',
+    statWarnSub: '{done} ត្រូវនឹង 2026 · {warn} ត្រូវពិនិត្យ',
+    tabList: 'បញ្ជីដីឡូតិ៍',
+    tabMap: 'ផែនទីវឌ្ឍនភាព',
+    filterAll: 'ទាំងអស់',
+    filterEmpty: 'មិនទាន់បញ្ចូល',
+    filterDoing: 'កំពុងបញ្ចូល',
+    filterDone: 'រួចរាល់',
+    filterWarn: 'ការព្រមាន',
+    searchPh: 'ស្វែងរកលេខដីឡូតិ៍, ID, ពូជ…',
+    addLot: '+ ដីឡូតិ៍ផ្សេង',
+    backup: 'បម្រុងទុក',
+    restore: 'ស្ដារឡើងវិញ',
+    thLot: 'ដីឡូតិ៍',
+    th2026: '2026',
+    th2027: '2027',
+    thDelta: 'ខុសគ្នា',
+    thRows: 'ចំនួនជួរ',
+    thStatus: 'ស្ថានភាព',
+    emptyTitle: 'គ្មានដីឡូតិ៍ត្រូវគ្នា',
+    emptySub: 'សូមលុបពាក្យស្វែងរក ឬប្តូរតម្រង។',
+    guideTitle: 'ការណែនាំខ្លី',
+    guide1: 'ចុច <b>បញ្ចូលរហ័ស</b> ជ្រើស <b>តំបន់</b> រួចជ្រើស <b>ដីឡូតិ៍</b> បញ្ចូល <b>លេខជួរ</b> និង 7 លេខនៅជួរចុងក្រោយនៃសន្លឹក៖ សរុប, G, (+), C, K1, K2, O។ ប៊ូតុង <b>VI / ខ្មែរ</b> ប្តូរភាសាទាំងកម្មវិធី; លេខ និងសញ្ញា G, +, C, K1, K2, O នៅដដែល។',
+    guide2: 'កម្មវិធីព្រមានពណ៌ក្រហម បើ <b>សរុបមិនស្មើនឹងសរុប 6 ជួរឈរ</b>។ កែតាមសន្លឹកមុនរក្សាទុក។',
+    guide3: 'ចុច <b>រក្សាទុក &amp; សន្លឹកបន្ទាប់</b> ដើម្បីបញ្ចូលបន្ត; លេខជួរកើនដោយស្វ័យប្រវត្តិ។',
+    guide4: 'បើមានបញ្ហា (ខ្វះសន្លឹក…) ចុច <b>រក្សាទុកបណ្ដោះអាសន្ន</b>។ ដីឡូតិ៍នឹងបង្ហាញ <b>តារាងជួរ</b>៖ ប្រអប់ពណ៌បៃតងចុចដើម្បីកែ, ប្រអប់ជួរដេកដាច់ៗចុចដើម្បីបញ្ចូលជួរខ្វះ; ប៊ូតុង <b>បន្ត ជួរ N</b> បើកត្រង់ជួរដែលកំពុងធ្វើ។',
+    guide5: 'ពេលបញ្ចូលដីឡូតិ៍រួច ចុច <b>សម្គាល់ថារួចរាល់</b>។ រាល់ភាពខុសគ្នាធៀប 2026 នឹងបង្ហាញការព្រមានក្រហម។',
+    guide6: 'បើកផ្ទាំង <b>ផែនទីវឌ្ឍនភាព</b> ដើម្បីដឹងតំបន់ណាមិនទាន់បញ្ចូល។ ចុចតំបន់ដើម្បីពង្រីក, ចុចព្រំដីឡូតិ៍ដើម្បីមើលឬបើក។',
+    guide7: 'ទិន្នន័យរក្សាទុកក្នុងកម្មវិធីរុករកលើម៉ាស៊ីននេះ។ ម្ដងម្កាលចុច <b>បម្រុងទុក</b> ដើម្បីទាញឯកសារ JSON។ ចូលម៉ឺនុយ <b>ធ្វើសមកាល Google</b> ដើម្បីរក្សាទុកលើ Google Sheets និងទទួលអ៊ីមែលពេលដីឡូតិ៍រួចរាល់។',
+    guide8: 'ចុច <b>នាំចេញ Excel</b> ដើម្បីទាញឯកសារតាមដីឡូតិ៍ (តាមទម្រង់ Mẫu nhập KK) ឬឯកសារសរុប 0h 01/01/2027។',
+    mapZonesTitle: 'វឌ្ឍនភាពតាមតំបន់',
+    all: 'ទាំងអស់',
+    mapTitle: 'ផែនទីដីឡូតិ៍ 95',
+    legendEmpty: 'មិនទាន់បញ្ចូល',
+    legendDoing: 'កំពុងបញ្ចូល',
+    legendDone: 'រួចរាល់',
+    legendWarn: 'ការព្រមាន',
+    mapLoading: 'កំពុងផ្ទុកផែនទី…',
+    mapFoot: 'ចុចព្រំដីឡូតិ៍ដើម្បីមើលរហ័ស រួចចុច <b>បើកដីឡូតិ៍</b> ដើម្បីបញ្ចូល។ ផ្ទៃខាងក្រោយផ្កាយរណបត្រូវការអ៊ីនធឺណិត; ពេលក្រៅបណ្ដាញព្រំដីឡូតិ៍នៅបង្ហាញ។ ដីឡូតិ៍បន្ថែមក្រៅបញ្ជី (+ ដីឡូតិ៍ផ្សេង) គ្មានព្រំលើផែនទី។',
+    mapLibError: 'មិនអាចផ្ទុកបណ្ណាល័យផែនទី។',
+    mapNoGeo: 'មិនទាន់មានទិន្នន័យព្រំដីឡូតិ៍។',
+    zoneDone: '{a}/{b} រួចរាល់',
+    zoneDoing: '{n} កំពុងបញ្ចូល',
+    zoneWarn: '{n} ការព្រមាន',
+    zoneMissing: 'មិនទាន់បញ្ចូល {n}: <b>{list}</b>',
+    zoneAllDone: 'បានបញ្ចូលគ្រប់ {a}/{b} ដីឡូតិ៍',
+    zoneWarnList: 'ការព្រមាន: <b>{list}</b>',
+    mapBadge: '{done}/{total} ដីឡូតិ៍រួចរាល់',
+    openLot: 'បើកដីឡូតិ៍',
+    backList: 'បញ្ជីដីឡូតិ៍',
+    exportLot: 'នាំចេញ Excel ដីឡូតិ៍',
+    markDone: 'សម្គាល់ថារួចរាល់',
+    reopenLot: 'បើកដីឡូតិ៍ឡើងវិញ',
+    compareTitle: 'ប្រៀបធៀប 2026 → 2027',
+    metric: 'ចំណុច',
+    metricTotal: 'សរុប',
+    catG: 'ដើមកៅស៊ូ (G)',
+    catPlus: 'ដើម +',
+    catC: 'ដើម C',
+    catK1: 'ដើម K1',
+    catK2: 'ដើម K2',
+    catO: 'រណ្ដៅទទេ (O)',
+    infoCard: 'ព័ត៌មានសន្លឹក',
+    huongLot: 'ទិសដីឡូតិ៍',
+    huongPh: 'ឧ. ខាងកើត-ខាងលិច',
+    ngayKK: 'កាលបរិច្ឆេទពិនិត្យ',
+    nguoiKK: 'អ្នកពិនិត្យ',
+    personPh: 'ឈ្មោះអ្នកពិនិត្យ',
+    ghiChu: 'កំណត់សម្គាល់',
+    ghiChuPh: 'កំណត់សម្គាល់ដីឡូតិ៍…',
+    rowsTitle: 'ព័ត៌មានលម្អិតតាមជួរ',
+    addRow: '+ បន្ថែមជួរ',
+    thHang: 'ជួរ',
+    thTotal: 'សរុប',
+    thCheck: 'ត្រួតពិនិត្យ',
+    total: 'សរុប',
+    rowsFoot: 'បញ្ចូលលេខអវិជ្ជមាន? ទេ។ ប្រអប់ទទេគិតជា 0។ ប៊ូតុង <b>=</b> ក្បែរសរុប ដើម្បីបំពេញសរុប 6 ជួរឈរ។',
+    rowMissing: 'ខ្វះសរុប',
+    rowDiff: 'ខុសគ្នា {n}',
+    rowOk: 'ត្រូវគ្នា',
+    treeUnit: 'ដើម',
+    emptyRows: 'មិនទាន់មានជួរណាមួយ។ ចុច <b>បញ្ចូលរហ័ស</b> ដើម្បីបញ្ចូល 2 ជួរក្នុងមួយសន្លឹក ឬ <b>+ បន្ថែមជួរ</b> ដើម្បីបញ្ចូលដោយដៃ។',
+    sumIssues: 'ជួរ {n} ខុសសរុប',
+    sumOk: 'ត្រូវគ្នា {n} ជួរ',
+    rowCount: 'បានបញ្ចូល {n} ជួរ',
+    calcTitle: 'បំពេញសរុប = ផលបូក 6 ជួរឈរ',
+    delRowTitle: 'លុបជួរ',
+    confirmDelRow: 'លុបជួរ {h}? ទិន្នន័យជួរនេះនឹងបាត់។',
+    toastDone: 'បានសម្គាល់ដីឡូតិ៍ {lot} ថាបានបញ្ចប់ នៅ {time}',
+    issueMissing: 'ខ្វះសរុប (ផលបូក 6 ជួរឈរ = {sum})',
+    issueDiff: 'សរុប {dt} ≠ ផលបូក 6 ជួរឈរ {sum} (ខុសគ្នា {d})',
+    hangMapTitle: 'តារាងជួរ',
+    hangBadge: '{n} ជួរ',
+    hangBadgeMissing: ' · ខ្វះ {n}',
+    hangBadgeIssues: ' · {n} ខុសគ្នា',
+    hangMissing: 'នៅខ្វះ <b>{n}</b> ជួរ: <b>{list}</b>.',
+    hangContinuous: 'បានបញ្ចូលជាប់គ្នា ជួរ 1–{max}.',
+    hangHint: ' ប្រអប់ពណ៌បៃតងចុចដើម្បីកែជួរ; ប្រអប់ជួរដេកដាច់ៗចុចដើម្បីបញ្ចូលជួរខ្វះ។',
+    hangBtnFill: 'បញ្ចូលជួរ {h}',
+    hangBtnResume: 'បន្តបញ្ចូលជួរ {h}',
+    hangChipEdit: 'ជួរ {h} {st} — ចុចដើម្បីកែ',
+    hangChipFill: 'ជួរ {h} មិនទាន់បញ្ចូល — ចុចដើម្បីបញ្ចូល',
+    hangChipMatched: 'ត្រូវគ្នា',
+    hangChipDiff: 'ខុសសរុប',
+    checksTitle: 'ត្រួតពិនិត្យទិន្នន័យ',
+    checksNoData: 'មិនទាន់មានទិន្នន័យសម្រាប់ត្រួតពិនិត្យ។',
+    checksIssueCount: 'ជួរ {n} ខុសសរុប:',
+    checksRow: 'ជួរ {h}',
+    checksAllOk: 'គ្រប់ជួរត្រូវគ្នា: សរុប = G + (+) + C + K1 + K2 + O។',
+    checksNoDup: 'គ្មានជួរស្ទួនលេខ។',
+    checksDup: '<b>ជួរស្ទួន:</b> {list}។',
+    checksTotalLine: 'បានបញ្ចូល <b>{n}</b> ជួរ · សរុប <b>{dt}</b> ដើម។',
+    baselineEqual: 'សរុបធៀប 2026: ត្រូវគ្នា <b>{n}</b> ដើម។',
+    baselineDiff: 'សរុបធៀប 2026: 2027 <b>{a}</b> / 2026 <b>{b}</b> · ខុសគ្នា <b>{d}</b> ({p})។',
+    baselineMismatch: 'ទិន្នន័យគោល 2026 ខុសគ្នាខ្លួនឯង <b>{n}</b> ដើម (សរុប 6 ជួរឈរ {sum})។',
+    checksNoBaseline: 'ដីឡូតិ៍ក្រៅបញ្ជី គ្មានទិន្នន័យគោល 2026។',
+    checksDone: 'ដីឡូតិ៍បានសម្គាល់ថារួចរាល់។',
+    checksNotDone: 'ដីឡូតិ៍មិនទាន់សម្គាល់ថារួចរាល់។',
+    statusEmpty: 'មិនទាន់បញ្ចូល',
+    statusDoing: 'កំពុងបញ្ចូល',
+    statusPaused: 'រក្សាទុកបណ្ដោះអាសន្ន',
+    statusDone: 'រួចរាល់',
+    statusMatch2026: 'ត្រូវនឹង 2026',
+    statusError: 'ទិន្នន័យមានបញ្ហា',
+    statusWarn: 'មានការព្រមាន',
+    statusDiff: 'ខុសគ្នា {n}',
+    lotOutside: 'ដីឡូតិ៍ក្រៅបញ្ជី',
+    metaPlantYear: 'ដាំ {year}',
+    metaPaused: 'បណ្ដោះអាសន្ន · បន្ត ជួរ {h}',
+    compareBadgeNoBase: 'គ្មានទិន្នន័យគោល',
+    compareBadgeEmpty: 'មិនទាន់បញ្ចូល',
+    compareBadgeMatch: 'ត្រូវនឹង 2026',
+    compareBadgeWarn: 'មានការព្រមាន',
+    compareBadgeDiff: 'ខុសគ្នា {n}',
+    noBaseNote: 'ដីឡូតិ៍ក្រៅបញ្ជី គ្មានទិន្នន័យគោល 2026។ កម្មវិធីនៅតែពិនិត្យសរុបជួរ និងនាំចេញ Excel ធម្មតា។',
+    baselineNote: 'ទិន្នន័យគោល: ការរាប់ 0h 01/01/2026 · {id} · {total} ដើម។ ប្រភព: TỔNG HỢP KIỂM KÊ 2025-2026.xlsx។',
+    alertNoRows: '<b>មិនទាន់បញ្ចូលជួរណាមួយ។</b> ចុច <b>បញ្ចូលរហ័ស</b> ដើម្បីបញ្ចូល 2 ជួរក្នុងមួយសន្លឹកពីជួរចុងក្រោយ។',
+    alertIssues: '<b>ជួរ {n} ខុសសរុប។</b><br>{first}',
+    alertIssuesMore: '<br>… និងជួរ {n} ផ្សេងទៀត។',
+    alertDup: '<b>ជួរស្ទួនលេខ:</b> {list}។ ជួរនីមួយៗបញ្ចូលបានតែម្ដង។',
+    alertNoBase: 'ដីឡូតិ៍ក្រៅបញ្ជី: គ្មានទិន្នន័យគោល 2026 សម្រាប់ប្រៀបធៀបសរុប។',
+    alertAllOk: 'ទិន្នន័យត្រូវគ្នា។ បើបញ្ចូលគ្រប់ ចុច <b>សម្គាល់ថារួចរាល់</b> ដើម្បីបិទដីឡូតិ៍។',
+    alertMsgDiff: 'សរុប 2027 <b>{dt}</b> ធៀប 2026 <b>{base}</b> · ខុសគ្នា <b>{d}</b> ({p})។',
+    alertDoneDiff: '<b>ដីឡូតិ៍រួចរាល់ហើយ តែនៅខុសគ្នា។</b> {msg}<br>ពិនិត្យជួរដែលបានបញ្ចូល ឬសន្លឹកក្រដាសឡើងវិញ។',
+    alertTempDiff: '<b>ខុសគ្នាបណ្ដោះអាសន្ន។</b> {msg}<br>បើដីឡូតិ៍មិនទាន់បញ្ចូលគ្រប់ជួរ សូមមិនខ្វល់ការព្រមាននេះ។ បញ្ចូលរួចហើយ សម្គាល់ថារួចរាល់។',
+    alertMatch: '<b>សរុប 2027 ត្រូវនឹង 2026:</b> {n}',
+    alertBaseMismatch: '<b>ទិន្នន័យគោល 2026 ខុសគ្នាខាងក្នុង {n}។</b> សរុបដើមគឺ {total} តែផលបូក 6 ជួរឈរគ្រាន់តែ {sum}។ គួរពិនិត្យឯកសារ 2026 ដើមឡើងវិញ។',
+    checksMissingRow: 'នៅខ្វះ <b>{n}</b> ជួរក្នុងជួរលេខ 1–{max}: {list}។',
+    checksMatchTotal: 'សរុបធៀប 2026: ត្រូវគ្នា <b>{n}</b> ដើម។',
+    lotEyebrow: 'ក្រុម {doi} · {id}',
+    lotNoId: 'គ្មាន ID',
+    noBaselineSub: 'គ្មានទិន្នន័យគោល 2026 សម្រាប់ប្រៀបធៀបស្វ័យប្រវត្តិ។',
+    doneSuffix: ' · រួចរាល់ {time}',
+    pauseSuffix: ' · បណ្ដោះអាសន្ន {time}',
+    resumeHangBtn: 'បន្ត ជួរ {h}',
+    menuTitle: 'ម៉ឺនុយ',
+    menuExport: 'នាំចេញ Excel សរុប',
+    menuExportSub: '95 ដីឡូតិ៍ + សន្លឹកការព្រមាន',
+    menuBackup: 'បម្រុងទុកទិន្នន័យ (JSON)',
+    menuBackupSub: 'ទាញឯកសារបម្រុងទុកមកម៉ាស៊ីន',
+    menuRestore: 'ស្ដារពី JSON',
+    menuRestoreSub: 'សរសេរជាន់ទិន្នន័យបច្ចុប្បន្ន',
+    menuSync: 'ធ្វើសមកាល Google & របាយការណ៍អ៊ីមែល',
+    menuSyncSub: 'មិនទាន់ភ្ជាប់',
+    menuInstall: 'ដំឡើងកម្មវិធីលើ Desktop',
+    menuInstallSub: 'ដំណើរការដូចកម្មវិធី, ប្រើក្រៅបណ្ដាញ',
+    menuDemo: 'បំពេញសាកល្បងដីឡូតិ៍ 250',
+    menuDemoSub: 'ជួរ 01 + 02 ពីរូបសន្លឹកគំរូ',
+    menuReset: 'លុបទិន្នន័យទាំងអស់',
+    menuResetSub: 'មិនអាចត្រឡប់វិញបាន',
+    menuLang: 'ភាសា',
+    menuFootnote: 'ទិន្នន័យនៅក្នុងកម្មវិធីរុករករបស់ម៉ាស៊ីននេះ (localStorage)។ ប្តូរម៉ាស៊ីន ឬលុបទិន្នន័យកម្មវិធីរុករកនឹងបាត់ ដូច្នេះសូមបម្រុងទុក JSON ជាប្រចាំ។',
+    syncEyebrow: 'Google Sheets + Gmail',
+    syncTitle: 'ធ្វើសមកាល & របាយការណ៍អ៊ីមែល',
+    syncLead: 'បិទភ្ជាប់ URL Web App របស់ Apps Script។ កម្មវិធីនឹងសរសេរទិន្នន័យទៅ Google Sheets; ពេលដីឡូតិ៍ត្រូវបានសម្គាល់ <b>រួចរាល់</b> Google នឹងផ្ញើអ៊ីមែលជាមួយឯកសារ Excel។',
+    syncUrlLabel: 'URL Web App (Apps Script)',
+    syncEnabled: 'ធ្វើសមកាលស្វ័យប្រវត្តិក្រោយរក្សាទុក',
+    syncStatusInit: 'មិនទាន់ភ្ជាប់។',
+    syncSave: 'រក្សាទុកការកំណត់',
+    syncTest: 'ផ្ញើសាកល្បង',
+    syncNow: 'ធ្វើសមកាលឥឡូវ',
+    syncGuideTitle: 'ការណែនាំដំឡើង (5 នាទី)',
+    syncStep1: 'បើក <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <b>គម្រោងថ្មី</b>។',
+    syncStep2: 'លុបខ្លឹមសារដើម បិទភ្ជាប់កូដ <code>Code.gs</code> ទាំងអស់ (ចុច <b>ចម្លងកូដ Code.gs</b> ខាងក្រោម)។',
+    syncStep3: 'កែ <code>EMAIL_NHAN</code> នៅដើមឯកសារ បើចង់ទទួលអ៊ីមែលនៅអាសយដ្ឋានផ្សេង (លំនាំដើម: Gmail ដែលកំពុងចូល)។',
+    syncStep4: 'ចុច <b>Deploy → New deployment → Web app</b>; ជ្រើស <b>Execute as: Me</b>; <b>Who has access: Anyone</b>។ ផ្ដល់សិទ្ធិពេល Google សួរ។',
+    syncStep5: 'ចម្លង URL ទម្រង់ <code>…/exec</code> បិទភ្ជាប់ក្នុងប្រអប់ខាងលើ ចុច <b>ផ្ញើសាកល្បង</b>។',
+    copyScript: 'ចម្លងកូដ Code.gs',
+    downloadScript: 'ទាញយក Code.gs',
+    syncFootnote: 'លើកដំបូង Google នឹងសុំសិទ្ធិអាន/សរសេរ Google Sheets និងផ្ញើអ៊ីមែល។ ទិន្នន័យនៅក្នុង Drive របស់អ្នក មិនផ្ញើទៅភាគីទីបី។ រាល់ពេលចុច “ផ្ញើសាកល្បង” នឹងផ្ញើអ៊ីមែលសាកល្បង 1 សារ។',
+    toastNoStore: 'មិនអាចរក្សាទុកទិន្នន័យ។ អង្គចងចាំកម្មវិធីរុករកអាចពេញ។',
+    toastAddedLot: 'បានបន្ថែមដីឡូតិ៍ក្រៅបញ្ជី: {lot}',
+    toastLotExists: 'ដីឡូតិ៍នេះមានក្នុងបញ្ជីរួចហើយ។',
+    toastReopened: 'បានបើកដីឡូតិ៍ {lot} ឡើងវិញ',
+    toastExportOk: 'បាននាំចេញ: {file}',
+    toastExportFail: 'មិនអាចនាំចេញ Excel: {err}',
+    toastNoExportData: 'ដីឡូតិ៍មិនទាន់មានទិន្នន័យសម្រាប់នាំចេញ។',
+    toastNoExportAll: 'មិនទាន់មានដីឡូតិ៍ណាមួយបញ្ចូលទិន្នន័យ។',
+    exportConfirm: 'ដីឡូតិ៍មិនទាន់សម្គាល់ថារួចរាល់។ នៅតែនាំចេញ?',
+    addLotPrompt: 'បញ្ចូលលេខ / ឈ្មោះដីឡូតិ៍ថ្មី (ឧ. 950):',
+    backupOk: 'បានទាញឯកសារបម្រុងទុក JSON។',
+    restoreBadFile: 'ឯកសារមិនត្រឹមត្រូវតាមទម្រង់។',
+    restoreConfirm: 'ការស្ដារនឹងសរសេរជាន់ទិន្នន័យបច្ចុប្បន្នទាំងអស់។ បន្ត?',
+    restoreOk: 'បានស្ដារទិន្នន័យពីឯកសារ។',
+    restoreFail: 'មិនអាចអានឯកសារ: {err}',
+    demoConfirm: 'ដីឡូតិ៍ 250 មានទិន្នន័យហើយ។ សរសេរជាន់ជួរ 1 និង 2 ដោយទិន្នន័យគំរូពីរូបសន្លឹក?',
+    demoDone: 'បានបំពេញសាកល្បង 2 ជួរដីឡូតិ៍ 250 ពីរូបសន្លឹកគំរូ។',
+    resetConfirm: 'លុបទិន្នន័យទាំងអស់ដែលបានបញ្ចូលលើម៉ាស៊ីននេះ? មិនអាចត្រឡប់វិញបាន។',
+    resetPrompt: 'វាយ XOA ដើម្បីបញ្ជាក់ការលុបទាំងអស់:',
+    resetCancel: 'បានបោះបង់ការលុប។',
+    resetDone: 'បានលុបទិន្នន័យទាំងអស់។',
+    syncUrlMissing: 'មិនទាន់កំណត់ URL Apps Script។',
+    syncHttpError: 'ម៉ាស៊ីនបម្រើឆ្លើយ HTTP {code}',
+    syncAppError: 'Apps Script រាយការណ៍កំហុស: {err}',
+    syncStatusNone: 'មិនទាន់ភ្ជាប់',
+    syncStatusConnected: 'បានភ្ជាប់ · {time}',
+    syncStatusConfigured: 'បានកំណត់ URL',
+    syncStatusHelp: 'មិនទាន់ភ្ជាប់។ បិទភ្ជាប់ URL Web App ខាងក្រោមដើម្បីបើកសមកាលកម្ម។',
+    syncStatusNotSynced: 'បានកំណត់ URL មិនទាន់ធ្វើសមកាលនៅឡើយ។',
+    syncNoUrl: 'មិនទាន់កំណត់ URL Apps Script ក្នុងម៉ឺនុយ ធ្វើសមកាល Google។',
+    syncSending: 'កំពុងផ្ញើទិន្នន័យទៅ Google…',
+    syncNoResponse: 'បានផ្ញើ (មិនអាចអានការឆ្លើយតប)',
+    syncNoResponseToast: 'បានផ្ញើទៅ Google ប៉ុន្តែមិនអាចអានការឆ្លើយតប។ សូមពិនិត្យ Google Sheets ឬប្រអប់សំបុត្រ។',
+    syncTestOkMail: 'ភ្ជាប់បានល្អ។ បានផ្ញើអ៊ីមែលសាកល្បង សូមពិនិត្យប្រអប់សំបុត្រ។',
+    syncTestOkSheet: 'ភ្ជាប់បានល្អ។ បានសរសេរទិន្នន័យទៅ Google Sheets។',
+    syncOkUrl: 'បានធ្វើសមកាល។ បើក Google Sheets ក្នុងម៉ឺនុយ។',
+    syncOk: 'បានធ្វើសមកាល Google Sheets។',
+    syncErrorPrefix: 'កំហុស',
+    syncErrorToast: 'កំហុសសមកាលកម្ម: {err}',
+    syncPasteFirst: 'សូមបិទភ្ជាប់ URL Web App សិន។',
+    syncUrlFormat: 'URL ត្រូវមានទម្រង់ https://script.google.com/macros/s/…/exec',
+    syncSaved: 'បានរក្សាទុកការកំណត់សមកាលកម្ម។',
+    syncDisabled: 'បានបិទសមកាលកម្ម (មិនទាន់មាន URL)។',
+    syncLast: 'លើកចុងក្រោយ: {time}',
+    syncLotMail: 'បានផ្ញើអ៊ីមែលរបាយការណ៍ដីឡូតិ៍ {lot}។',
+    syncLotSheet: 'បានធ្វើសមកាលដីឡូតិ៍ {lot} ទៅ Google Sheets។',
+    copyOk: 'បានចម្លង Code.gs។ បិទភ្ជាប់ក្នុង script.google.com។',
+    copyFail: 'មិនអាចចម្លងបាន។ ចុច "ទាញយក Code.gs" ដើម្បីទាញឯកសារ។',
+    langChange: 'ប្តូរភាសា',
+  },
+};
+function t(key, vars) {
+  const pack = APP_I18N[state.lang] || APP_I18N.vi;
+  let s = pack[key] != null ? pack[key] : (APP_I18N.vi[key] != null ? APP_I18N.vi[key] : key);
+  if (vars) Object.keys(vars).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+  return s;
+}
 function qt(key) {
-  const pack = QUICK_I18N[state.quickLang] || QUICK_I18N.vi;
+  const pack = QUICK_I18N[state.lang] || QUICK_I18N.vi;
   return pack[key] != null ? pack[key] : QUICK_I18N.vi[key];
 }
 function qtf(key, vars) {
@@ -395,24 +945,24 @@ function renderHome() {
 
   $('#stats').innerHTML = `
     <div class="stat-card">
-      <div class="k">Lô đã nhập</div>
+      <div class="k">${t('statEnteredLots')}</div>
       <div class="v">${enteredLots}<span class="muted" style="font-size:16px">/${totalLots}</span></div>
-      <div class="s">${doneLots} lô đã đánh dấu hoàn tất</div>
+      <div class="s">${t('statEnteredSub', { n: doneLots })}</div>
     </div>
     <div class="stat-card ${totalTrees ? 'good' : ''}">
-      <div class="k">Tổng điểm trồng 2027</div>
+      <div class="k">${t('statTrees')}</div>
       <div class="v">${fmt(totalTrees)}</div>
-      <div class="s">${totalTrees ? `2026: ${fmt(baseTotal)} cây · lệch tạm ${signed(totalTrees - baseTotal)}` : `2026: ${fmt(baseTotal)} cây`}</div>
+      <div class="s">${totalTrees ? t('statTreesSub', { base: fmt(baseTotal), delta: signed(totalTrees - baseTotal) }) : t('statTreesSubNo', { base: fmt(baseTotal) })}</div>
     </div>
     <div class="stat-card">
-      <div class="k">Hàng đã nhập</div>
+      <div class="k">${t('statRows')}</div>
       <div class="v">${fmt(totalRows)}</div>
-      <div class="s">Tổng cộng dồn trên ${enteredLots} lô</div>
+      <div class="s">${t('statRowsSub', { n: enteredLots })}</div>
     </div>
     <div class="stat-card ${warnLots ? 'warn' : ''}">
-      <div class="k">Lô có cảnh báo</div>
+      <div class="k">${t('statWarn')}</div>
       <div class="v">${fmt(warnLots)}</div>
-      <div class="s">${doneLots} khớp 2026 · ${warnLots} cần kiểm tra</div>
+      <div class="s">${t('statWarnSub', { done: doneLots, warn: warnLots })}</div>
     </div>`;
 
   renderLotList();
@@ -424,11 +974,18 @@ function renderHome() {
 }
 
 function statusInfo(st) {
-  if (st.level === 'empty') return { cls: 'empty', label: 'Chưa nhập', dot: '' };
-  if (st.level === 'doing') return { cls: 'doing', label: st.meta.pausedAt ? 'Tạm lưu' : 'Đang nhập', dot: 'doing' };
-  if (st.level === 'done') return { cls: 'done', label: st.base ? 'Khớp 2026' : 'Hoàn tất', dot: 'done' };
-  if (st.hasError) return { cls: 'warn', label: 'Lỗi dữ liệu', dot: 'warn' };
-  return { cls: 'warn', label: st.delta != null ? `Lệch ${signed(st.delta)}` : 'Có cảnh báo', dot: 'warn' };
+  if (st.level === 'empty') return { cls: 'empty', label: t('statusEmpty'), dot: '' };
+  if (st.level === 'doing') return { cls: 'doing', label: st.meta.pausedAt ? t('statusPaused') : t('statusDoing'), dot: 'doing' };
+  if (st.level === 'done') return { cls: 'done', label: st.base ? t('statusMatch2026') : t('statusDone'), dot: 'done' };
+  if (st.hasError) return { cls: 'warn', label: t('statusError'), dot: 'warn' };
+  return { cls: 'warn', label: st.delta != null ? t('statusDiff', { n: signed(st.delta) }) : t('statusWarn'), dot: 'warn' };
+}
+function statusLabelVN(st) {
+  if (st.level === 'empty') return 'Chưa nhập';
+  if (st.level === 'doing') return st.meta.pausedAt ? 'Tạm lưu' : 'Đang nhập';
+  if (st.level === 'done') return st.base ? 'Khớp 2026' : 'Hoàn tất';
+  if (st.hasError) return 'Lỗi dữ liệu';
+  return st.delta != null ? `Lệch ${signed(st.delta)}` : 'Có cảnh báo';
 }
 
 function lotRowHtml(key) {
@@ -439,14 +996,14 @@ function lotRowHtml(key) {
   const metaBits = [];
   if (base) {
     if (base.clone) metaBits.push(base.clone);
-    if (base.year) metaBits.push('trồng ' + base.year);
+    if (base.year) metaBits.push(t('metaPlantYear', { year: base.year }));
     if (base.area) metaBits.push(fmt2(base.area) + ' ha');
     if (base.id) metaBits.push(base.id);
   } else {
-    metaBits.push('Lô ngoài danh mục');
+    metaBits.push(t('lotOutside'));
   }
   if (st.level === 'doing' && st.meta.pausedAt) {
-    metaBits.push(`tạm lưu · tiếp h.${resumeHang(key)}`);
+    metaBits.push(t('metaPaused', { h: resumeHang(key) }));
   }
   let deltaCls = 'muted';
   let deltaText = '—';
@@ -468,9 +1025,9 @@ function lotRowHtml(key) {
       <span class="lot-stats">
         <span class="stat"><small>2026</small><b>${base ? fmt(base.total) : '—'}</b></span>
         <span class="stat"><small>2027</small><b>${entered ? fmt(st.agg.dt) : '—'}</b></span>
-        <span class="stat"><small>Lệch</small><b class="${deltaCls}">${deltaText}</b></span>
-        <span class="stat"><small>Số hàng</small><b>${st.entered.length}</b></span>
-        <span class="stat status"><small>Trạng thái</small>${pill}</span>
+        <span class="stat"><small>${t('thDelta')}</small><b class="${deltaCls}">${deltaText}</b></span>
+        <span class="stat"><small>${t('thRows')}</small><b>${st.entered.length}</b></span>
+        <span class="stat status"><small>${t('thStatus')}</small>${pill}</span>
       </span>
     </button>`;
 }
@@ -525,14 +1082,14 @@ function renderZones() {
       .filter(k => s[k].length)
       .map(k => `<i style="width:${(s[k].length / s.total * 100).toFixed(2)}%;background:${STATUS_COLORS[k]}"></i>`)
       .join('');
-    const bits = [`${s.done.length}/${s.total} xong`];
-    if (s.doing.length) bits.push(`${s.doing.length} đang nhập`);
-    if (s.warn.length) bits.push(`${s.warn.length} cảnh báo`);
+    const bits = [t('zoneDone', { a: s.done.length, b: s.total })];
+    if (s.doing.length) bits.push(t('zoneDoing', { n: s.doing.length }));
+    if (s.warn.length) bits.push(t('zoneWarn', { n: s.warn.length }));
     let miss = '';
     let missCls = '';
-    if (s.empty.length) miss = `Chưa nhập ${s.empty.length}: <b>${esc(shortList(s.empty))}</b>`;
-    else if (!s.warn.length) { miss = `Đã nhập đủ ${s.total}/${s.total} lô`; missCls = ' all-done'; }
-    if (s.warn.length) miss += `${miss ? ' · ' : ''}Cảnh báo: <b>${esc(shortList(s.warn))}</b>`;
+    if (s.empty.length) miss = t('zoneMissing', { n: s.empty.length, list: esc(shortList(s.empty)) });
+    else if (!s.warn.length) { miss = t('zoneAllDone', { a: s.total, b: s.total }); missCls = ' all-done'; }
+    if (s.warn.length) miss += `${miss ? ' · ' : ''}${t('zoneWarnList', { list: esc(shortList(s.warn)) })}`;
     return `<button class="zone-row${state.zone === zone ? ' is-active' : ''}" data-zone="${zone}" type="button">
       <span class="zone-top"><span class="zone-name">${zone}</span><span class="zone-count">${bits.join(' · ')}</span></span>
       <span class="zone-bar">${segs}</span>
@@ -541,7 +1098,7 @@ function renderZones() {
   }).join('');
   const doneCount = [...GEO_BY_LOT.keys()].filter(key => lotState(key).level === 'done').length;
   const badge = $('#mapBadge');
-  if (badge) badge.textContent = `${doneCount}/${GEO.length} lô hoàn tất`;
+  if (badge) badge.textContent = t('mapBadge', { done: doneCount, total: GEO.length });
   const allBtn = $('#btnZoneAll');
   if (allBtn) allBtn.hidden = !state.zone;
 }
@@ -560,17 +1117,17 @@ function mapPopupHtml(key) {
     deltaCls = st.delta === 0 ? 'delta-0' : (st.meta.done ? 'delta-x' : 'delta-w');
   }
   return `<div class="map-pop">
-    <h4>Lô ${esc(key)}</h4>
+    <h4>${t('thLot')} ${esc(key)}</h4>
     <div class="map-pop-sub">${esc(bits.join(' · '))}</div>
     <span class="status-pill ${info.cls}"><span class="status-dot"></span>${esc(info.label)}</span>
     <table>
       <tr><td>2026</td><td>${base ? fmt(base.total) : '—'}</td></tr>
       <tr><td>2027</td><td>${st.entered.length ? fmt(st.agg.dt) : '—'}</td></tr>
-      <tr><td>Lệch</td><td class="${deltaCls}">${delta}</td></tr>
-      <tr><td>Số hàng</td><td>${st.entered.length}</td></tr>
-      ${st.meta.done && st.meta.doneAt ? `<tr><td>Hoàn tất</td><td>${esc(dateTimeVN(st.meta.doneAt))}</td></tr>` : ''}
+      <tr><td>${t('thDelta')}</td><td class="${deltaCls}">${delta}</td></tr>
+      <tr><td>${t('thRows')}</td><td>${st.entered.length}</td></tr>
+      ${st.meta.done && st.meta.doneAt ? `<tr><td>${t('statusDone')}</td><td>${esc(dateTimeVN(st.meta.doneAt))}</td></tr>` : ''}
     </table>
-    <button class="open-lot" data-openlot="${esc(key)}" type="button">Mở lô</button>
+    <button class="open-lot" data-openlot="${esc(key)}" type="button">${t('openLot')}</button>
   </div>`;
 }
 
@@ -584,12 +1141,12 @@ function initMap() {
   const el = $('#mapCanvas');
   if (!window.L || !el) {
     const hint = $('#mapHint');
-    if (hint) hint.textContent = 'Không tải được thư viện bản đồ.';
+    if (hint) hint.textContent = t('mapLibError');
     return null;
   }
   if (!GEO.length) {
     const hint = $('#mapHint');
-    if (hint) hint.textContent = 'Chưa có dữ liệu ranh lô.';
+    if (hint) hint.textContent = t('mapNoGeo');
     return null;
   }
   const map = L.map(el, { zoomControl: true, preferCanvas: true });
@@ -684,13 +1241,13 @@ function renderLot() {
   const base = st.base;
   const meta = st.meta;
 
-  $('#lotEyebrow').textContent = base ? `Đội ${base.doi} · ${base.id || 'chưa có ID'}` : 'Lô ngoài danh mục';
-  $('#lotTitle').textContent = `Lô ${key}`;
-  const doneSuffix = meta.done && meta.doneAt ? ` · Hoàn tất ${dateTimeVN(meta.doneAt)}` : '';
-  const pauseSuffix = !meta.done && meta.pausedAt ? ` · Tạm lưu ${dateTimeVN(meta.pausedAt)}` : '';
+  $('#lotEyebrow').textContent = base ? t('lotEyebrow', { doi: base.doi, id: base.id || t('lotNoId') }) : t('lotOutside');
+  $('#lotTitle').textContent = `${t('thLot')} ${key}`;
+  const doneSuffix = meta.done && meta.doneAt ? t('doneSuffix', { time: dateTimeVN(meta.doneAt) }) : '';
+  const pauseSuffix = !meta.done && meta.pausedAt ? t('pauseSuffix', { time: dateTimeVN(meta.pausedAt) }) : '';
   $('#lotSub').textContent = base
-    ? `${base.clone || '—'} · trồng ${base.year || '—'} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} cây${doneSuffix}${pauseSuffix}`
-    : 'Không có dữ liệu baseline 2026 để đối chiếu tự động.' + doneSuffix + pauseSuffix;
+    ? `${base.clone || '—'} · ${t('metaPlantYear', { year: base.year || '—' })} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} ${t('treeUnit')}${doneSuffix}${pauseSuffix}`
+    : t('noBaselineSub') + doneSuffix + pauseSuffix;
 
   $('#metaHuong').value = meta.huong || '';
   $('#metaNgay').value = meta.ngay || '';
@@ -698,9 +1255,9 @@ function renderLot() {
   $('#metaGhiChu').value = meta.ghiChu || '';
 
   const doneBtn = $('#btnToggleDone');
-  doneBtn.textContent = meta.done ? 'Mở lại lô' : 'Đánh dấu hoàn tất';
+  doneBtn.textContent = meta.done ? t('reopenLot') : t('markDone');
   doneBtn.classList.toggle('btn-primary', !meta.done);
-  $('#btnQuickLot').textContent = !meta.done && st.entered.length ? `Nhập tiếp h.${resumeHang(key)}` : 'Nhập nhanh';
+  $('#btnQuickLot').textContent = !meta.done && st.entered.length ? t('resumeHangBtn', { h: resumeHang(key) }) : t('quickEntry');
 
   rebuildRowsTable();
   refreshLotDerived();
@@ -723,10 +1280,10 @@ function rowHtml(row) {
   if (has) {
     if (issue) {
       checkCls = 'bad';
-      checkText = row.dt == null ? 'Thiếu ĐT' : 'Lệch ' + signed(Number(row.dt) - sum);
+      checkText = row.dt == null ? t('rowMissing') : t('rowDiff', { n: signed(Number(row.dt) - sum) });
     } else {
       checkCls = 'ok';
-      checkText = 'Khớp';
+      checkText = t('rowOk');
     }
   }
   const dtBad = issue && row.dt != null ? ' bad' : '';
@@ -734,7 +1291,7 @@ function rowHtml(row) {
       data-field="${field}" data-uid="${row.uid}" value="${row[field] == null ? '' : row[field]}" aria-label="${field}">`;
   return `
     <tr data-uid="${row.uid}">
-      <td><input class="hang-input" type="number" inputmode="numeric" min="1" step="1" data-field="hang" data-uid="${row.uid}" value="${row.hang == null ? '' : row.hang}" aria-label="Hàng"></td>
+      <td><input class="hang-input" type="number" inputmode="numeric" min="1" step="1" data-field="hang" data-uid="${row.uid}" value="${row.hang == null ? '' : row.hang}" aria-label="${t('thHang')}"></td>
       <td>${input('dt', 'dt-input' + dtBad)}</td>
       <td>${input('g')}</td>
       <td>${input('plus')}</td>
@@ -745,8 +1302,8 @@ function rowHtml(row) {
       <td class="col-check"><span class="row-check ${checkCls}">${checkText}</span></td>
       <td>
         <div class="row-tools">
-          <button class="mini-btn calc" type="button" data-act="calc" data-uid="${row.uid}" title="Điền Tổng ĐT = tổng 6 cột">=</button>
-          <button class="mini-btn del" type="button" data-act="del" data-uid="${row.uid}" title="Xoá hàng">
+          <button class="mini-btn calc" type="button" data-act="calc" data-uid="${row.uid}" title="${t('calcTitle')}">=</button>
+          <button class="mini-btn del" type="button" data-act="del" data-uid="${row.uid}" title="${t('delRowTitle')}">
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M8 7l1 12h6l1-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
@@ -758,7 +1315,7 @@ function rebuildRowsTable() {
   const rows = sortedRows(state.lot);
   const body = $('#rowsBody');
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10"><div class="empty-rows">Chưa có hàng nào. Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ, hoặc <b>+ Thêm hàng</b> để nhập thủ công.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="10"><div class="empty-rows">${t('emptyRows')}</div></td></tr>`;
     return;
   }
   body.innerHTML = rows.map(rowHtml).join('');
@@ -786,16 +1343,16 @@ function refreshLotDerived() {
   $('#sumO').textContent = fmt(agg.o);
   const checkNote = $('#sumCheckNote');
   if (!entered.length) {
-    checkNote.textContent = 'Chưa nhập';
+    checkNote.textContent = t('statusEmpty');
     checkNote.className = 'muted';
   } else if (issues.length) {
-    checkNote.textContent = `${issues.length} hàng lệch tổng`;
+    checkNote.textContent = t('sumIssues', { n: issues.length });
     checkNote.className = 'row-check bad';
   } else {
-    checkNote.textContent = `Đã khớp ${entered.length} hàng`;
+    checkNote.textContent = t('sumOk', { n: entered.length });
     checkNote.className = 'row-check ok';
   }
-  $('#rowCountLabel').textContent = `${entered.length} hàng đã nhập`;
+  $('#rowCountLabel').textContent = t('rowCount', { n: entered.length });
 
   // cập nhật từng dòng
   rows.forEach(row => {
@@ -810,14 +1367,14 @@ function refreshLotDerived() {
     const cell = tr.querySelector('.row-check');
     if (cell) {
       if (!rowHasData(row)) { cell.className = 'row-check empty'; cell.textContent = '—'; }
-      else if (issue) { cell.className = 'row-check bad'; cell.textContent = row.dt == null ? 'Thiếu ĐT' : 'Lệch ' + signed(Number(row.dt) - sum); }
-      else { cell.className = 'row-check ok'; cell.textContent = 'Khớp'; }
+      else if (issue) { cell.className = 'row-check bad'; cell.textContent = row.dt == null ? t('rowMissing') : t('rowDiff', { n: signed(Number(row.dt) - sum) }); }
+      else { cell.className = 'row-check ok'; cell.textContent = t('rowOk'); }
     }
   });
 
   const doneBtn = $('#btnToggleDone');
   if (doneBtn && state.view === 'lot') {
-    doneBtn.textContent = meta.done ? 'Mở lại lô' : 'Đánh dấu hoàn tất';
+    doneBtn.textContent = meta.done ? t('reopenLot') : t('markDone');
     doneBtn.classList.toggle('btn-primary', !meta.done);
   }
 
@@ -844,31 +1401,31 @@ function renderCompare({ base, agg, entered, delta, meta }) {
   const has = entered > 0;
   const deltaCls = meta.done ? 'neg' : 'neg';
   const rows = [
-    compareRow('Tổng ĐT', base ? base.total : null, has ? agg.dt : null, true, deltaCls),
-    ...CATS.map(([k, label]) => compareRow(label, base ? base[k] : null, has ? agg[k] : null, false, '')),
+    compareRow(t('metricTotal'), base ? base.total : null, has ? agg.dt : null, true, deltaCls),
+    ...CATS.map(([k, key]) => compareRow(t(key), base ? base[k] : null, has ? agg[k] : null, false, '')),
   ];
   $('#compareBody').innerHTML = rows.join('');
   const badge = $('#compareBadge');
   if (!base) {
     badge.className = 'badge';
-    badge.textContent = 'Không baseline';
+    badge.textContent = t('compareBadgeNoBase');
   } else if (!has) {
     badge.className = 'badge';
-    badge.textContent = 'Chưa nhập';
+    badge.textContent = t('compareBadgeEmpty');
   } else if (delta === 0) {
     badge.className = 'badge good';
-    badge.textContent = 'Khớp 2026';
+    badge.textContent = t('compareBadgeMatch');
   } else {
     badge.className = 'badge ' + (meta.done ? 'bad' : 'warn');
-    badge.textContent = `Lệch ${signed(delta)} · ${pct(delta, base.total)}`;
+    badge.textContent = `${t('compareBadgeDiff', { n: signed(delta) })} · ${pct(delta, base.total)}`;
   }
   const note = $('#baselineNote');
   if (!base) {
-    note.textContent = 'Lô ngoài danh mục nên không có baseline 2026. Tool vẫn kiểm tra tổng hàng và xuất Excel bình thường.';
+    note.textContent = t('noBaseNote');
   } else {
-    let text = `Baseline: kiểm kê 0h 01/01/2026 · ${base.id || 'không ID'} · ${fmt(base.total)} cây. Nguồn: TỔNG HỢP KIỂM KÊ 2025-2026.xlsx.`;
+    let text = t('baselineNote', { id: base.id || '—', total: fmt(base.total) });
     if (base.mismatch) {
-      text += ` Lưu ý: file 2026 có nội bộ lệch ${signed(base.mismatch)} cây (tổng 6 cột là ${fmt(base.sum)}).`;
+      text += ' ' + t('baselineMismatch', { n: signed(base.mismatch), sum: fmt(base.sum) });
     }
     note.textContent = text;
   }
@@ -886,33 +1443,33 @@ function alertHtml(level, body) {
 function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
   const alerts = [];
   if (!entered) {
-    alerts.push(alertHtml('info', '<b>Chưa nhập hàng nào.</b> Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ từ dòng cuối phiếu.'));
+    alerts.push(alertHtml('info', t('alertNoRows')));
   }
   if (issues.length) {
-    const first = issues.slice(0, 3).map(x => `Hàng ${esc(x.row.hang ?? '?')}: ${esc(x.issue.text)}`).join('<br>');
-    alerts.push(alertHtml('bad', `<b>${issues.length} hàng lệch tổng.</b><br>${first}${issues.length > 3 ? `<br>… và ${issues.length - 3} hàng khác.` : ''}`));
+    const first = issues.slice(0, 3).map(x => `${t('checksRow', { h: esc(x.row.hang ?? '?') })}: ${esc(x.issue.text)}`).join('<br>');
+    alerts.push(alertHtml('bad', t('alertIssues', { n: issues.length, first }) + (issues.length > 3 ? t('alertIssuesMore', { n: issues.length - 3 }) : '')));
   }
   if (dups.length) {
-    alerts.push(alertHtml('bad', `<b>Hàng bị trùng số:</b> ${dups.map(h => esc(h)).join(', ')}. Mỗi hàng chỉ được nhập một lần.`));
+    alerts.push(alertHtml('bad', t('alertDup', { list: dups.map(h => esc(h)).join(', ') })));
   }
   if (entered && base) {
     if (delta !== 0) {
-      const msg = `Tổng 2027 <b>${fmt(agg.dt)}</b> so với 2026 <b>${fmt(base.total)}</b> · lệch <b>${signed(delta)}</b> (${pct(delta, base.total)}).`;
+      const msg = t('alertMsgDiff', { dt: fmt(agg.dt), base: fmt(base.total), d: signed(delta), p: pct(delta, base.total) });
       alerts.push(meta.done
-        ? alertHtml('bad', `<b>Lô đã hoàn tất nhưng còn lệch.</b> ${msg}<br>Kiểm tra lại các hàng đã nhập hoặc phiếu giấy.`)
-        : alertHtml('warn', `<b>Lệch tạm tính.</b> ${msg}<br>Nếu lô chưa nhập đủ hàng thì bỏ qua cảnh báo này. Khi nhập xong, đánh dấu hoàn tất để chốt.`));
+        ? alertHtml('bad', t('alertDoneDiff', { msg }))
+        : alertHtml('warn', t('alertTempDiff', { msg })));
     } else {
-      alerts.push(alertHtml('ok', `<b>Tổng 2027 khớp 2026:</b> ${fmt(base.total)} cây.`));
+      alerts.push(alertHtml('ok', t('alertMatch', { n: fmt(base.total) })));
     }
     if (base.mismatch) {
-      alerts.push(alertHtml('warn', `<b>Baseline 2026 có nội bộ lệch ${signed(base.mismatch)} cây.</b> Tổng số cây KK là ${fmt(base.total)}, nhưng cộng 6 cột chỉ ${fmt(base.sum)}. Nên kiểm tra lại file 2026 gốc.`));
+      alerts.push(alertHtml('warn', t('alertBaseMismatch', { n: signed(base.mismatch), total: fmt(base.total), sum: fmt(base.sum) })));
     }
   }
   if (entered && !base) {
-    alerts.push(alertHtml('info', 'Lô ngoài danh mục: không có baseline 2026 để đối chiếu tổng.'));
+    alerts.push(alertHtml('info', t('alertNoBase')));
   }
   if (entered && !meta.done && !issues.length && !dups.length && (!base || delta === 0)) {
-    alerts.push(alertHtml('info', 'Dữ liệu đang khớp. Nếu đã nhập đủ, bấm <b>Đánh dấu hoàn tất</b> để chốt lô.'));
+    alerts.push(alertHtml('info', t('alertAllOk')));
   }
   $('#lotAlerts').innerHTML = alerts.join('');
 }
@@ -920,38 +1477,38 @@ function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
 function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows }) {
   const items = [];
   const rowCount = entered;
-  items.push(`<li class="check-item info">Đã nhập <b>${rowCount}</b> hàng · lũy kế <b>${fmt(agg.dt)}</b> cây.</li>`);
+  items.push(`<li class="check-item info">${t('checksTotalLine', { n: rowCount, dt: fmt(agg.dt) })}</li>`);
   if (!rowCount) {
-    items.push('<li class="check-item">Chưa có dữ liệu để kiểm tra.</li>');
+    items.push(`<li class="check-item">${t('checksNoData')}</li>`);
   } else {
     items.push(issues.length
-      ? `<li class="check-item bad"><b>${issues.length} hàng lệch tổng:</b> ${issues.slice(0, 6).map(x => 'hàng ' + esc(x.row.hang ?? '?')).join(', ')}${issues.length > 6 ? '…' : ''}</li>`
-      : '<li class="check-item ok">Tất cả hàng đã khớp: Tổng ĐT = G + (+) + C + K1 + K2 + O.</li>');
+      ? `<li class="check-item bad"><b>${t('checksIssueCount', { n: issues.length })}</b> ${issues.slice(0, 6).map(x => t('checksRow', { h: esc(x.row.hang ?? '?') })).join(', ')}${issues.length > 6 ? '…' : ''}</li>`
+      : `<li class="check-item ok">${t('checksAllOk')}</li>`);
     items.push(dups.length
-      ? `<li class="check-item bad"><b>Hàng trùng:</b> ${dups.map(h => esc(h)).join(', ')}.</li>`
-      : '<li class="check-item ok">Không có hàng trùng số.</li>');
+      ? `<li class="check-item bad">${t('checksDup', { list: dups.map(h => esc(h)).join(', ') })}</li>`
+      : `<li class="check-item ok">${t('checksNoDup')}</li>`);
     const missing = missingHangs(rows);
     if (missing.length) {
       const show = missing.slice(0, 12).map(h => esc(h)).join(', ');
-      items.push(`<li class="check-item warn">Còn thiếu <b>${missing.length}</b> hàng trong dãy 1–${Math.max(...rows.filter(rowHasData).map(r => r.hang))}: ${show}${missing.length > 12 ? '…' : ''}.</li>`);
+      items.push(`<li class="check-item warn">${t('checksMissingRow', { n: missing.length, max: Math.max(...rows.filter(rowHasData).map(r => r.hang)), list: show + (missing.length > 12 ? '…' : '') })}</li>`);
     }
     if (base) {
       if (delta === 0) {
-        items.push(`<li class="check-item ok">Tổng so 2026: khớp <b>${fmt(base.total)}</b> cây.</li>`);
+        items.push(`<li class="check-item ok">${t('checksMatchTotal', { n: fmt(base.total) })}</li>`);
       } else {
-        items.push(`<li class="check-item ${meta.done ? 'bad' : 'warn'}">Tổng so 2026: 2027 <b>${fmt(agg.dt)}</b> / 2026 <b>${fmt(base.total)}</b> · lệch <b>${signed(delta)}</b> (${pct(delta, base.total)}).</li>`);
+        items.push(`<li class="check-item ${meta.done ? 'bad' : 'warn'}">${t('baselineDiff', { a: fmt(agg.dt), b: fmt(base.total), d: signed(delta), p: pct(delta, base.total) })}</li>`);
       }
       if (base.mismatch) {
-        items.push(`<li class="check-item warn">Baseline 2026 tự lệch <b>${signed(base.mismatch)}</b> cây (tổng 6 cột ${fmt(base.sum)}).</li>`);
+        items.push(`<li class="check-item warn">${t('baselineMismatch', { n: signed(base.mismatch), sum: fmt(base.sum) })}</li>`);
       }
     } else {
-      items.push('<li class="check-item warn">Lô ngoài danh mục, không có baseline 2026.</li>');
+      items.push(`<li class="check-item warn">${t('checksNoBaseline')}</li>`);
     }
     items.push(meta.done
-      ? '<li class="check-item ok">Lô đã được đánh dấu hoàn tất.</li>'
-      : '<li class="check-item">Lô chưa đánh dấu hoàn tất.</li>');
+      ? `<li class="check-item ok">${t('checksDone')}</li>`
+      : `<li class="check-item">${t('checksNotDone')}</li>`);
   }
-  $('#lotChecks').innerHTML = `<h3>Kiểm tra dữ liệu</h3><ul class="check-list">${items.join('')}</ul>`;
+  $('#lotChecks').innerHTML = `<h3>${t('checksTitle')}</h3><ul class="check-list">${items.join('')}</ul>`;
 }
 
 function renderHangMap(key) {
@@ -971,29 +1528,31 @@ function renderHangMap(key) {
     const row = byHang.get(h);
     if (row) {
       const bad = !!rowIssue(row);
-      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="Hàng ${h} ${bad ? 'lệch tổng' : 'đã khớp'} — bấm để sửa">${h}</button>`);
+      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="${t('hangChipEdit', { h, st: bad ? t('hangChipDiff') : t('hangChipMatched') })}">${h}</button>`);
     } else {
-      chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill" title="Hàng ${h} chưa nhập — bấm để nhập">${h}</button>`);
+      chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill" title="${t('hangChipFill', { h })}">${h}</button>`);
     }
   }
   if (!gaps.length) {
-    chips.push(`<button class="hang-chip add is-next" type="button" data-hang="${resume}" data-mode="fill" title="Nhập tiếp hàng ${resume}">+${resume}</button>`);
+    chips.push(`<button class="hang-chip add is-next" type="button" data-hang="${resume}" data-mode="fill" title="${t('hangBtnResume', { h: resume })}">+${resume}</button>`);
   }
   const missingText = gaps.length
-    ? `Còn thiếu <b>${gaps.length}</b> hàng: <b>${gaps.slice(0, 14).join(', ')}</b>${gaps.length > 14 ? '…' : ''}.`
-    : `Đã nhập liên tục hàng 1–${max}.`;
+    ? t('hangMissing', { n: gaps.length, list: gaps.slice(0, 14).join(', ') + (gaps.length > 14 ? '…' : '') })
+    : t('hangContinuous', { max });
   const badgeCls = gaps.length || issues ? 'warn' : 'good';
-  const badgeText = `${entered.length} hàng${gaps.length ? ` · thiếu ${gaps.length}` : ''}${issues ? ` · ${issues} lệch` : ''}`;
+  const badgeText = t('hangBadge', { n: entered.length })
+    + (gaps.length ? t('hangBadgeMissing', { n: gaps.length }) : '')
+    + (issues ? t('hangBadgeIssues', { n: issues }) : '');
   host.hidden = false;
   host.innerHTML = `
     <div class="card-head">
-      <h3>Sơ đồ hàng</h3>
+      <h3>${t('hangMapTitle')}</h3>
       <span class="badge ${badgeCls}">${badgeText}</span>
     </div>
     <div class="hang-chips">${chips.join('')}</div>
     <div class="hang-map-foot">
-      <span>${missingText} Ô xanh bấm để sửa hàng; ô viền đứt bấm để nhập hàng thiếu.</span>
-      <button class="btn btn-sm" id="btnHangResume" type="button" data-hang="${resume}">${gaps.length ? `Nhập hàng ${resume}` : `Nhập tiếp hàng ${resume}`}</button>
+      <span>${missingText}${t('hangHint')}</span>
+      <button class="btn btn-sm" id="btnHangResume" type="button" data-hang="${resume}">${gaps.length ? t('hangBtnFill', { h: resume }) : t('hangBtnResume', { h: resume })}</button>
     </div>`;
 }
 
@@ -1083,12 +1642,12 @@ function setupHomeEvents() {
 }
 
 function addCustomLot() {
-  const name = prompt('Nhập số lô / tên lô mới (ví dụ: 950):');
+  const name = prompt(t('addLotPrompt'));
   if (name == null) return;
   const key = name.trim();
   if (!key) return;
   if (BASE_BY_LOT.has(key) || DB.lots[key]) {
-    toast('Lô này đã có trong danh sách.', 'bad');
+    toast(t('toastLotExists'), 'bad');
     openLot(key);
     return;
   }
@@ -1096,7 +1655,7 @@ function addCustomLot() {
   persist();
   renderHome();
   openLot(key);
-  toast('Đã thêm lô ngoài danh mục: ' + key, 'ok');
+  toast(t('toastAddedLot', { lot: key }), 'ok');
 }
 
 function toggleDone() {
@@ -1115,10 +1674,10 @@ function toggleDone() {
   renderLot();
   renderHome();
   if (lot.meta.done) {
-    toast(`Đã đánh dấu hoàn tất lô ${state.lot} lúc ${dateTimeVN(lot.meta.doneAt)}`, 'ok');
+    toast(t('toastDone', { lot: state.lot, time: dateTimeVN(lot.meta.doneAt) }), 'ok');
     syncNow('lot_done', state.lot);
   } else {
-    toast('Đã mở lại lô ' + state.lot, 'ok');
+    toast(t('toastReopened', { lot: state.lot }), 'ok');
     scheduleSync();
   }
 }
@@ -1174,7 +1733,7 @@ function onRowClick(e) {
     refreshLotDerived();
   }
   if (btn.dataset.act === 'del') {
-    if (rowHasData(row) && !confirm(`Xoá hàng ${row.hang ?? ''}? Dữ liệu của hàng này sẽ mất.`)) return;
+    if (rowHasData(row) && !confirm(t('confirmDelRow', { h: row.hang ?? '' }))) return;
     const lot = ensureLot(state.lot);
     lot.rows = lot.rows.filter(r => r.uid !== row.uid);
     persist();
@@ -1223,7 +1782,7 @@ function openQuick(fromLot, seed) {
   state.quickFrom = fromLot ? 'lot' : 'home';
   state.quickSeed = fromLot && Number.isInteger(seed) && seed > 0 ? seed : null;
   const sel = $('#quickLot');
-  applyQuickLang(state.quickLang);
+  applyQuickLang();
   populateQuickZoneSelect();
   $('#quickZoneWrap').hidden = !!fromLot;
   if (fromLot) {
@@ -1264,12 +1823,11 @@ function setQuickLot(key, resetHang) {
 }
 
 function applyQuickLang(lang) {
-  state.quickLang = lang === 'km' ? 'km' : 'vi';
-  try { localStorage.setItem(QUICK_LANG_KEY, state.quickLang); } catch (err) {}
+  if (lang) state.lang = lang === 'km' ? 'km' : 'vi';
   const dlg = $('#quickDialog');
-  dlg.classList.toggle('lang-km', state.quickLang === 'km');
+  dlg.classList.toggle('lang-km', state.lang === 'km');
   $$('[data-quicklang]').forEach(btn => {
-    btn.setAttribute('aria-pressed', String(btn.dataset.quicklang === state.quickLang));
+    btn.setAttribute('aria-pressed', String(btn.dataset.quicklang === state.lang));
   });
   $$('#quickDialog [data-qk]').forEach(el => {
     el.textContent = qt(el.dataset.qk);
@@ -1296,6 +1854,36 @@ function applyQuickLang(lang) {
     refreshQuickChecks();
     refreshQuickSummary();
   }
+}
+
+function syncLanguageUi() {
+  document.documentElement.lang = state.lang;
+  document.body.classList.toggle('lang-km', state.lang === 'km');
+  document.title = t('appTitle');
+  $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  $$('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  $$('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  $$('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  $$('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+  const langSub = $('#menuLangSub');
+  if (langSub) langSub.textContent = t(state.lang === 'km' ? 'langKm' : 'langVi');
+  applyQuickLang();
+  updateSyncUi();
+}
+
+function setLang(lang) {
+  state.lang = lang === 'km' ? 'km' : 'vi';
+  state.langChosen = true;
+  try {
+    localStorage.setItem(LANG_KEY, state.lang);
+    localStorage.setItem(QUICK_LANG_KEY, state.lang);
+  } catch (err) {}
+  const dlg = $('#langDialog');
+  if (dlg && dlg.open) dlg.close();
+  syncLanguageUi();
+  if (state.view === 'home') renderHome();
+  else if (state.lot) renderLot();
+  if (state.view === 'home' && state.homeView === 'map' && mapCtx) refreshMap();
 }
 
 function buildQuickCards() {
@@ -1560,17 +2148,17 @@ function styleLotSheet(ws, maxHang) {
 function downloadWorkbook(wb, filename) {
   try {
     XLSX.writeFile(wb, filename, { compression: true, cellStyles: true });
-    toast('Đã xuất: ' + filename, 'ok');
+    toast(t('toastExportOk', { file: filename }), 'ok');
   } catch (err) {
-    toast('Không xuất được file Excel: ' + err.message, 'bad');
+    toast(t('toastExportFail', { err: err.message }), 'bad');
   }
 }
 
 function exportLot(key) {
   if (!key) return;
   const st = lotState(key);
-  if (!st.entered.length) { toast('Lô chưa có dữ liệu để xuất.', 'bad'); return; }
-  if (!st.meta.done && !confirm('Lô chưa được đánh dấu hoàn tất. Vẫn xuất file?')) return;
+  if (!st.entered.length) { toast(t('toastNoExportData'), 'bad'); return; }
+  if (!st.meta.done && !confirm(t('exportConfirm'))) return;
   const { rows, agg, meta, base } = st;
   const sorted = rows.filter(rowHasData).slice().sort((a, b) => (a.hang || 0) - (b.hang || 0));
   const map = new Map(sorted.map(r => [r.hang, r]));
@@ -1614,7 +2202,7 @@ function exportLot(key) {
   if (!issues.length && !dups.length) {
     cmp.push(['Không có lỗi tổng hàng hoặc hàng trùng.']);
   } else {
-    issues.forEach(x => cmp.push([`Hàng ${x.row.hang ?? '?'}`, x.issue.text]));
+    issues.forEach(x => cmp.push([`Hàng ${x.row.hang ?? '?'}`, issueTextVN(x.row)]));
     if (dups.length) cmp.push(['Hàng trùng', dups.join(', ')]);
   }
   if (base && base.mismatch) cmp.push(['Baseline 2026', `File gốc tự lệch ${base.mismatch} cây giữa tổng và 6 cột.`]);
@@ -1672,7 +2260,7 @@ function exportAll() {
   summary.push([]);
   summary.push(['LẬP BIỂU', '', '', '', '', '', '', '', '', 'ĐỘI TRƯỞNG', '', '', '', '', '']);
 
-  if (!any) { toast('Chưa có lô nào được nhập dữ liệu.', 'bad'); return; }
+  if (!any) { toast(t('toastNoExportAll'), 'bad'); return; }
 
   const ws = makeSheet(
     summary,
@@ -1690,7 +2278,7 @@ function exportAll() {
     if (!st.entered.length) return;
     st.issues.forEach(x => {
       checkNo += 1;
-      check.push([checkNo, key, 'Lỗi', `Hàng ${x.row.hang ?? '?'}: ${x.issue.text}`, st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
+      check.push([checkNo, key, 'Lỗi', `Hàng ${x.row.hang ?? '?'}: ${issueTextVN(x.row)}`, st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
     });
     st.dups.forEach(h => {
       checkNo += 1;
@@ -1754,7 +2342,7 @@ function backupJSON() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
-  toast('Đã tải file sao lưu JSON.', 'ok');
+  toast(t('backupOk'), 'ok');
 }
 function restoreJSON(file) {
   const reader = new FileReader();
@@ -1763,16 +2351,16 @@ function restoreJSON(file) {
       const parsed = JSON.parse(reader.result);
       const data = parsed && parsed.data && parsed.data.lots ? parsed.data : parsed;
       if (!data || typeof data !== 'object' || !data.lots || typeof data.lots !== 'object') {
-        throw new Error('File không đúng cấu trúc.');
+        throw new Error(t('restoreBadFile'));
       }
-      if (!confirm('Phục hồi sẽ ghi đè toàn bộ dữ liệu đang có. Tiếp tục?')) return;
+      if (!confirm(t('restoreConfirm'))) return;
       DB = { version: 1, lots: data.lots, updatedAt: data.updatedAt || new Date().toISOString() };
       persist();
       renderHome();
       if (state.view === 'lot') renderLot();
-      toast('Đã phục hồi dữ liệu từ file.', 'ok');
+      toast(t('restoreOk'), 'ok');
     } catch (err) {
-      alert('Không đọc được file: ' + err.message);
+      alert(t('restoreFail', { err: err.message }));
     }
   };
   reader.readAsText(file, 'utf-8');
@@ -1780,7 +2368,7 @@ function restoreJSON(file) {
 function demoLot250() {
   const key = '250';
   const lot = ensureLot(key);
-  if (lot.rows.some(rowHasData) && !confirm('Lô 250 đã có dữ liệu. Ghi đè hàng 1 và 2 bằng dữ liệu mẫu từ ảnh phiếu?')) return;
+  if (lot.rows.some(rowHasData) && !confirm(t('demoConfirm'))) return;
   const demo = [
     { hang: 1, dt: 165, g: 123, plus: 0, c: 0, k1: 32, k2: 6, o: 4 },
     { hang: 2, dt: 161, g: 130, plus: 1, c: 0, k1: 26, k2: 3, o: 1 },
@@ -1796,17 +2384,17 @@ function demoLot250() {
   persist();
   renderHome();
   openLot(key);
-  toast('Đã điền thử 2 hàng lô 250 từ ảnh phiếu mẫu.', 'ok');
+  toast(t('demoDone'), 'ok');
 }
 function resetAll() {
-  if (!confirm('Xoá TOÀN BỘ dữ liệu đã nhập trên máy này? Không thể hoàn tác.')) return;
-  const typed = prompt('Gõ XOA để xác nhận xoá toàn bộ:');
-  if (typed !== 'XOA') { toast('Đã huỷ xoá.', ''); return; }
+  if (!confirm(t('resetConfirm'))) return;
+  const typed = prompt(t('resetPrompt'));
+  if (typed !== 'XOA') { toast(t('resetCancel'), ''); return; }
   DB = emptyDB();
   persist();
   renderHome();
   if (state.view === 'lot') openHome(false);
-  toast('Đã xoá toàn bộ dữ liệu.', 'ok');
+  toast(t('resetDone'), 'ok');
 }
 
 /* ============================================================
@@ -1826,7 +2414,7 @@ function buildSyncPayload(reason, lotKey) {
       clone: st.base ? st.base.clone : '',
       year: st.base ? st.base.year : '',
       status: st.level,
-      statusLabel: statusInfo(st).label,
+      statusLabel: statusLabelVN(st),
       entered: st.entered.length,
       dt: st.entered.length ? st.agg.dt : null,
       baseTotal: st.base ? st.base.total : null,
@@ -1889,10 +2477,10 @@ async function postSync(payload) {
     }
     throw err;
   }
-  if (!res.ok) throw new Error('Máy chủ trả về HTTP ' + res.status);
+  if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
   let data = null;
   try { data = await res.json(); } catch (err) {}
-  if (data && data.ok === false) throw new Error(data.error || 'Apps Script báo lỗi.');
+  if (data && data.ok === false) throw new Error(data.error || t('syncAppError', { err: '' }));
   return data || { ok: true };
 }
 
@@ -1902,10 +2490,10 @@ function updateSyncUi(message) {
   const connected = !!syncCfg.url;
   if (sub) {
     sub.textContent = !connected
-      ? 'Chưa kết nối'
+      ? t('syncStatusNone')
       : syncCfg.lastSyncAt
-        ? 'Đã kết nối · ' + dateTimeVN(syncCfg.lastSyncAt)
-        : 'Đã cấu hình URL';
+        ? t('syncStatusConnected', { time: dateTimeVN(syncCfg.lastSyncAt) })
+        : t('syncStatusConfigured');
   }
   if (!status) return;
   if (message) {
@@ -1915,11 +2503,11 @@ function updateSyncUi(message) {
   }
   status.className = 'sync-status' + (syncCfg.lastResult.startsWith('Lỗi') ? ' bad' : connected ? ' ok' : '');
   if (!connected) {
-    status.textContent = 'Chưa kết nối. Dán URL Web App bên dưới để bật đồng bộ.';
+    status.textContent = t('syncStatusHelp');
   } else if (syncCfg.lastSyncAt) {
-    status.textContent = `Lần cuối: ${dateTimeVN(syncCfg.lastSyncAt)} · ${syncCfg.lastResult || 'OK'}`;
+    status.textContent = `${t('syncLast', { time: dateTimeVN(syncCfg.lastSyncAt) })} · ${syncCfg.lastResult || 'OK'}`;
   } else {
-    status.textContent = 'Đã cấu hình URL, chưa đồng bộ lần nào.';
+    status.textContent = t('syncStatusNotSynced');
   }
 }
 
@@ -1932,7 +2520,7 @@ function scheduleSync() {
 async function syncNow(reason = 'manual', lotKey = null) {
   if (!syncCfg.url) {
     if (reason !== 'auto') {
-      toast('Chưa cấu hình URL Apps Script trong menu Đồng bộ Google.', 'bad');
+      toast(t('syncNoUrl'), 'bad');
     }
     return;
   }
@@ -1946,30 +2534,30 @@ async function syncNow(reason = 'manual', lotKey = null) {
   }
   clearTimeout(syncTimer);
   syncBusy = true;
-  updateSyncUi('Đang gửi dữ liệu lên Google…');
+  updateSyncUi(t('syncSending'));
   try {
     const payload = buildSyncPayload(reason, lotKey);
     const res = await postSync(payload);
     saveSyncCfg({
       lastSyncAt: new Date().toISOString(),
       lastResult: res && res.uncertain
-        ? 'Đã gửi (không đọc được phản hồi)'
+        ? t('syncNoResponse')
         : res && res.sheetUrl ? 'OK · ' + res.sheetUrl : 'OK',
     });
     if (res && res.uncertain) {
-      toast('Đã gửi tới Google nhưng không đọc được phản hồi. Kiểm tra Google Sheets hoặc hộp thư.', '');
+      toast(t('syncNoResponseToast'), '');
       return;
     }
     if (reason === 'test') {
-      toast(res && res.mail ? 'Kết nối tốt. Đã gửi mail thử, kiểm tra hộp thư.' : 'Kết nối tốt. Đã ghi dữ liệu lên Google Sheets.', 'ok');
+      toast(res && res.mail ? t('syncTestOkMail') : t('syncTestOkSheet'), 'ok');
     } else if (reason === 'lot_done') {
-      toast(res && res.mail ? `Đã gửi mail báo cáo lô ${lotKey}.` : `Đã đồng bộ lô ${lotKey} lên Google Sheets.`, 'ok');
+      toast(res && res.mail ? t('syncLotMail', { lot: lotKey }) : t('syncLotSheet', { lot: lotKey }), 'ok');
     } else if (reason === 'manual') {
-      toast(res && res.sheetUrl ? 'Đã đồng bộ. Mở Google Sheets trong menu.' : 'Đã đồng bộ Google Sheets.', 'ok');
+      toast(res && res.sheetUrl ? t('syncOkUrl') : t('syncOk'), 'ok');
     }
   } catch (err) {
     saveSyncCfg({ lastResult: 'Lỗi: ' + err.message });
-    if (reason !== 'auto') toast('Đồng bộ lỗi: ' + err.message, 'bad');
+    if (reason !== 'auto') toast(t('syncErrorToast', { err: err.message }), 'bad');
   } finally {
     syncBusy = false;
     updateSyncUi();
@@ -1987,9 +2575,9 @@ function openSyncDialog() {
 
 function syncUrlFromInput() {
   const url = $('#syncUrl').value.trim();
-  if (!url) { toast('Dán URL Web App trước đã.', 'bad'); return null; }
+  if (!url) { toast(t('syncPasteFirst'), 'bad'); return null; }
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(url)) {
-    toast('URL phải có dạng https://script.google.com/macros/s/…/exec', 'bad');
+    toast(t('syncUrlFormat'), 'bad');
     return null;
   }
   return url;
@@ -2004,11 +2592,11 @@ function setupSyncUi() {
   $('#btnSyncSave').addEventListener('click', () => {
     const raw = $('#syncUrl').value.trim();
     if (raw && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(raw)) {
-      toast('URL phải có dạng https://script.google.com/macros/s/…/exec', 'bad');
+      toast(t('syncUrlFormat'), 'bad');
       return;
     }
     saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked });
-    toast(raw ? 'Đã lưu cấu hình đồng bộ.' : 'Đã tắt đồng bộ (chưa có URL).', 'ok');
+    toast(raw ? t('syncSaved') : t('syncDisabled'), 'ok');
   });
   $('#btnSyncTest').addEventListener('click', async () => {
     const url = syncUrlFromInput();
@@ -2027,9 +2615,9 @@ function setupSyncUi() {
       const res = await fetch('./apps-script/Code.gs');
       const text = await res.text();
       await navigator.clipboard.writeText(text);
-      toast('Đã sao chép Code.gs. Dán vào script.google.com.', 'ok');
+      toast(t('copyOk'), 'ok');
     } catch (err) {
-      toast('Không sao chép được. Bấm "Tải Code.gs" để tải file.', 'bad');
+      toast(t('copyFail'), 'bad');
     }
   });
   updateSyncUi();
@@ -2043,8 +2631,12 @@ function setupDialogs() {
   $('#btnQuickClose').addEventListener('click', () => quick.close());
   $$('[data-quicklang]').forEach(btn => {
     btn.addEventListener('click', () => {
-      applyQuickLang(btn.dataset.quicklang);
-      if (state.quickFrom === 'home') populateQuickZoneSelect();
+      setLang(btn.dataset.quicklang);
+      if (state.quickFrom === 'home') {
+        populateQuickZoneSelect();
+        const keys = populateQuickLotSelect(state.quickZone);
+        $('#quickLot').value = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
+      }
     });
   });
   $('#quickZone').addEventListener('change', e => {
@@ -2085,6 +2677,14 @@ function setupDialogs() {
   const menu = $('#menuDialog');
   $('#btnMenu').addEventListener('click', () => menu.showModal());
   $('#btnMenuClose').addEventListener('click', () => menu.close());
+  $('#menuLang').addEventListener('click', () => {
+    menu.close();
+    const dlg = $('#langDialog');
+    if (dlg && !dlg.open) dlg.showModal();
+  });
+  $$('#langDialog [data-lang]').forEach(btn => {
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
   $('#menuExport').addEventListener('click', () => { menu.close(); exportAll(); });
   $('#menuBackup').addEventListener('click', () => { menu.close(); backupJSON(); });
   $('#menuRestore').addEventListener('click', () => { menu.close(); $('#fileRestore').click(); });
@@ -2141,8 +2741,13 @@ function init() {
   setupDialogs();
   setupSyncUi();
   setupPWA();
+  syncLanguageUi();
   window.addEventListener('popstate', routeFromHash);
   routeFromHash();
+  if (!state.langChosen) {
+    const dlg = $('#langDialog');
+    if (dlg) setTimeout(() => { if (!state.langChosen) dlg.showModal(); }, 250);
+  }
   if (syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
     syncTimer = setTimeout(() => syncNow('auto'), 2500);
   }

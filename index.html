@@ -21,13 +21,13 @@
     <div class="brand">
       <img class="brand-mark" src="./icons/favicon.svg" alt="" width="38" height="38">
       <div class="brand-text">
-        <h1>Kiểm kê vườn cây 2027</h1>
-        <p>Đội 2 · CRCK2 Aphivath</p>
+        <h1 data-i18n="brandTitle">Kiểm kê vườn cây 2027</h1>
+        <p data-i18n="brandSub">Đội 2 · CRCK2 Aphivath</p>
       </div>
     </div>
     <div class="topbar-actions">
-      <button class="btn btn-primary" id="btnQuickHome" type="button">Nhập nhanh</button>
-      <button class="btn btn-icon" id="btnMenu" type="button" aria-label="Mở menu" title="Menu">
+      <button class="btn btn-primary" id="btnQuickHome" type="button" data-i18n="quickEntry">Nhập nhanh</button>
+      <button class="btn btn-icon" id="btnMenu" type="button" aria-label="Mở menu" title="Menu" data-i18n-aria="menu" data-i18n-title="menu">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -39,30 +39,30 @@
     <section id="view-home" class="view">
       <div class="hero">
         <div class="hero-copy">
-          <div class="eyebrow">Kiểm kê 0h · 01/01/2027</div>
-          <h2>Nhập kết quả theo dòng tổng từng hàng</h2>
-          <p>Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra
+          <div class="eyebrow" data-i18n="heroEyebrow">Kiểm kê 0h · 01/01/2027</div>
+          <h2 data-i18n="heroTitle">Nhập kết quả theo dòng tổng từng hàng</h2>
+          <p data-i18n-html="heroLead">Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra
             <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.</p>
         </div>
         <div class="hero-actions">
-          <button class="btn btn-primary btn-lg" id="btnQuickHome2" type="button">Nhập nhanh theo tờ</button>
-          <button class="btn btn-lg" id="btnExportAll" type="button">Xuất Excel tổng hợp</button>
+          <button class="btn btn-primary btn-lg" id="btnQuickHome2" type="button" data-i18n="quickBySheet">Nhập nhanh theo tờ</button>
+          <button class="btn btn-lg" id="btnExportAll" type="button" data-i18n="exportAll">Xuất Excel tổng hợp</button>
         </div>
       </div>
 
       <div class="stats" id="stats"></div>
 
       <div class="home-tabs" role="tablist" aria-label="Cách xem tiến độ">
-        <button class="seg is-active" data-homeview="list" role="tab" aria-selected="true" type="button">Danh sách lô</button>
-        <button class="seg" data-homeview="map" role="tab" aria-selected="false" type="button">Bản đồ tiến độ</button>
+        <button class="seg is-active" data-homeview="list" role="tab" aria-selected="true" type="button" data-i18n="tabList">Danh sách lô</button>
+        <button class="seg" data-homeview="map" role="tab" aria-selected="false" type="button" data-i18n="tabMap">Bản đồ tiến độ</button>
       </div>
 
       <section id="mapPanel" class="map-panel" hidden>
         <div class="card map-zones-card">
           <div class="card-head">
-            <h3>Tiến độ theo khu vực</h3>
+            <h3 data-i18n="mapZonesTitle">Tiến độ theo khu vực</h3>
             <div class="zone-head-actions">
-              <button class="btn btn-sm" id="btnZoneAll" type="button" hidden>Tất cả</button>
+              <button class="btn btn-sm" id="btnZoneAll" type="button" hidden data-i18n="all">Tất cả</button>
               <span class="badge" id="mapBadge"></span>
             </div>
           </div>
@@ -70,19 +70,19 @@
         </div>
         <div class="card map-card">
           <div class="card-head map-head">
-            <h3>Bản đồ 95 lô</h3>
+            <h3 data-i18n="mapTitle">Bản đồ 95 lô</h3>
             <div class="map-legend">
-              <span><i class="sw" data-state="empty"></i>Chưa nhập</span>
-              <span><i class="sw" data-state="doing"></i>Đang nhập</span>
-              <span><i class="sw" data-state="done"></i>Hoàn tất</span>
-              <span><i class="sw" data-state="warn"></i>Cảnh báo</span>
+              <span><i class="sw" data-state="empty"></i><span data-i18n="legendEmpty">Chưa nhập</span></span>
+              <span><i class="sw" data-state="doing"></i><span data-i18n="legendDoing">Đang nhập</span></span>
+              <span><i class="sw" data-state="done"></i><span data-i18n="legendDone">Hoàn tất</span></span>
+              <span><i class="sw" data-state="warn"></i><span data-i18n="legendWarn">Cảnh báo</span></span>
             </div>
           </div>
           <div class="map-wrap">
             <div id="mapCanvas"></div>
-            <div id="mapHint" class="map-hint">Đang tải bản đồ…</div>
+            <div id="mapHint" class="map-hint" data-i18n="mapLoading">Đang tải bản đồ…</div>
           </div>
-          <p class="footnote">Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.</p>
+          <p class="footnote" data-i18n-html="mapFoot">Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.</p>
         </div>
       </section>
 
@@ -90,49 +90,49 @@
       <div class="toolbar">
         <label class="search">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <input id="searchInput" type="search" placeholder="Tìm số lô, ID lô, giống…" autocomplete="off">
+          <input id="searchInput" type="search" placeholder="Tìm số lô, ID lô, giống…" data-i18n-ph="searchPh" autocomplete="off">
         </label>
         <div class="filters" id="filters" role="group" aria-label="Lọc lô">
-          <button class="chip is-active" data-filter="all" type="button">Tất cả</button>
-          <button class="chip" data-filter="empty" type="button">Chưa nhập</button>
-          <button class="chip" data-filter="doing" type="button">Đang nhập</button>
-          <button class="chip" data-filter="done" type="button">Hoàn tất</button>
-          <button class="chip" data-filter="warn" type="button">Cảnh báo</button>
+          <button class="chip is-active" data-filter="all" type="button" data-i18n="filterAll">Tất cả</button>
+          <button class="chip" data-filter="empty" type="button" data-i18n="filterEmpty">Chưa nhập</button>
+          <button class="chip" data-filter="doing" type="button" data-i18n="filterDoing">Đang nhập</button>
+          <button class="chip" data-filter="done" type="button" data-i18n="filterDone">Hoàn tất</button>
+          <button class="chip" data-filter="warn" type="button" data-i18n="filterWarn">Cảnh báo</button>
         </div>
         <div class="toolbar-actions">
-          <button class="btn btn-sm" id="btnAddLot" type="button">+ Lô khác</button>
-          <button class="btn btn-sm" id="btnBackup" type="button">Sao lưu</button>
-          <button class="btn btn-sm" id="btnRestore" type="button">Phục hồi</button>
+          <button class="btn btn-sm" id="btnAddLot" type="button" data-i18n="addLot">+ Lô khác</button>
+          <button class="btn btn-sm" id="btnBackup" type="button" data-i18n="backup">Sao lưu</button>
+          <button class="btn btn-sm" id="btnRestore" type="button" data-i18n="restore">Phục hồi</button>
         </div>
       </div>
 
       <div class="list-head" aria-hidden="true">
-        <span>Lô</span>
-        <span>2026</span>
-        <span>2027</span>
-        <span>Lệch</span>
-        <span>Số hàng</span>
-        <span>Trạng thái</span>
+        <span data-i18n="thLot">Lô</span>
+        <span data-i18n="th2026">2026</span>
+        <span data-i18n="th2027">2027</span>
+        <span data-i18n="thDelta">Lệch</span>
+        <span data-i18n="thRows">Số hàng</span>
+        <span data-i18n="thStatus">Trạng thái</span>
       </div>
       <div id="lotList" class="lot-list"></div>
       <div id="emptyState" class="list-empty" hidden>
-        <strong>Không có lô phù hợp</strong>
-        <span>Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.</span>
+        <strong data-i18n="emptyTitle">Không có lô phù hợp</strong>
+        <span data-i18n="emptySub">Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.</span>
       </div>
       </div>
 
       <details class="guide">
-        <summary>Hướng dẫn nhanh</summary>
+        <summary data-i18n="guideTitle">Hướng dẫn nhanh</summary>
         <div class="guide-body">
           <ol>
-            <li>Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi nhãn cho nhân viên người Khmer; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.</li>
-            <li>Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
-            <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
-            <li>Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.</li>
-            <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
-            <li>Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.</li>
-            <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng. Vào menu <b>Đồng bộ Google</b> để tự lưu lên Google Sheets và nhận mail khi lô hoàn tất.</li>
-            <li>Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.</li>
+            <li data-i18n-html="guide1">Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi ngôn ngữ toàn app; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.</li>
+            <li data-i18n-html="guide2">Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
+            <li data-i18n-html="guide3">Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
+            <li data-i18n-html="guide4">Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.</li>
+            <li data-i18n-html="guide5">Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
+            <li data-i18n-html="guide6">Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.</li>
+            <li data-i18n-html="guide7">Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng. Vào menu <b>Đồng bộ Google</b> để tự lưu lên Google Sheets và nhận mail khi lô hoàn tất.</li>
+            <li data-i18n-html="guide8">Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.</li>
           </ol>
         </div>
       </details>
@@ -142,7 +142,7 @@
     <section id="view-lot" class="view" hidden>
       <button class="back" id="btnBack" type="button">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Danh sách lô
+        <span data-i18n="backList">Danh sách lô</span>
       </button>
 
       <div class="lot-head">
@@ -152,9 +152,9 @@
           <p id="lotSub" class="muted"></p>
         </div>
         <div class="lot-head-actions">
-          <button class="btn" id="btnQuickLot" type="button">Nhập nhanh</button>
-          <button class="btn" id="btnExportLot" type="button">Xuất Excel lô</button>
-          <button class="btn" id="btnToggleDone" type="button">Đánh dấu hoàn tất</button>
+          <button class="btn" id="btnQuickLot" type="button" data-i18n="quickEntry">Nhập nhanh</button>
+          <button class="btn" id="btnExportLot" type="button" data-i18n="exportLot">Xuất Excel lô</button>
+          <button class="btn" id="btnToggleDone" type="button" data-i18n="markDone">Đánh dấu hoàn tất</button>
         </div>
       </div>
 
@@ -163,12 +163,12 @@
       <div class="lot-grid">
         <div class="card compare-card">
           <div class="card-head">
-            <h3>Đối chiếu 2026 → 2027</h3>
+            <h3 data-i18n="compareTitle">Đối chiếu 2026 → 2027</h3>
             <span class="badge" id="compareBadge"></span>
           </div>
           <div class="table-wrap">
             <table class="compare-table">
-              <thead><tr><th>Chỉ tiêu</th><th>2026</th><th>2027</th><th>Lệch</th></tr></thead>
+              <thead><tr><th data-i18n="metric">Chỉ tiêu</th><th>2026</th><th>2027</th><th data-i18n="thDelta">Lệch</th></tr></thead>
               <tbody id="compareBody"></tbody>
             </table>
           </div>
@@ -176,44 +176,44 @@
         </div>
 
         <div class="card meta-card">
-          <div class="card-head"><h3>Thông tin phiếu</h3></div>
+          <div class="card-head"><h3 data-i18n="infoCard">Thông tin phiếu</h3></div>
           <div class="meta-grid">
-            <label>Hướng lô<input id="metaHuong" type="text" placeholder="VD: Đông Tây" autocomplete="off"></label>
-            <label>Ngày KK<input id="metaNgay" type="date"></label>
-            <label>Người KK<input id="metaNguoi" type="text" placeholder="Tên người kiểm kê" autocomplete="off"></label>
-            <label class="meta-note">Ghi chú<textarea id="metaGhiChu" rows="2" placeholder="Ghi chú riêng của lô…"></textarea></label>
+            <label><span data-i18n="huongLot">Hướng lô</span><input id="metaHuong" type="text" placeholder="VD: Đông Tây" data-i18n-ph="huongPh" autocomplete="off"></label>
+            <label><span data-i18n="ngayKK">Ngày KK</span><input id="metaNgay" type="date"></label>
+            <label><span data-i18n="nguoiKK">Người KK</span><input id="metaNguoi" type="text" placeholder="Tên người kiểm kê" data-i18n-ph="personPh" autocomplete="off"></label>
+            <label class="meta-note"><span data-i18n="ghiChu">Ghi chú</span><textarea id="metaGhiChu" rows="2" placeholder="Ghi chú riêng của lô…" data-i18n-ph="ghiChuPh"></textarea></label>
           </div>
         </div>
       </div>
 
       <div class="card rows-card">
         <div class="card-head rows-head">
-          <h3>Chi tiết theo hàng</h3>
+          <h3 data-i18n="rowsTitle">Chi tiết theo hàng</h3>
           <div class="rows-head-actions">
             <span class="muted" id="rowCountLabel"></span>
-            <button class="btn btn-sm" id="btnAddRow" type="button">+ Thêm hàng</button>
+            <button class="btn btn-sm" id="btnAddRow" type="button" data-i18n="addRow">+ Thêm hàng</button>
           </div>
         </div>
         <div class="table-wrap">
           <table class="rows-table">
             <thead>
               <tr>
-                <th class="col-hang">Hàng</th>
-                <th>Tổng ĐT</th>
+                <th class="col-hang" data-i18n="thHang">Hàng</th>
+                <th data-i18n="thTotal">Tổng ĐT</th>
                 <th>G</th>
                 <th>+</th>
                 <th>C</th>
                 <th>K1</th>
                 <th>K2</th>
                 <th>O</th>
-                <th class="col-check">Kiểm tra</th>
+                <th class="col-check" data-i18n="thCheck">Kiểm tra</th>
                 <th class="col-del"></th>
               </tr>
             </thead>
             <tbody id="rowsBody"></tbody>
             <tfoot>
               <tr>
-                <td>Tổng</td>
+                <td data-i18n="total">Tổng</td>
                 <td id="sumDt">0</td>
                 <td id="sumG">0</td>
                 <td id="sumPlus">0</td>
@@ -226,7 +226,7 @@
             </tfoot>
           </table>
         </div>
-        <p class="footnote">Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.</p>
+        <p class="footnote" data-i18n-html="rowsFoot">Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.</p>
       </div>
 
       <div class="card hang-map" id="lotHangMap" hidden></div>
@@ -249,7 +249,7 @@
           <button type="button" data-quicklang="vi" aria-pressed="true">VI</button>
           <button type="button" data-quicklang="km" aria-pressed="false">ខ្មែរ</button>
         </div>
-        <button class="btn btn-icon" id="btnQuickClose" type="button" aria-label="Đóng">
+        <button class="btn btn-icon" id="btnQuickClose" type="button" aria-label="Đóng" data-i18n-aria="close">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
       </div>
@@ -282,25 +282,51 @@
   </div>
 </dialog>
 
+<!-- ================= LANGUAGE DIALOG ================= -->
+<dialog id="langDialog" class="dialog lang-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head lang-head">
+      <img src="./icons/favicon.svg" alt="" width="44" height="44">
+      <div>
+        <div class="eyebrow" data-i18n="brandSub">Đội 2 · CRCK2 Aphivath</div>
+        <h3 data-i18n="langTitle">Chọn ngôn ngữ</h3>
+      </div>
+    </header>
+    <p class="lang-lead" data-i18n="langLead">Ngôn ngữ áp dụng cho toàn bộ ứng dụng. Có thể đổi lại trong Menu.</p>
+    <div class="lang-choices">
+      <button class="lang-choice" type="button" data-lang="vi">
+        <span class="lang-flag">VI</span>
+        <span class="lang-name">Tiếng Việt</span>
+      </button>
+      <button class="lang-choice" type="button" data-lang="km">
+        <span class="lang-flag">ខ្មែរ</span>
+        <span class="lang-name">ភាសាខ្មែរ</span>
+      </button>
+    </div>
+    <p class="footnote lang-foot" data-i18n="langFoot">Số, số lô và ký hiệu G, +, C, K1, K2, O giữ nguyên ở cả hai ngôn ngữ.</p>
+  </div>
+</dialog>
+
 <!-- ================= MENU DIALOG ================= -->
 <dialog id="menuDialog" class="dialog menu-dialog">
   <div class="dialog-shell">
     <header class="dialog-head">
-      <h3>Menu</h3>
-      <button class="btn btn-icon" id="btnMenuClose" type="button" aria-label="Đóng">
+      <h3 data-i18n="menuTitle">Menu</h3>
+      <button class="btn btn-icon" id="btnMenuClose" type="button" aria-label="Đóng" data-i18n-aria="close">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
     </header>
     <div class="menu-list">
-      <button class="menu-item" id="menuExport" type="button"><span>Xuất Excel tổng hợp</span><small>95 lô + sheet cảnh báo</small></button>
-      <button class="menu-item" id="menuBackup" type="button"><span>Sao lưu dữ liệu (JSON)</span><small>Tải file dự phòng về máy</small></button>
-      <button class="menu-item" id="menuRestore" type="button"><span>Phục hồi từ JSON</span><small>Ghi đè dữ liệu đang có</small></button>
-      <button class="menu-item" id="menuSync" type="button"><span>Đồng bộ Google &amp; báo cáo mail</span><small id="menuSyncSub">Chưa kết nối</small></button>
-      <button class="menu-item" id="menuInstall" type="button" hidden><span>Cài ứng dụng lên Desktop</span><small>Chạy như app, dùng offline</small></button>
-      <button class="menu-item" id="menuDemo" type="button"><span>Điền thử lô 250</span><small>Hàng 01 + 02 từ ảnh phiếu mẫu</small></button>
-      <button class="menu-item danger" id="menuReset" type="button"><span>Xoá toàn bộ dữ liệu</span><small>Không thể hoàn tác</small></button>
+      <button class="menu-item" id="menuLang" type="button"><span data-i18n="menuLang">Ngôn ngữ</span><small id="menuLangSub">Tiếng Việt</small></button>
+      <button class="menu-item" id="menuExport" type="button"><span data-i18n="menuExport">Xuất Excel tổng hợp</span><small data-i18n="menuExportSub">95 lô + sheet cảnh báo</small></button>
+      <button class="menu-item" id="menuBackup" type="button"><span data-i18n="menuBackup">Sao lưu dữ liệu (JSON)</span><small data-i18n="menuBackupSub">Tải file dự phòng về máy</small></button>
+      <button class="menu-item" id="menuRestore" type="button"><span data-i18n="menuRestore">Phục hồi từ JSON</span><small data-i18n="menuRestoreSub">Ghi đè dữ liệu đang có</small></button>
+      <button class="menu-item" id="menuSync" type="button"><span data-i18n="menuSync">Đồng bộ Google &amp; báo cáo mail</span><small id="menuSyncSub">Chưa kết nối</small></button>
+      <button class="menu-item" id="menuInstall" type="button" hidden><span data-i18n="menuInstall">Cài ứng dụng lên Desktop</span><small data-i18n="menuInstallSub">Chạy như app, dùng offline</small></button>
+      <button class="menu-item" id="menuDemo" type="button"><span data-i18n="menuDemo">Điền thử lô 250</span><small data-i18n="menuDemoSub">Hàng 01 + 02 từ ảnh phiếu mẫu</small></button>
+      <button class="menu-item danger" id="menuReset" type="button"><span data-i18n="menuReset">Xoá toàn bộ dữ liệu</span><small data-i18n="menuResetSub">Không thể hoàn tác</small></button>
     </div>
-    <p class="footnote">Dữ liệu nằm trong trình duyệt của máy này (localStorage). Đổi máy hoặc xoá dữ liệu trình duyệt sẽ mất, nên hãy sao lưu JSON định kỳ.</p>
+    <p class="footnote" data-i18n="menuFootnote">Dữ liệu nằm trong trình duyệt của máy này (localStorage). Đổi máy hoặc xoá dữ liệu trình duyệt sẽ mất, nên hãy sao lưu JSON định kỳ.</p>
   </div>
 </dialog>
 
@@ -310,42 +336,42 @@
     <header class="dialog-head">
       <div>
         <div class="eyebrow">Google Sheets + Gmail</div>
-        <h3>Đồng bộ &amp; báo cáo mail</h3>
+        <h3 data-i18n="syncTitle">Đồng bộ &amp; báo cáo mail</h3>
       </div>
-      <button class="btn btn-icon" id="btnSyncClose" type="button" aria-label="Đóng">
+      <button class="btn btn-icon" id="btnSyncClose" type="button" aria-label="Đóng" data-i18n-aria="close">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
     </header>
 
     <div class="sync-body">
-      <p class="sync-lead">Dán URL Web App của Apps Script. App tự ghi dữ liệu vào Google Sheets; khi một lô được đánh dấu <b>hoàn tất</b>, Google gửi mail kèm file Excel báo cáo cho anh.</p>
+      <p class="sync-lead" data-i18n-html="syncLead">Dán URL Web App của Apps Script. App tự ghi dữ liệu vào Google Sheets; khi một lô được đánh dấu <b>hoàn tất</b>, Google gửi mail kèm file Excel báo cáo cho anh.</p>
 
-      <label class="sync-field">URL Web App (Apps Script)
+      <label class="sync-field"><span data-i18n="syncUrlLabel">URL Web App (Apps Script)</span>
         <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
       </label>
-      <label class="sync-check"><input id="syncEnabled" type="checkbox"> Tự đồng bộ sau khi lưu dữ liệu</label>
+      <label class="sync-check"><input id="syncEnabled" type="checkbox"> <span data-i18n="syncEnabled">Tự đồng bộ sau khi lưu dữ liệu</span></label>
 
       <div class="sync-status" id="syncStatus">Chưa kết nối.</div>
       <div class="sync-actions">
-        <button class="btn btn-sm" id="btnSyncSave" type="button">Lưu cấu hình</button>
-        <button class="btn btn-sm" id="btnSyncTest" type="button">Gửi thử</button>
-        <button class="btn btn-primary btn-sm" id="btnSyncNow" type="button">Đồng bộ ngay</button>
+        <button class="btn btn-sm" id="btnSyncSave" type="button" data-i18n="syncSave">Lưu cấu hình</button>
+        <button class="btn btn-sm" id="btnSyncTest" type="button" data-i18n="syncTest">Gửi thử</button>
+        <button class="btn btn-primary btn-sm" id="btnSyncNow" type="button" data-i18n="syncNow">Đồng bộ ngay</button>
       </div>
 
       <details class="sync-guide">
-        <summary>Hướng dẫn cài đặt (5 phút)</summary>
+        <summary data-i18n="syncGuideTitle">Hướng dẫn cài đặt (5 phút)</summary>
         <ol>
-          <li>Mở <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <b>Dự án mới</b>.</li>
-          <li>Xoá nội dung mặc định, dán toàn bộ mã <code>Code.gs</code> (bấm <b>Sao chép mã Code.gs</b> bên dưới).</li>
-          <li>Sửa <code>EMAIL_NHAN</code> ở đầu file nếu muốn nhận mail ở địa chỉ khác (mặc định: Gmail đang đăng nhập).</li>
-          <li>Bấm <b>Triển khai → Triển khai mới → Ứng dụng web</b>; chọn <b>Thực thi với tư cách: Tôi</b>; <b>Ai có quyền truy cập: Mọi người</b>. Cấp quyền khi Google hỏi.</li>
-          <li>Sao chép URL dạng <code>…/exec</code> dán vào ô trên, bấm <b>Gửi thử</b>.</li>
+          <li data-i18n-html="syncStep1">Mở <a href="https://script.google.com/" target="_blank" rel="noopener">script.google.com</a> → <b>Dự án mới</b>.</li>
+          <li data-i18n-html="syncStep2">Xoá nội dung mặc định, dán toàn bộ mã <code>Code.gs</code> (bấm <b>Sao chép mã Code.gs</b> bên dưới).</li>
+          <li data-i18n-html="syncStep3">Sửa <code>EMAIL_NHAN</code> ở đầu file nếu muốn nhận mail ở địa chỉ khác (mặc định: Gmail đang đăng nhập).</li>
+          <li data-i18n-html="syncStep4">Bấm <b>Triển khai → Triển khai mới → Ứng dụng web</b>; chọn <b>Thực thi với tư cách: Tôi</b>; <b>Ai có quyền truy cập: Mọi người</b>. Cấp quyền khi Google hỏi.</li>
+          <li data-i18n-html="syncStep5">Sao chép URL dạng <code>…/exec</code> dán vào ô trên, bấm <b>Gửi thử</b>.</li>
         </ol>
         <div class="sync-actions">
-          <button class="btn btn-sm" id="btnCopyScript" type="button">Sao chép mã Code.gs</button>
-          <a class="btn btn-sm" href="./apps-script/Code.gs" download>Tải Code.gs</a>
+          <button class="btn btn-sm" id="btnCopyScript" type="button" data-i18n="copyScript">Sao chép mã Code.gs</button>
+          <a class="btn btn-sm" href="./apps-script/Code.gs" download data-i18n="downloadScript">Tải Code.gs</a>
         </div>
-        <p class="footnote">Lần chạy đầu Google sẽ yêu cầu quyền đọc/ghi Google Sheets và gửi mail. Dữ liệu chỉ nằm trong Drive của anh, không gửi cho bên thứ ba. Mỗi lần bấm “Gửi thử” sẽ gửi 1 mail thử.</p>
+        <p class="footnote" data-i18n="syncFootnote">Lần chạy đầu Google sẽ yêu cầu quyền đọc/ghi Google Sheets và gửi mail. Dữ liệu chỉ nằm trong Drive của anh, không gửi cho bên thứ ba. Mỗi lần bấm “Gửi thử” sẽ gửi 1 mail thử.</p>
       </details>
     </div>
   </div>
