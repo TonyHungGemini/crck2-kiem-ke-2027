@@ -212,9 +212,7 @@ function sendReportMail_(ss, payload) {
     ? '[KK2027] Mail thử kết nối – ' + now_()
     : '[KK2027] Lô ' + (event.lot || '') + ' hoàn tất – ' + now_();
   const html = buildMailBody_(payload, lot, isTest);
-  const xlsx = DriveApp.getFileById(ss.getId())
-    .getAs(MimeType.MICROSOFT_EXCEL)
-    .setName('KK2027_TienDo_' + stamp_() + '.xlsx');
+  const xlsx = exportXlsx_(ss, 'KK2027_TienDo_' + stamp_() + '.xlsx');
 
   MailApp.sendEmail({
     to: to,
@@ -224,6 +222,18 @@ function sendReportMail_(ss, payload) {
     attachments: [xlsx],
     name: 'KK2027',
   });
+}
+
+function exportXlsx_(ss, name) {
+  const url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx';
+  const res = UrlFetchApp.fetch(url, {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Không xuất được Excel từ Google Sheets (HTTP ' + res.getResponseCode() + ').');
+  }
+  return res.getBlob().setName(name);
 }
 
 function buildMailBody_(payload, lot, isTest) {

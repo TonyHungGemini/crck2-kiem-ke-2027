@@ -15,7 +15,9 @@ kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễ
    const EMAIL_NHAN = ''; // để trống = gửi về Gmail đang đăng nhập
    ```
    Muốn nhận ở địa chỉ khác thì điền, ví dụ `'ten@gmail.com'`.
-5. Bấm **Chạy** hàm `testSetup` một lần → Google hỏi quyền → **Cho phép**.
+5. Bấm **Chạy** hàm `testSetup` một lần → Google hỏi quyền → **Cho phép**
+   (Drive, Trang tính, Gửi email; sau đó thêm **Kết nối với dịch vụ bên ngoài**
+   để script tải file `.xlsx` từ Google Sheets làm tệp đính kèm).
    Script sẽ tạo file **“KK2027 - Tiến độ kiểm kê”** trong Drive của anh
    (kiểm tra bằng link trong phần Kết quả chạy).
 6. Bấm **Triển khai → Triển khai mới → Ứng dụng web**:
