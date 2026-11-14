@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf9f5">
+<meta name="description" content="Nhập và đối chiếu kết quả kiểm kê vườn cây cao su 2027 – Đội 2 CRCK2 Aphivath">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KK 2027">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./assets/styles.css">
+<title>Kiểm kê 2027 · Đội 2 CRCK2</title>
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-mark" src="./icons/favicon.svg" alt="" width="38" height="38">
+      <div class="brand-text">
+        <h1>Kiểm kê vườn cây 2027</h1>
+        <p>Đội 2 · CRCK2 Aphivath</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" id="btnQuickHome" type="button">Nhập nhanh</button>
+      <button class="btn btn-icon" id="btnMenu" type="button" aria-label="Mở menu" title="Menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ================= HOME ================= -->
+    <section id="view-home" class="view">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Kiểm kê 0h · 01/01/2027</div>
+          <h2>Nhập kết quả theo dòng tổng từng hàng</h2>
+          <p>Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra
+            <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" id="btnQuickHome2" type="button">Nhập nhanh theo tờ</button>
+          <button class="btn btn-lg" id="btnExportAll" type="button">Xuất Excel tổng hợp</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="toolbar">
+        <label class="search">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="searchInput" type="search" placeholder="Tìm số lô, ID lô, giống…" autocomplete="off">
+        </label>
+        <div class="filters" id="filters" role="group" aria-label="Lọc lô">
+          <button class="chip is-active" data-filter="all" type="button">Tất cả</button>
+          <button class="chip" data-filter="empty" type="button">Chưa nhập</button>
+          <button class="chip" data-filter="doing" type="button">Đang nhập</button>
+          <button class="chip" data-filter="done" type="button">Hoàn tất</button>
+          <button class="chip" data-filter="warn" type="button">Cảnh báo</button>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-sm" id="btnAddLot" type="button">+ Lô khác</button>
+          <button class="btn btn-sm" id="btnBackup" type="button">Sao lưu</button>
+          <button class="btn btn-sm" id="btnRestore" type="button">Phục hồi</button>
+        </div>
+      </div>
+
+      <div class="list-head" aria-hidden="true">
+        <span>Lô</span>
+        <span>2026</span>
+        <span>2027</span>
+        <span>Lệch</span>
+        <span>Số hàng</span>
+        <span>Trạng thái</span>
+      </div>
+      <div id="lotList" class="lot-list"></div>
+      <div id="emptyState" class="list-empty" hidden>
+        <strong>Không có lô phù hợp</strong>
+        <span>Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.</span>
+      </div>
+
+      <details class="guide">
+        <summary>Hướng dẫn nhanh</summary>
+        <div class="guide-body">
+          <ol>
+            <li>Bấm <b>Nhập nhanh</b>, chọn lô, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O.</li>
+            <li>Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
+            <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
+            <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
+            <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng.</li>
+            <li>Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.</li>
+          </ol>
+        </div>
+      </details>
+    </section>
+
+    <!-- ================= LOT DETAIL ================= -->
+    <section id="view-lot" class="view" hidden>
+      <button class="back" id="btnBack" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Danh sách lô
+      </button>
+
+      <div class="lot-head">
+        <div>
+          <div class="eyebrow" id="lotEyebrow"></div>
+          <h2 id="lotTitle"></h2>
+          <p id="lotSub" class="muted"></p>
+        </div>
+        <div class="lot-head-actions">
+          <button class="btn" id="btnQuickLot" type="button">Nhập nhanh</button>
+          <button class="btn" id="btnExportLot" type="button">Xuất Excel lô</button>
+          <button class="btn" id="btnToggleDone" type="button">Đánh dấu hoàn tất</button>
+        </div>
+      </div>
+
+      <div id="lotAlerts" class="alerts"></div>
+
+      <div class="lot-grid">
+        <div class="card compare-card">
+          <div class="card-head">
+            <h3>Đối chiếu 2026 → 2027</h3>
+            <span class="badge" id="compareBadge"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="compare-table">
+              <thead><tr><th>Chỉ tiêu</th><th>2026</th><th>2027</th><th>Lệch</th></tr></thead>
+              <tbody id="compareBody"></tbody>
+            </table>
+          </div>
+          <p class="footnote" id="baselineNote"></p>
+        </div>
+
+        <div class="card meta-card">
+          <div class="card-head"><h3>Thông tin phiếu</h3></div>
+          <div class="meta-grid">
+            <label>Hướng lô<input id="metaHuong" type="text" placeholder="VD: Đông Tây" autocomplete="off"></label>
+            <label>Ngày KK<input id="metaNgay" type="date"></label>
+            <label>Người KK<input id="metaNguoi" type="text" placeholder="Tên người kiểm kê" autocomplete="off"></label>
+            <label class="meta-note">Ghi chú<textarea id="metaGhiChu" rows="2" placeholder="Ghi chú riêng của lô…"></textarea></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card rows-card">
+        <div class="card-head rows-head">
+          <h3>Chi tiết theo hàng</h3>
+          <div class="rows-head-actions">
+            <span class="muted" id="rowCountLabel"></span>
+            <button class="btn btn-sm" id="btnAddRow" type="button">+ Thêm hàng</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="rows-table">
+            <thead>
+              <tr>
+                <th class="col-hang">Hàng</th>
+                <th>Tổng ĐT</th>
+                <th>G</th>
+                <th>+</th>
+                <th>C</th>
+                <th>K1</th>
+                <th>K2</th>
+                <th>O</th>
+                <th class="col-check">Kiểm tra</th>
+                <th class="col-del"></th>
+              </tr>
+            </thead>
+            <tbody id="rowsBody"></tbody>
+            <tfoot>
+              <tr>
+                <td>Tổng</td>
+                <td id="sumDt">0</td>
+                <td id="sumG">0</td>
+                <td id="sumPlus">0</td>
+                <td id="sumC">0</td>
+                <td id="sumK1">0</td>
+                <td id="sumK2">0</td>
+                <td id="sumO">0</td>
+                <td colspan="2" id="sumCheckNote"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <p class="footnote">Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.</p>
+      </div>
+
+      <div class="card checks-card" id="lotChecks"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= QUICK ENTRY DIALOG ================= -->
+<dialog id="quickDialog" class="dialog quick-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow">Nhập nhanh theo tờ</div>
+        <h3 id="quickTitle">Nhập 2 hàng</h3>
+      </div>
+      <button class="btn btn-icon" id="btnQuickClose" type="button" aria-label="Đóng">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+
+    <div class="quick-meta">
+      <label id="quickLotWrap">Lô
+        <select id="quickLot"></select>
+      </label>
+      <label>Ngày KK<input id="quickNgay" type="date"></label>
+      <label>Người KK<input id="quickNguoi" type="text" placeholder="Tên người kiểm kê" autocomplete="off"></label>
+    </div>
+
+    <div id="quickPages" class="quick-pages"></div>
+
+    <div class="quick-summary" id="quickSummary"></div>
+
+    <footer class="dialog-foot">
+      <span class="muted" id="quickHint">Enter để sang ô kế tiếp.</span>
+      <div class="dialog-foot-actions">
+        <button class="btn" id="btnQuickSaveNext" type="button">Lưu &amp; tờ tiếp</button>
+        <button class="btn btn-primary" id="btnQuickSave" type="button">Lưu phiếu</button>
+      </div>
+    </footer>
+  </div>
+</dialog>
+
+<!-- ================= MENU DIALOG ================= -->
+<dialog id="menuDialog" class="dialog menu-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <h3>Menu</h3>
+      <button class="btn btn-icon" id="btnMenuClose" type="button" aria-label="Đóng">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="menu-list">
+      <button class="menu-item" id="menuExport" type="button"><span>Xuất Excel tổng hợp</span><small>95 lô + sheet cảnh báo</small></button>
+      <button class="menu-item" id="menuBackup" type="button"><span>Sao lưu dữ liệu (JSON)</span><small>Tải file dự phòng về máy</small></button>
+      <button class="menu-item" id="menuRestore" type="button"><span>Phục hồi từ JSON</span><small>Ghi đè dữ liệu đang có</small></button>
+      <button class="menu-item" id="menuInstall" type="button" hidden><span>Cài ứng dụng lên Desktop</span><small>Chạy như app, dùng offline</small></button>
+      <button class="menu-item" id="menuDemo" type="button"><span>Điền thử lô 250</span><small>Hàng 01 + 02 từ ảnh phiếu mẫu</small></button>
+      <button class="menu-item danger" id="menuReset" type="button"><span>Xoá toàn bộ dữ liệu</span><small>Không thể hoàn tác</small></button>
+    </div>
+    <p class="footnote">Dữ liệu nằm trong trình duyệt của máy này (localStorage). Đổi máy hoặc xoá dữ liệu trình duyệt sẽ mất, nên hãy sao lưu JSON định kỳ.</p>
+  </div>
+</dialog>
+
+<input type="file" id="fileRestore" accept="application/json,.json" hidden>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="./assets/baseline.js"></script>
+<script src="./vendor/xlsx.full.min.js"></script>
+<script src="./assets/app.js"></script>
+</body>
+</html>
