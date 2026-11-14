@@ -14,7 +14,8 @@ Web app tĩnh (PWA) nhập kết quả kiểm kê vườn cây cao su theo dòng
   - Từng lô: `BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ` theo mẫu `Mẫu nhập KK.xlsx`.
   - Tổng hợp: `BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ VƯỜN CÂY 0H NGÀY 01/01/2027` + sheet `Kiểm tra` + sheet `Tiến độ`.
 - **Lưu trên máy**: localStorage, tự lưu khi nhập; có sao lưu/phục hồi JSON.
-- **Offline/PWA**: cài lên Desktop hoặc điện thoại, dùng không cần mạng.
+- **Bản đồ tiến độ**: ranh 95 lô tô màu theo trạng thái (chưa nhập / đang nhập / hoàn tất / cảnh báo); tổng hợp theo 8 khu vực, liệt kê lô còn thiếu; bấm khu vực để phóng to, bấm lô để mở.
+- **Offline/PWA**: cài lên Desktop hoặc điện thoại, dùng không cần mạng (nền vệ tinh cần mạng, ranh lô vẫn hiện khi offline).
 - **Mobile-first**: bàn phím số, tự chuyển ô khi Enter, bảng cuộn ngang trên điện thoại.
 
 ## Dữ liệu baseline
@@ -60,7 +61,9 @@ index.html                 giao diện
 assets/styles.css          giao diện Claude-like, responsive
 assets/app.js              logic nhập liệu, kiểm tra, xuất Excel
 assets/baseline.js         baseline 2026 (95 lô)
+assets/geo.js              ranh 95 lô (GeoJSON, từ bando_NT2.html)
 vendor/xlsx.full.min.js    SheetJS (xuất Excel, chạy offline)
+vendor/leaflet/            Leaflet 1.9.4 (bản đồ, chạy offline)
 manifest.webmanifest       PWA
 sw.js                      service worker cache offline
 icons/                     icon PWA
@@ -69,4 +72,4 @@ icons/                     icon PWA
 
 ## Sao lưu
 
-Dữ liệu nằm trong localStorage của trình duyệt trên máy đang dùng. Định kỳ bấm **Sao lưu** để tải file JSON; đổi máy thì dùng **Phục hồi** để nhập lại. Xoá dữ liệu trình duyệt sẽ mất dữ liệu chưa sao lưu.
+Dữ liệu nằm trong localStorage của trình duyệt trên máy đang dùng — **không tự lưu lên Google Drive hay cloud**, và mỗi máy/trình duyệt có một bản riêng. Định kỳ bấm **Sao lưu** để tải file JSON (có thể cất vào Drive); đổi máy thì dùng **Phục hồi** để nhập lại (ghi đè, không gộp). Xoá dữ liệu trình duyệt sẽ mất dữ liệu chưa sao lưu.

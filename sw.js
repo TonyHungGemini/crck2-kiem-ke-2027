@@ -1,11 +1,19 @@
-const CACHE = 'kk2027-v2';
+const CACHE = 'kk2027-v3';
 const ASSETS = [
   './',
   './index.html',
   './assets/styles.css',
   './assets/app.js',
   './assets/baseline.js',
+  './assets/geo.js',
   './vendor/xlsx.full.min.js',
+  './vendor/leaflet/leaflet.js',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/images/layers.png',
+  './vendor/leaflet/images/layers-2x.png',
+  './vendor/leaflet/images/marker-icon.png',
+  './vendor/leaflet/images/marker-icon-2x.png',
+  './vendor/leaflet/images/marker-shadow.png',
   './manifest.webmanifest',
   './icons/favicon.svg',
   './icons/icon-192.png',

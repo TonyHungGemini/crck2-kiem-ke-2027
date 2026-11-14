@@ -10,6 +10,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="./assets/styles.css">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
@@ -51,6 +52,41 @@
 
       <div class="stats" id="stats"></div>
 
+      <div class="home-tabs" role="tablist" aria-label="Cách xem tiến độ">
+        <button class="seg is-active" data-homeview="list" role="tab" aria-selected="true" type="button">Danh sách lô</button>
+        <button class="seg" data-homeview="map" role="tab" aria-selected="false" type="button">Bản đồ tiến độ</button>
+      </div>
+
+      <section id="mapPanel" class="map-panel" hidden>
+        <div class="card map-zones-card">
+          <div class="card-head">
+            <h3>Tiến độ theo khu vực</h3>
+            <div class="zone-head-actions">
+              <button class="btn btn-sm" id="btnZoneAll" type="button" hidden>Tất cả</button>
+              <span class="badge" id="mapBadge"></span>
+            </div>
+          </div>
+          <div id="mapZones" class="map-zones"></div>
+        </div>
+        <div class="card map-card">
+          <div class="card-head map-head">
+            <h3>Bản đồ 95 lô</h3>
+            <div class="map-legend">
+              <span><i class="sw" data-state="empty"></i>Chưa nhập</span>
+              <span><i class="sw" data-state="doing"></i>Đang nhập</span>
+              <span><i class="sw" data-state="done"></i>Hoàn tất</span>
+              <span><i class="sw" data-state="warn"></i>Cảnh báo</span>
+            </div>
+          </div>
+          <div class="map-wrap">
+            <div id="mapCanvas"></div>
+            <div id="mapHint" class="map-hint">Đang tải bản đồ…</div>
+          </div>
+          <p class="footnote">Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.</p>
+        </div>
+      </section>
+
+      <div id="listPanel">
       <div class="toolbar">
         <label class="search">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -83,6 +119,7 @@
         <strong>Không có lô phù hợp</strong>
         <span>Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.</span>
       </div>
+      </div>
 
       <details class="guide">
         <summary>Hướng dẫn nhanh</summary>
@@ -92,6 +129,7 @@
             <li>Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
             <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
             <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
+            <li>Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.</li>
             <li>Dữ liệu lưu trong trình duyệt trên máy này. Định kỳ bấm <b>Sao lưu</b> để tải file JSON dự phòng.</li>
             <li>Bấm <b>Xuất Excel</b> để lấy file từng lô (theo Mẫu nhập KK) hoặc file tổng hợp 0h 01/01/2027.</li>
           </ol>
@@ -255,6 +293,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
+<script src="./assets/geo.js"></script>
+<script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.full.min.js"></script>
 <script src="./assets/app.js"></script>
 </body>

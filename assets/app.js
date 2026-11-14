@@ -17,6 +17,10 @@ const CATS = [
 const BASELINE = (window.KK_BASELINE && window.KK_BASELINE.lots) || [];
 const BASE_BY_LOT = new Map(BASELINE.map(l => [l.lot, l]));
 const BASE_ORDER = new Map(BASELINE.map((l, i) => [l.lot, i]));
+const GEO = (window.KK_GEO && window.KK_GEO.features) || [];
+const GEO_BY_LOT = new Map(GEO.map(f => [f.properties.ma_lo, f]));
+const ZONE_ORDER = ['KV1', 'KV2', 'KV3', 'KV4', 'KV5', 'KV6', 'KV7', 'KV8'];
+const STATUS_COLORS = { empty: '#9a9487', doing: '#d97757', done: '#3f7d58', warn: '#b3402f' };
 const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
 
 const $ = sel => document.querySelector(sel);
@@ -221,7 +225,7 @@ function toast(message, type) {
 /* ============================================================
    Điều hướng
    ============================================================ */
-const state = { view: 'home', lot: null, filter: 'all', q: '', quickLot: null, quickFrom: 'home' };
+const state = { view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '', quickLot: null, quickFrom: 'home' };
 
 function openLot(key, push = true) {
   state.view = 'lot';
@@ -301,6 +305,11 @@ function renderHome() {
     </div>`;
 
   renderLotList();
+  if (mapCtx) {
+    refreshMap();
+    const panel = $('#mapPanel');
+    if (panel && !panel.hidden) requestAnimationFrame(() => mapCtx.map.invalidateSize());
+  }
 }
 
 function statusInfo(st) {
@@ -369,6 +378,185 @@ function renderLotList() {
   const list = $('#lotList');
   list.innerHTML = keys.map(lotRowHtml).join('');
   $('#emptyState').hidden = keys.length > 0;
+}
+
+/* ============================================================
+   Bản đồ tiến độ
+   ============================================================ */
+let mapCtx = null;
+
+function zoneStats(zone) {
+  const out = { zone, total: 0, empty: [], doing: [], done: [], warn: [] };
+  GEO.forEach(f => {
+    if (f.properties.kv !== zone) return;
+    const key = f.properties.ma_lo;
+    out.total += 1;
+    out[lotState(key).level].push(key);
+  });
+  return out;
+}
+
+function shortList(keys, max = 5) {
+  const shown = keys.slice(0, max).join(', ');
+  return keys.length > max ? shown + ', …' : shown;
+}
+
+function renderZones() {
+  const host = $('#mapZones');
+  if (!host) return;
+  host.innerHTML = ZONE_ORDER.map(zone => {
+    const s = zoneStats(zone);
+    if (!s.total) return '';
+    const segs = ['done', 'doing', 'warn', 'empty']
+      .filter(k => s[k].length)
+      .map(k => `<i style="width:${(s[k].length / s.total * 100).toFixed(2)}%;background:${STATUS_COLORS[k]}"></i>`)
+      .join('');
+    const bits = [`${s.done.length}/${s.total} xong`];
+    if (s.doing.length) bits.push(`${s.doing.length} đang nhập`);
+    if (s.warn.length) bits.push(`${s.warn.length} cảnh báo`);
+    let miss = '';
+    let missCls = '';
+    if (s.empty.length) miss = `Chưa nhập ${s.empty.length}: <b>${esc(shortList(s.empty))}</b>`;
+    else if (!s.warn.length) { miss = `Đã nhập đủ ${s.total}/${s.total} lô`; missCls = ' all-done'; }
+    if (s.warn.length) miss += `${miss ? ' · ' : ''}Cảnh báo: <b>${esc(shortList(s.warn))}</b>`;
+    return `<button class="zone-row${state.zone === zone ? ' is-active' : ''}" data-zone="${zone}" type="button">
+      <span class="zone-top"><span class="zone-name">${zone}</span><span class="zone-count">${bits.join(' · ')}</span></span>
+      <span class="zone-bar">${segs}</span>
+      <span class="zone-miss${missCls}">${miss}</span>
+    </button>`;
+  }).join('');
+  const doneCount = [...GEO_BY_LOT.keys()].filter(key => lotState(key).level === 'done').length;
+  const badge = $('#mapBadge');
+  if (badge) badge.textContent = `${doneCount}/${GEO.length} lô hoàn tất`;
+  const allBtn = $('#btnZoneAll');
+  if (allBtn) allBtn.hidden = !state.zone;
+}
+
+function mapPopupHtml(key) {
+  const st = lotState(key);
+  const base = st.base;
+  const info = statusInfo(st);
+  const f = GEO_BY_LOT.get(key);
+  const p = f ? f.properties : {};
+  const bits = [p.kv, base && base.id, base && base.clone, p.area_ha ? fmt2(p.area_ha) + ' ha' : ''].filter(Boolean);
+  let delta = '—';
+  let deltaCls = 'muted';
+  if (base && st.entered.length) {
+    delta = signed(st.delta);
+    deltaCls = st.delta === 0 ? 'delta-0' : (st.meta.done ? 'delta-x' : 'delta-w');
+  }
+  return `<div class="map-pop">
+    <h4>Lô ${esc(key)}</h4>
+    <div class="map-pop-sub">${esc(bits.join(' · '))}</div>
+    <span class="status-pill ${info.cls}"><span class="status-dot"></span>${esc(info.label)}</span>
+    <table>
+      <tr><td>2026</td><td>${base ? fmt(base.total) : '—'}</td></tr>
+      <tr><td>2027</td><td>${st.entered.length ? fmt(st.agg.dt) : '—'}</td></tr>
+      <tr><td>Lệch</td><td class="${deltaCls}">${delta}</td></tr>
+      <tr><td>Số hàng</td><td>${st.entered.length}</td></tr>
+    </table>
+    <button class="open-lot" data-openlot="${esc(key)}" type="button">Mở lô</button>
+  </div>`;
+}
+
+function mapStyle(st) {
+  const color = STATUS_COLORS[st.level] || STATUS_COLORS.empty;
+  return { color, weight: 1.3, opacity: .95, fillColor: color, fillOpacity: .42 };
+}
+
+function initMap() {
+  if (mapCtx) return mapCtx;
+  const el = $('#mapCanvas');
+  if (!window.L || !el) {
+    const hint = $('#mapHint');
+    if (hint) hint.textContent = 'Không tải được thư viện bản đồ.';
+    return null;
+  }
+  if (!GEO.length) {
+    const hint = $('#mapHint');
+    if (hint) hint.textContent = 'Chưa có dữ liệu ranh lô.';
+    return null;
+  }
+  const map = L.map(el, { zoomControl: true, preferCanvas: true });
+  map.setView([13.2, 104.72], 14);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Esri Satellite',
+  }).addTo(map);
+  L.control.scale({ imperial: false }).addTo(map);
+
+  const layers = new Map();
+  const zoneBounds = new Map();
+  const allBounds = L.latLngBounds([]);
+  GEO.forEach(f => {
+    const key = f.properties.ma_lo;
+    const layer = L.geoJSON(f, {
+      style: () => mapStyle(lotState(key)),
+      onEachFeature: (_feat, lyr) => lyr.bindPopup(() => mapPopupHtml(key), { maxWidth: 280 }),
+    }).addTo(map);
+    layers.set(key, layer);
+    const kv = f.properties.kv;
+    const b = layer.getBounds();
+    if (b.isValid()) {
+      allBounds.extend(b);
+      if (!zoneBounds.has(kv)) zoneBounds.set(kv, L.latLngBounds([]));
+      zoneBounds.get(kv).extend(b);
+    }
+  });
+
+  mapCtx = { map, layers, zoneBounds, allBounds };
+  if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [18, 18] });
+  const wrap = el.closest('.map-wrap');
+  if (wrap) wrap.classList.add('is-ready');
+  return mapCtx;
+}
+
+function applyZoneStyles() {
+  if (!mapCtx) return;
+  mapCtx.layers.forEach((layer, key) => {
+    const base = mapStyle(lotState(key));
+    const kv = GEO_BY_LOT.get(key).properties.kv;
+    const dim = state.zone && kv !== state.zone;
+    layer.setStyle(dim ? Object.assign({}, base, { opacity: .18, fillOpacity: .06 }) : base);
+  });
+}
+
+function refreshMap() {
+  applyZoneStyles();
+  renderZones();
+}
+
+function setZone(zone, opts = {}) {
+  state.zone = zone || null;
+  applyZoneStyles();
+  renderZones();
+  if (!mapCtx) return;
+  const bounds = state.zone ? mapCtx.zoneBounds.get(state.zone) : mapCtx.allBounds;
+  if (bounds && bounds.isValid()) mapCtx.map.fitBounds(bounds, { padding: [22, 22], maxZoom: 17 });
+  if (opts.scroll && window.innerWidth <= 980) {
+    const wrap = $('.map-wrap');
+    if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function setHomeView(mode) {
+  state.homeView = mode === 'map' ? 'map' : 'list';
+  $$('.home-tabs .seg').forEach(btn => {
+    const active = btn.dataset.homeview === state.homeView;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  $('#listPanel').hidden = state.homeView !== 'list';
+  $('#mapPanel').hidden = state.homeView !== 'map';
+  if (state.homeView === 'map') {
+    const ctx = initMap();
+    if (ctx) {
+      refreshMap();
+      requestAnimationFrame(() => ctx.map.invalidateSize());
+    } else {
+      renderZones();
+    }
+  }
 }
 
 /* ============================================================
@@ -666,6 +854,19 @@ function setupHomeEvents() {
     const row = e.target.closest('.lot-row');
     if (row) openLot(row.dataset.lot);
   });
+  $$('.home-tabs .seg').forEach(btn => {
+    btn.addEventListener('click', () => setHomeView(btn.dataset.homeview));
+  });
+  $('#mapZones').addEventListener('click', e => {
+    const row = e.target.closest('.zone-row');
+    if (!row) return;
+    setZone(row.dataset.zone === state.zone ? null : row.dataset.zone, { scroll: true });
+  });
+  $('#mapCanvas').addEventListener('click', e => {
+    const btn = e.target.closest('[data-openlot]');
+    if (btn) openLot(btn.dataset.openlot);
+  });
+  $('#btnZoneAll').addEventListener('click', () => setZone(null));
   $('#btnAddLot').addEventListener('click', addCustomLot);
   $('#btnBack').addEventListener('click', () => openHome());
   $('#btnQuickHome').addEventListener('click', () => openQuick(false));
