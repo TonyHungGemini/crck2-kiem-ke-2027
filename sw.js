@@ -1,4 +1,4 @@
-const CACHE = 'kk2027-v11';
+const CACHE = 'kk2027-v12';
 const ASSETS = [
   './',
   './index.html',

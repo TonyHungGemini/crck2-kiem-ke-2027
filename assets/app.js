@@ -299,6 +299,7 @@ function readLangChosen() {
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
+  recentLot: null,
   lang: readLang() || 'vi', langChosen: readLangChosen(),
 };
 const QUICK_I18N = {
@@ -309,7 +310,7 @@ const QUICK_I18N = {
     hangNo: 'Hàng số', totalDT: 'Tổng ĐT',
     checkIdle: 'Chưa nhập', checkMissing: 'Thiếu Tổng ĐT', checkDiff: 'Lệch', checkSum6: 'tổng 6 cột',
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
-    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter để sang ô kế tiếp.',
+    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter sang ô kế tiếp · Space: Lưu & tờ tiếp.',
     pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
     progressEntered: 'Đã nhập {n} hàng', progressMissing: 'Còn thiếu hàng {list}',
@@ -329,7 +330,7 @@ const QUICK_I18N = {
     hangNo: 'លេខជួរ', totalDT: 'សរុប',
     checkIdle: 'មិនទាន់បញ្ចូល', checkMissing: 'ខ្វះសរុប', checkDiff: 'ខុសគ្នា', checkSum6: 'សរុប 6 ជួរឈរ',
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
-    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ដើម្បីទៅប្រអប់បន្ទាប់',
+    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ទៅប្រអប់បន្ទាប់ · Space: រក្សាទុក & សន្លឹកបន្ទាប់',
     pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
     progressEntered: 'បានបញ្ចូល {n} ជួរ', progressMissing: 'នៅខ្វះជួរ {list}',
@@ -393,7 +394,7 @@ const APP_I18N = {
     guideTitle: 'Hướng dẫn nhanh',
     guide1: 'Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi ngôn ngữ toàn app; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.',
     guide2: 'Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.',
-    guide3: 'Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.',
+    guide3: 'Bấm <b>Lưu &amp; tờ tiếp</b> (hoặc nhấn <b>Space</b>) để nhập liên tục; số hàng tự tăng.',
     guide4: 'Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.',
     guide5: 'Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.',
     guide6: 'Mở tab <b>Bản đồ tiến độ</b> để biết khu vực nào còn lô chưa nhập. Bấm khu vực để phóng to, bấm ranh lô để xem nhanh hoặc mở lô.',
@@ -658,7 +659,7 @@ const APP_I18N = {
     guideTitle: 'ការណែនាំខ្លី',
     guide1: 'ចុច <b>បញ្ចូលរហ័ស</b> ជ្រើស <b>តំបន់</b> រួចជ្រើស <b>ដីឡូតិ៍</b> បញ្ចូល <b>លេខជួរ</b> និង 7 លេខនៅជួរចុងក្រោយនៃសន្លឹក៖ សរុប, G, (+), C, K1, K2, O។ ប៊ូតុង <b>VI / ខ្មែរ</b> ប្តូរភាសាទាំងកម្មវិធី; លេខ និងសញ្ញា G, +, C, K1, K2, O នៅដដែល។',
     guide2: 'កម្មវិធីព្រមានពណ៌ក្រហម បើ <b>សរុបមិនស្មើនឹងសរុប 6 ជួរឈរ</b>។ កែតាមសន្លឹកមុនរក្សាទុក។',
-    guide3: 'ចុច <b>រក្សាទុក &amp; សន្លឹកបន្ទាប់</b> ដើម្បីបញ្ចូលបន្ត; លេខជួរកើនដោយស្វ័យប្រវត្តិ។',
+    guide3: 'ចុច <b>រក្សាទុក &amp; សន្លឹកបន្ទាប់</b> (ឬចុច <b>Space</b>) ដើម្បីបញ្ចូលបន្ត; លេខជួរកើនដោយស្វ័យប្រវត្តិ។',
     guide4: 'បើមានបញ្ហា (ខ្វះសន្លឹក…) ចុច <b>រក្សាទុកបណ្ដោះអាសន្ន</b>។ ដីឡូតិ៍នឹងបង្ហាញ <b>តារាងជួរ</b>៖ ប្រអប់ពណ៌បៃតងចុចដើម្បីកែ, ប្រអប់ជួរដេកដាច់ៗចុចដើម្បីបញ្ចូលជួរខ្វះ; ប៊ូតុង <b>បន្ត ជួរ N</b> បើកត្រង់ជួរដែលកំពុងធ្វើ។',
     guide5: 'ពេលបញ្ចូលដីឡូតិ៍រួច ចុច <b>សម្គាល់ថារួចរាល់</b>។ រាល់ភាពខុសគ្នាធៀប 2026 នឹងបង្ហាញការព្រមានក្រហម។',
     guide6: 'បើកផ្ទាំង <b>ផែនទីវឌ្ឍនភាព</b> ដើម្បីដឹងតំបន់ណាមិនទាន់បញ្ចូល។ ចុចតំបន់ដើម្បីពង្រីក, ចុចព្រំដីឡូតិ៍ដើម្បីមើលឬបើក។',
@@ -894,6 +895,7 @@ function qtf(key, vars) {
 function openLot(key, push = true) {
   state.view = 'lot';
   state.lot = key;
+  state.recentLot = null;
   $('#view-home').hidden = true;
   $('#view-lot').hidden = false;
   renderLot();
@@ -1017,7 +1019,7 @@ function lotRowHtml(key) {
   }
   const pill = `<span class="status-pill ${info.cls}"><span class="status-dot"></span>${esc(info.label)}</span>`;
   return `
-    <button class="lot-row" type="button" data-lot="${esc(key)}">
+    <button class="lot-row${key === state.recentLot ? ' is-recent' : ''}" type="button" data-lot="${esc(key)}"${key === state.recentLot ? ' aria-current="true"' : ''}>
       <span class="lot-main">
         <span class="lot-dot ${info.dot}"></span>
         <span style="min-width:0">
@@ -1037,8 +1039,10 @@ function lotRowHtml(key) {
 
 function renderLotList() {
   const q = state.q.trim().toLowerCase();
-  let keys = lotsKeys();
-  keys = keys.filter(key => {
+  const all = lotsKeys();
+  const recent = state.recentLot && all.includes(state.recentLot) ? state.recentLot : null;
+  let keys = all.filter(key => {
+    if (key === recent) return false;
     const st = lotState(key);
     if (state.filter === 'empty' && st.level !== 'empty') return false;
     if (state.filter === 'doing' && st.level !== 'doing') return false;
@@ -1049,6 +1053,7 @@ function renderLotList() {
     const hay = [key, base && base.id, base && base.clone, base && base.year].filter(Boolean).join(' ').toLowerCase();
     return hay.includes(q);
   });
+  if (recent) keys.unshift(recent);
   const list = $('#lotList');
   list.innerHTML = keys.map(lotRowHtml).join('');
   $('#emptyState').hidden = keys.length > 0;
@@ -1581,11 +1586,13 @@ function setupHomeEvents() {
     const btn = e.target.closest('button[data-filter]');
     if (!btn) return;
     state.filter = btn.dataset.filter;
+    state.recentLot = null;
     $$('#filters .chip').forEach(ch => ch.classList.toggle('is-active', ch === btn));
     renderLotList();
   });
   $('#searchInput').addEventListener('input', e => {
     state.q = e.target.value;
+    state.recentLot = null;
     renderLotList();
   });
   $('#lotList').addEventListener('click', e => {
@@ -2042,6 +2049,7 @@ function saveQuick(mode) {
     }
   });
   persist();
+  if (pause) state.recentLot = key;
   const savedHangs = entries.map(e => e.hang).join(', ');
   if (pause) toast(qtf('pausedSaved', { lot: key, h: resumeHang(key) }), 'ok');
   else toast(qtf('savedRows', { h: savedHangs }), 'ok');
@@ -2059,6 +2067,13 @@ function saveQuick(mode) {
   } else {
     state.quickSeed = null;
     $('#quickDialog').close();
+    if (pause && state.quickFrom === 'home') {
+      setHomeView('list');
+      setTimeout(() => {
+        const row = $('#lotList .lot-row.is-recent');
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 80);
+    }
   }
 }
 
@@ -2672,6 +2687,12 @@ function setupDialogs() {
     if (e.key === 'Enter' && e.target.matches('input')) {
       e.preventDefault();
       focusNextQuickInput(e.target);
+      return;
+    }
+    if ((e.key === ' ' || e.code === 'Space') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.target.closest('input[type="text"], input[type="date"], textarea, select, button')) return;
+      e.preventDefault();
+      saveQuick('next');
     }
   });
   $('#btnQuickSave').addEventListener('click', () => saveQuick('pause'));

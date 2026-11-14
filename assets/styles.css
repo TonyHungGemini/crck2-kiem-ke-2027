@@ -151,6 +151,11 @@ b{font-weight:650}
 }
 .lot-row:hover{border-color:var(--line-strong);box-shadow:var(--shadow);background:#fffefb}
 .lot-row:active{transform:translateY(1px)}
+.lot-row.is-recent{
+  border-color:var(--accent);background:#fffaf6;
+  box-shadow:inset 3px 0 0 var(--accent),0 0 0 3px var(--accent-soft),var(--shadow);
+}
+.lot-row.is-recent:hover{border-color:var(--accent-strong);background:#fff7f1}
 .lot-main{display:flex;align-items:center;gap:11px;min-width:0}
 .lot-dot{width:8px;height:8px;border-radius:50%;background:var(--line-strong);flex:none}
 .lot-dot.doing{background:var(--accent)}
