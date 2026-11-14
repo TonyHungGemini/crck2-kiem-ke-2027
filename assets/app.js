@@ -6,6 +6,7 @@
    ============================================================ */
 const STORE_KEY = 'crck2.kk2027.v1';
 const SYNC_KEY = 'crck2.kk2027.sync.v1';
+const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
   ['g', 'Cây cạo (G)'],
@@ -257,7 +258,57 @@ function toast(message, type) {
 /* ============================================================
    Điều hướng
    ============================================================ */
-const state = { view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '', quickLot: null, quickFrom: 'home' };
+function readQuickLang() {
+  try { return localStorage.getItem(QUICK_LANG_KEY) === 'km' ? 'km' : 'vi'; }
+  catch (err) { return 'vi'; }
+}
+const state = {
+  view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
+  quickLot: null, quickFrom: 'home', quickZone: '', quickLang: readQuickLang(),
+};
+const QUICK_I18N = {
+  vi: {
+    eyebrow: 'Nhập nhanh theo tờ', title: 'Nhập nhanh', zone: 'Khu vực', zoneAll: 'Tất cả khu vực', zoneItem: 'Khu vực {z}',
+    lot: 'Lô', lotOther: 'lô khác', lotDone: 'hoàn tất',
+    date: 'Ngày KK', person: 'Người KK', personPh: 'Tên người kiểm kê',
+    hangNo: 'Hàng số', totalDT: 'Tổng ĐT',
+    checkIdle: 'Chưa nhập', checkMissing: 'Thiếu Tổng ĐT', checkDiff: 'Lệch', checkSum6: 'tổng 6 cột',
+    checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
+    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Lưu phiếu', hint: 'Enter để sang ô kế tiếp.',
+    errEmptySheet: 'Chưa nhập số liệu cho tờ này.', errNoHang: 'Tờ {n}: chưa nhập số hàng.',
+    warnMissing: 'Hàng {h}: thiếu Tổng ĐT (tổng 6 cột {sum})',
+    warnDiff: 'Hàng {h}: Tổng ĐT {dt} lệch {diff} so với tổng 6 cột',
+    warnDup: 'Hai hàng trong tờ bị trùng số. Sửa lại số hàng.',
+    confirmOverwrite: 'Hàng {h} đã có dữ liệu. Ghi đè?',
+    confirmMismatch: 'Có hàng lệch tổng:\n\n{list}\n\nVẫn lưu và đánh dấu cảnh báo?',
+    savedRows: 'Đã lưu hàng {h}.',
+  },
+  km: {
+    eyebrow: 'បញ្ចូលរហ័សតាមសន្លឹក', title: 'បញ្ចូលរហ័ស', zone: 'តំបន់', zoneAll: 'គ្រប់តំបន់', zoneItem: 'តំបន់ {z}',
+    lot: 'ដីឡូតិ៍', lotOther: 'ដីឡូតិ៍ផ្សេង', lotDone: 'រួចរាល់',
+    date: 'កាលបរិច្ឆេទពិនិត្យ', person: 'អ្នកពិនិត្យ', personPh: 'ឈ្មោះអ្នកពិនិត្យ',
+    hangNo: 'លេខជួរ', totalDT: 'សរុប',
+    checkIdle: 'មិនទាន់បញ្ចូល', checkMissing: 'ខ្វះសរុប', checkDiff: 'ខុសគ្នា', checkSum6: 'សរុប 6 ជួរឈរ',
+    checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
+    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុក', hint: 'Enter ដើម្បីទៅប្រអប់បន្ទាប់',
+    errEmptySheet: 'មិនទាន់បញ្ចូលទិន្នន័យសម្រាប់សន្លឹកនេះទេ។', errNoHang: 'សន្លឹក {n}: មិនទាន់បញ្ចូលលេខជួរ។',
+    warnMissing: 'ជួរ {h}: ខ្វះសរុប (សរុប 6 ជួរឈរ {sum})',
+    warnDiff: 'ជួរ {h}: សរុប {dt} ខុសគ្នា {diff} ពីសរុប 6 ជួរឈរ',
+    warnDup: 'ជួរពីរក្នុងសន្លឹកមានលេខដូចគ្នា។ សូមកែលេខជួរ។',
+    confirmOverwrite: 'ជួរ {h} មានទិន្នន័យរួចហើយ។ សរសេរជាន់?',
+    confirmMismatch: 'មានជួរខុសសរុប:\n\n{list}\n\nនៅតែរក្សាទុក និងសម្គាល់ថាមានបញ្ហា?',
+    savedRows: 'បានរក្សាទុកជួរ {h}។',
+  },
+};
+function qt(key) {
+  const pack = QUICK_I18N[state.quickLang] || QUICK_I18N.vi;
+  return pack[key] != null ? pack[key] : QUICK_I18N.vi[key];
+}
+function qtf(key, vars) {
+  let s = qt(key);
+  Object.keys(vars).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+  return s;
+}
 
 function openLot(key, push = true) {
   state.view = 'lot';
@@ -1041,28 +1092,53 @@ function nextHangPair(key) {
   const start = hangs.length ? Math.max(...hangs) + 1 : 1;
   return [start, start + 1];
 }
-function populateQuickLotSelect() {
+function zoneOfLot(key) {
+  const f = GEO_BY_LOT.get(key);
+  return (f && f.properties.kv) || '';
+}
+function populateQuickZoneSelect() {
+  const used = new Set([...GEO_BY_LOT.values()].map(f => f.properties.kv));
+  const zones = ZONE_ORDER.filter(z => used.has(z));
+  $('#quickZone').innerHTML = [`<option value="">${esc(qt('zoneAll'))}</option>`]
+    .concat(zones.map(z => `<option value="${esc(z)}">${esc(qtf('zoneItem', { z }))}</option>`))
+    .join('');
+  $('#quickZone').value = state.quickZone;
+  return zones;
+}
+function populateQuickLotSelect(zone) {
   const sel = $('#quickLot');
-  sel.innerHTML = lotsKeys().map(key => {
+  const keys = lotsKeys().filter(key => !zone || zoneOfLot(key) === zone);
+  sel.innerHTML = keys.map(key => {
     const st = lotState(key);
     const base = BASE_BY_LOT.get(key);
-    const suffix = base ? ` · ${base.clone || ''}` : ' · lô khác';
-    const done = st.level === 'done' ? ' · hoàn tất' : '';
+    const suffix = base ? ` · ${base.clone || ''}` : ` · ${qt('lotOther')}`;
+    const done = st.level === 'done' ? ` · ${qt('lotDone')}` : '';
     return `<option value="${esc(key)}">${esc(key)}${esc(suffix)}${done}</option>`;
   }).join('');
+  return keys;
 }
 
 function openQuick(fromLot) {
   state.quickFrom = fromLot ? 'lot' : 'home';
   const sel = $('#quickLot');
+  applyQuickLang(state.quickLang);
+  populateQuickZoneSelect();
+  $('#quickZoneWrap').hidden = !!fromLot;
   if (fromLot) {
+    state.quickZone = zoneOfLot(state.lot);
+    $('#quickZone').value = state.quickZone;
     $('#quickLotWrap').hidden = true;
     sel.value = state.lot;
     state.quickLot = state.lot;
   } else {
     $('#quickLotWrap').hidden = false;
-    populateQuickLotSelect();
-    sel.value = state.quickLot || pickDefaultQuickLot();
+    if (!state.quickLot) state.quickLot = pickDefaultQuickLot();
+    const zones = populateQuickZoneSelect();
+    if (state.quickZone && !zones.includes(state.quickZone)) state.quickZone = '';
+    if (!state.quickZone) state.quickZone = zoneOfLot(state.quickLot);
+    populateQuickZoneSelect();
+    const keys = populateQuickLotSelect(state.quickZone);
+    sel.value = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
     state.quickLot = sel.value;
   }
   setQuickLot(state.quickLot, true);
@@ -1078,10 +1154,46 @@ function setQuickLot(key, resetHang) {
   if (!key) return;
   state.quickLot = key;
   const meta = lotMeta(key);
-  $('#quickTitle').textContent = `Nhập nhanh · Lô ${key}`;
+  $('#quickTitle').textContent = `${qt('title')} · ${qt('lot')} ${key}`;
   $('#quickNgay').value = meta.ngay || todayISO();
   $('#quickNguoi').value = meta.nguoi || '';
   buildQuickCards(resetHang);
+  refreshQuickSummary();
+}
+
+function applyQuickLang(lang) {
+  state.quickLang = lang === 'km' ? 'km' : 'vi';
+  try { localStorage.setItem(QUICK_LANG_KEY, state.quickLang); } catch (err) {}
+  const dlg = $('#quickDialog');
+  dlg.classList.toggle('lang-km', state.quickLang === 'km');
+  $$('[data-quicklang]').forEach(btn => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.quicklang === state.quickLang));
+  });
+  $$('#quickDialog [data-qk]').forEach(el => {
+    el.textContent = qt(el.dataset.qk);
+  });
+  $$('#quickDialog [data-qk-placeholder]').forEach(el => {
+    el.placeholder = qt(el.dataset.qkPlaceholder);
+  });
+  $('#quickHint').textContent = qt('hint');
+  $('#btnQuickSave').textContent = qt('save');
+  $('#btnQuickSaveNext').textContent = qt('saveNext');
+  $('#quickEyebrow').textContent = qt('eyebrow');
+  if (state.quickLot) {
+    $('#quickTitle').textContent = `${qt('title')} · ${qt('lot')} ${state.quickLot}`;
+  } else {
+    $('#quickTitle').textContent = qt('title');
+  }
+  if ($('#quickPages').childElementCount) {
+    $$('#quickPages .qcard').forEach(card => {
+      const hangLab = card.querySelector('.q-hang-i18n');
+      if (hangLab) hangLab.textContent = qt('hangNo') + ' ';
+      const tt = card.querySelector('.q-tt');
+      if (tt) tt.textContent = qt('totalDT');
+    });
+    refreshQuickChecks();
+    refreshQuickSummary();
+  }
 }
 
 function buildQuickCards() {
@@ -1090,11 +1202,11 @@ function buildQuickCards() {
   $('#quickPages').innerHTML = [h1, h2].map((hang, i) => `
     <div class="qcard" data-idx="${i}">
       <div class="qcard-head">
-        <div class="qhang">Hàng số <input class="q-hang" type="number" inputmode="numeric" min="1" step="1" value="${hang}" aria-label="Hàng số"></div>
-        <button class="mini-btn calc" type="button" data-act="qcalc" title="Điền Tổng ĐT = tổng 6 cột">=</button>
+        <div class="qhang"><span class="q-hang-i18n">${esc(qt('hangNo') + ' ')}</span><input class="q-hang" type="number" inputmode="numeric" min="1" step="1" value="${hang}" aria-label="${esc(qt('hangNo'))}"></div>
+        <button class="mini-btn calc" type="button" data-act="qcalc" title="Tổng ĐT = G + (+) + C + K1 + K2 + O">=</button>
       </div>
       <div class="qgrid">
-        <label class="qdt">Tổng ĐT<input class="q-input dt-input" type="number" inputmode="numeric" min="0" step="1" data-field="dt" aria-label="Tổng điểm trồng"></label>
+        <label class="qdt"><span class="q-tt">${esc(qt('totalDT'))}</span><input class="q-input dt-input" type="number" inputmode="numeric" min="0" step="1" data-field="dt" aria-label="${esc(qt('totalDT'))}"></label>
         <label>G<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="g" aria-label="Cây cạo"></label>
         <label>+<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="plus" aria-label="Cây cộng"></label>
         <label>C<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="c" aria-label="Cây C"></label>
@@ -1102,7 +1214,7 @@ function buildQuickCards() {
         <label>K2<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="k2" aria-label="Cây K2"></label>
         <label>O<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="o" aria-label="Hố trống"></label>
       </div>
-      <div class="qcheck idle" data-role="check">Chưa nhập</div>
+      <div class="qcheck idle" data-role="check">${esc(qt('checkIdle'))}</div>
     </div>`).join('');
   refreshQuickChecks();
   refreshQuickSummary();
@@ -1128,18 +1240,18 @@ function refreshQuickChecks() {
     dtInput.classList.remove('bad');
     if (!r.has) {
       check.className = 'qcheck idle';
-      check.innerHTML = 'Chưa nhập';
+      check.innerHTML = esc(qt('checkIdle'));
     } else if (r.dt == null) {
       check.className = 'qcheck bad';
-      check.innerHTML = `<span class="qc-text">Thiếu Tổng ĐT</span><span>tổng 6 cột: ${fmt(r.sum)}</span>`;
+      check.innerHTML = `<span class="qc-text">${esc(qt('checkMissing'))}</span><span>${esc(qt('checkSum6'))}: ${fmt(r.sum)}</span>`;
       dtInput.classList.add('bad');
     } else if (r.diff !== 0) {
       check.className = 'qcheck bad';
-      check.innerHTML = `<span class="qc-text">Lệch ${signed(r.diff)}</span><span>tổng 6 cột: ${fmt(r.sum)}</span>`;
+      check.innerHTML = `<span class="qc-text">${esc(qt('checkDiff'))} ${signed(r.diff)}</span><span>${esc(qt('checkSum6'))}: ${fmt(r.sum)}</span>`;
       dtInput.classList.add('bad');
     } else {
       check.className = 'qcheck ok';
-      check.innerHTML = `<span class="qc-text">Khớp</span><span>${fmt(r.dt)} cây</span>`;
+      check.innerHTML = `<span class="qc-text">${esc(qt('checkOk'))}</span><span>${fmt(r.dt)} ${esc(qt('unitTree'))}</span>`;
     }
   });
 }
@@ -1155,12 +1267,12 @@ function refreshQuickSummary() {
   const replacedSum = lotRows(key).filter(r => rowHasData(r) && replacedHangs.has(r.hang)).reduce((s, r) => s + (Number(r.dt) || 0), 0);
   const addSum = enteredCards.reduce((s, c) => s + (c.dt || 0), 0);
   const projected = existing.dt - replacedSum + addSum;
-  let html = `<span>Tờ này: <b>${fmt(addSum)}</b> cây</span><span>Lô sau lưu: <b>${fmt(projected)}</b> cây</span>`;
+  let html = `<span>${esc(qt('sheetThis'))}: <b>${fmt(addSum)}</b> ${esc(qt('unitTree'))}</span><span>${esc(qt('lotAfter'))}: <b>${fmt(projected)}</b> ${esc(qt('unitTree'))}</span>`;
   if (base) {
     const d = projected - base.total;
-    html += `<span>2026: <b>${fmt(base.total)}</b></span><span>Lệch: <b style="color:${d === 0 ? 'var(--green)' : 'var(--red)'}">${signed(d)}</b></span>`;
+    html += `<span>2026: <b>${fmt(base.total)}</b></span><span>${esc(qt('diffLabel'))}: <b style="color:${d === 0 ? 'var(--green)' : 'var(--red)'}">${signed(d)}</b></span>`;
   }
-  html += `<span class="muted">${enteredCards.length}/2 hàng có số liệu</span>`;
+  html += `<span class="muted">${enteredCards.length}/2 ${esc(qt('rowsWithData'))}</span>`;
   $('#quickSummary').innerHTML = html;
 }
 
@@ -1180,19 +1292,19 @@ function saveQuick(advance) {
   const mismatches = [];
   cards.forEach((c, i) => {
     if (!c.has) return;
-    if (c.hang == null) { errors.push(`Tờ ${i + 1}: chưa nhập số hàng.`); return; }
-    if (c.dt == null) mismatches.push(`Hàng ${c.hang}: thiếu Tổng ĐT (tổng 6 cột ${fmt(c.sum)})`);
-    else if (c.diff !== 0) mismatches.push(`Hàng ${c.hang}: Tổng ĐT ${fmt(c.dt)} lệch ${signed(c.diff)} so với tổng 6 cột`);
+    if (c.hang == null) { errors.push(qtf('errNoHang', { n: i + 1 })); return; }
+    if (c.dt == null) mismatches.push(qtf('warnMissing', { h: c.hang, sum: fmt(c.sum) }));
+    else if (c.diff !== 0) mismatches.push(qtf('warnDiff', { h: c.hang, dt: fmt(c.dt), diff: signed(c.diff) }));
     entries.push({ hang: c.hang, vals: c.vals });
   });
-  if (!entries.length) { toast('Chưa nhập số liệu cho tờ này.', 'bad'); return; }
+  if (!entries.length) { toast(qt('errEmptySheet'), 'bad'); return; }
   if (errors.length) { alert(errors.join('\n')); return; }
   const hset = new Set(entries.map(e => e.hang));
-  if (hset.size !== entries.length) { alert('Hai hàng trong tờ bị trùng số. Sửa lại số hàng.'); return; }
+  if (hset.size !== entries.length) { alert(qt('warnDup')); return; }
   const existingHangs = new Set(lot.rows.map(r => r.hang).filter(Number.isInteger));
   const replacing = entries.filter(e => existingHangs.has(e.hang)).map(e => e.hang);
-  if (replacing.length && !confirm(`Hàng ${replacing.join(', ')} đã có dữ liệu. Ghi đè?`)) return;
-  if (mismatches.length && !confirm(`Có hàng lệch tổng:\n\n${mismatches.join('\n')}\n\nVẫn lưu và đánh dấu cảnh báo?`)) return;
+  if (replacing.length && !confirm(qtf('confirmOverwrite', { h: replacing.join(', ') }))) return;
+  if (mismatches.length && !confirm(qtf('confirmMismatch', { list: mismatches.join('\n') }))) return;
 
   lot.meta.ngay = $('#quickNgay').value || '';
   lot.meta.nguoi = $('#quickNguoi').value.trim();
@@ -1210,7 +1322,7 @@ function saveQuick(advance) {
   });
   persist();
   const savedHangs = entries.map(e => e.hang).join(', ');
-  toast(`Đã lưu hàng ${savedHangs}.`, 'ok');
+  toast(qtf('savedRows', { h: savedHangs }), 'ok');
   renderHome();
   if (state.view === 'lot' && state.lot === key) {
     rebuildRowsTable();
@@ -1256,9 +1368,66 @@ function makeSheet(aoa, merges, widths, decimalsByCol) {
 function safeSheetName(name) {
   return name.replace(/[\\/?*[\]:]/g, '').slice(0, 31);
 }
+const XL_BORDER = {
+  top: { style: 'thin', color: { rgb: '000000' } },
+  bottom: { style: 'thin', color: { rgb: '000000' } },
+  left: { style: 'thin', color: { rgb: '000000' } },
+  right: { style: 'thin', color: { rgb: '000000' } },
+};
+function xlCell(ws, r, c) {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+  return ws[addr];
+}
+function xlStyleRow(ws, r, c0, c1, style) {
+  for (let c = c0; c <= c1; c++) {
+    const cell = xlCell(ws, r, c);
+    cell.s = Object.assign({}, cell.s || {}, style);
+  }
+}
+function styleLotSheet(ws, maxHang) {
+  const center = { horizontal: 'center', vertical: 'center' };
+  const headerRow = 4;
+  const firstData = 5;
+  const totalRow = firstData + maxHang;
+  xlCell(ws, 1, 0).s = {
+    font: { name: 'Times New Roman', sz: 14, bold: true, color: { rgb: '000000' } },
+    alignment: center,
+  };
+  xlCell(ws, 2, 0).s = {
+    font: { name: 'Times New Roman', sz: 14, bold: true, color: { rgb: '000000' } },
+    alignment: center,
+  };
+  xlCell(ws, 3, 0).s = {
+    font: { name: 'Times New Roman', sz: 10, italic: true, color: { rgb: '404040' } },
+    alignment: center,
+  };
+  xlStyleRow(ws, headerRow, 0, 7, {
+    font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '000000' } },
+    alignment: center,
+    border: XL_BORDER,
+  });
+  for (let r = firstData; r < totalRow; r++) {
+    xlStyleRow(ws, r, 0, 7, {
+      font: { name: 'Calibri', sz: 11, color: { rgb: '000000' } },
+      alignment: center,
+      border: XL_BORDER,
+    });
+  }
+  xlStyleRow(ws, totalRow, 0, 7, {
+    font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '000000' } },
+    alignment: center,
+    border: XL_BORDER,
+  });
+  ws['!rows'] = [];
+  ws['!rows'][1] = { hpt: 17.4 };
+  ws['!rows'][2] = { hpt: 17.4 };
+  ws['!rows'][3] = { hpt: 16 };
+  ws['!margins'] = { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 };
+}
 function downloadWorkbook(wb, filename) {
   try {
-    XLSX.writeFile(wb, filename, { compression: true });
+    XLSX.writeFile(wb, filename, { compression: true, cellStyles: true });
     toast('Đã xuất: ' + filename, 'ok');
   } catch (err) {
     toast('Không xuất được file Excel: ' + err.message, 'bad');
@@ -1288,7 +1457,8 @@ function exportLot(key) {
   }
   aoa.push(['Tổng', agg.dt, agg.g, agg.plus, agg.c, agg.k1, agg.k2, agg.o]);
 
-  const ws = makeSheet(aoa, ['A2:H2', 'A3:H3', 'A4:H4'], [8, 17, 12, 10, 10, 10, 10, 12]);
+  const ws = makeSheet(aoa, ['A2:H2', 'A3:H3', 'A4:H4'], [8.5, 14.73, 13, 10, 10, 10, 10, 12]);
+  styleLotSheet(ws, maxHang);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, safeSheetName('Lô ' + key));
 
@@ -1739,6 +1909,20 @@ function setupSyncUi() {
 function setupDialogs() {
   const quick = $('#quickDialog');
   $('#btnQuickClose').addEventListener('click', () => quick.close());
+  $$('[data-quicklang]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyQuickLang(btn.dataset.quicklang);
+      if (state.quickFrom === 'home') populateQuickZoneSelect();
+    });
+  });
+  $('#quickZone').addEventListener('change', e => {
+    state.quickZone = e.target.value;
+    const keys = populateQuickLotSelect(state.quickZone);
+    const next = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
+    $('#quickLot').value = next;
+    setQuickLot(next, true);
+    setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
+  });
   $('#quickLot').addEventListener('change', e => {
     setQuickLot(e.target.value, true);
     setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);

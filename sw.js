@@ -1,4 +1,4 @@
-const CACHE = 'kk2027-v4';
+const CACHE = 'kk2027-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,7 @@ const ASSETS = [
   './assets/baseline.js',
   './assets/geo.js',
   './apps-script/Code.gs',
-  './vendor/xlsx.full.min.js',
+  './vendor/xlsx.style.min.js',
   './vendor/leaflet/leaflet.js',
   './vendor/leaflet/leaflet.css',
   './vendor/leaflet/images/layers.png',

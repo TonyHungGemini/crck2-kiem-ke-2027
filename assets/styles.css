@@ -342,7 +342,16 @@ b{font-weight:650}
 }
 .dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
 .dialog-head h3{font-size:24px}
-.quick-meta{display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:10px;margin-bottom:14px}
+.quick-head-actions{display:flex;align-items:center;gap:8px}
+.lang-seg{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:2px}
+.lang-seg button{
+  appearance:none;border:0;background:transparent;border-radius:7px;padding:6px 9px;cursor:pointer;
+  font-size:11.5px;font-weight:700;color:var(--muted);line-height:1;
+}
+.lang-seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+#quickDialog.lang-km{font-family:"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",var(--font-ui),sans-serif}
+#quickDialog.lang-km .qgrid label:not(.qdt),#quickDialog.lang-km .qgrid input,#quickDialog.lang-km .qhang input{font-family:var(--tab-nums)}
+.quick-meta{display:grid;grid-template-columns:1fr 1.25fr 1fr 1.25fr;gap:10px;margin-bottom:14px}
 .quick-meta label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted)}
 .quick-meta input,.quick-meta select{
   border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 10px;font-size:14px;outline:0;width:100%;height:42px;
@@ -451,7 +460,7 @@ b{font-weight:650}
   .search{max-width:none;flex-basis:100%}
   .toolbar-actions{margin-left:0}
   .quick-meta{grid-template-columns:1fr 1fr}
-  .quick-meta label:first-child{grid-column:1/-1}
+  #quickZoneWrap,#quickLotWrap{grid-column:1/-1}
   .dialog-shell{padding:16px 14px;border-radius:16px;max-height:calc(100vh - 20px);margin:10px auto}
   .dialog-head h3{font-size:21px}
   .lot-head-actions .btn{flex:1;min-width:0}

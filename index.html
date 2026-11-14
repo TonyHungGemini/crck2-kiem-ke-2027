@@ -125,7 +125,7 @@
         <summary>Hướng dẫn nhanh</summary>
         <div class="guide-body">
           <ol>
-            <li>Bấm <b>Nhập nhanh</b>, chọn lô, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O.</li>
+            <li>Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi nhãn cho nhân viên người Khmer; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.</li>
             <li>Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.</li>
             <li>Bấm <b>Lưu &amp; tờ tiếp</b> để nhập liên tục; số hàng tự tăng.</li>
             <li>Khi nhập xong một lô, bấm <b>Đánh dấu hoàn tất</b>. Mọi chênh lệch tổng so với 2026 sẽ hiện cảnh báo đỏ.</li>
@@ -238,20 +238,29 @@
   <div class="dialog-shell">
     <header class="dialog-head">
       <div>
-        <div class="eyebrow">Nhập nhanh theo tờ</div>
+        <div class="eyebrow" id="quickEyebrow">Nhập nhanh theo tờ</div>
         <h3 id="quickTitle">Nhập 2 hàng</h3>
       </div>
-      <button class="btn btn-icon" id="btnQuickClose" type="button" aria-label="Đóng">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </button>
+      <div class="quick-head-actions">
+        <div class="lang-seg" role="group" aria-label="Ngôn ngữ nhập nhanh">
+          <button type="button" data-quicklang="vi" aria-pressed="true">VI</button>
+          <button type="button" data-quicklang="km" aria-pressed="false">ខ្មែរ</button>
+        </div>
+        <button class="btn btn-icon" id="btnQuickClose" type="button" aria-label="Đóng">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </header>
 
     <div class="quick-meta">
-      <label id="quickLotWrap">Lô
+      <label id="quickZoneWrap"><span data-qk="zone">Khu vực</span>
+        <select id="quickZone"></select>
+      </label>
+      <label id="quickLotWrap"><span data-qk="lot">Lô</span>
         <select id="quickLot"></select>
       </label>
-      <label>Ngày KK<input id="quickNgay" type="date"></label>
-      <label>Người KK<input id="quickNguoi" type="text" placeholder="Tên người kiểm kê" autocomplete="off"></label>
+      <label><span data-qk="date">Ngày KK</span><input id="quickNgay" type="date"></label>
+      <label><span data-qk="person">Người KK</span><input id="quickNguoi" type="text" placeholder="Tên người kiểm kê" data-qk-placeholder="personPh" autocomplete="off"></label>
     </div>
 
     <div id="quickPages" class="quick-pages"></div>
@@ -343,7 +352,7 @@
 <script src="./assets/baseline.js"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
-<script src="./vendor/xlsx.full.min.js"></script>
+<script src="./vendor/xlsx.style.min.js"></script>
 <script src="./assets/app.js"></script>
 </body>
 </html>
