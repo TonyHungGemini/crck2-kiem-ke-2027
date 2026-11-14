@@ -1,5 +1,7 @@
 # Kiểm kê vườn cây 2027 – Đội 2 CRCK2
 
+**Chạy online:** https://tonyhunggemini.github.io/crck2-kiem-ke-2027/
+
 Web app tĩnh (PWA) nhập kết quả kiểm kê vườn cây cao su theo dòng tổng từng hàng, tự kiểm tra chéo và đối chiếu với kiểm kê 0h ngày 01/01/2026.
 
 ## Tính năng
