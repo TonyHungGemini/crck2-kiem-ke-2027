@@ -8,6 +8,7 @@ const STORE_KEY = 'crck2.kk2027.v1';
 const SYNC_KEY = 'crck2.kk2027.sync.v1';
 const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
 const LANG_KEY = 'crck2.kk2027.lang.v1';
+const DRAFT_KEY = 'crck2.kk2027.qdraft.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
   ['g', 'catG'],
@@ -312,6 +313,7 @@ const QUICK_I18N = {
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
     rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter sang ô kế tiếp · Space: Lưu & tờ tiếp.',
     pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
+    draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
     progressEntered: 'Đã nhập {n} hàng', progressMissing: 'Còn thiếu hàng {list}',
     progressContinuous: 'Đã nhập liên tục 1–{max}', progressEntering: 'Đang vào hàng {list}',
@@ -332,6 +334,7 @@ const QUICK_I18N = {
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
     rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ទៅប្រអប់បន្ទាប់ · Space: រក្សាទុក & សន្លឹកបន្ទាប់',
     pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
+    draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
     progressEntered: 'បានបញ្ចូល {n} ជួរ', progressMissing: 'នៅខ្វះជួរ {list}',
     progressContinuous: 'បញ្ចូលជាប់គ្នា 1–{max}', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
@@ -1755,6 +1758,74 @@ function onRowClick(e) {
 /* ============================================================
    Nhập nhanh
    ============================================================ */
+function readDrafts() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+    return d && typeof d === 'object' ? d : {};
+  } catch (err) { return {}; }
+}
+function writeDrafts(map) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(map)); } catch (err) {}
+}
+function clearDraft(key) {
+  if (!key) return;
+  const map = readDrafts();
+  if (!map[key]) return;
+  delete map[key];
+  writeDrafts(map);
+}
+function clearAllDrafts() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+}
+function timeHM(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function saveQuickDraft() {
+  const key = state.quickLot;
+  if (!key) return;
+  const cards = $$('#quickPages .qcard').map(card => {
+    const vals = {};
+    card.querySelectorAll('.q-input').forEach(inp => { vals[inp.dataset.field] = inp.value; });
+    return { hang: card.querySelector('.q-hang').value, vals };
+  });
+  const hasAny = cards.some(c => Object.values(c.vals).some(v => (v || '').trim() !== ''))
+    || ($('#quickNguoi').value || '').trim() !== '';
+  const map = readDrafts();
+  if (!hasAny) {
+    if (map[key]) { delete map[key]; writeDrafts(map); }
+    return;
+  }
+  map[key] = {
+    zone: state.quickZone || '',
+    ngay: $('#quickNgay').value,
+    nguoi: $('#quickNguoi').value,
+    cards,
+    at: new Date().toISOString(),
+  };
+  writeDrafts(map);
+}
+function restoreQuickDraft(key) {
+  const draft = key && readDrafts()[key];
+  if (!draft) return false;
+  if (draft.ngay != null) $('#quickNgay').value = draft.ngay;
+  if (draft.nguoi != null) $('#quickNguoi').value = draft.nguoi;
+  const cards = $$('#quickPages .qcard');
+  (draft.cards || []).slice(0, cards.length).forEach((dc, i) => {
+    const card = cards[i];
+    if (!card) return;
+    if (dc.hang != null) card.querySelector('.q-hang').value = dc.hang;
+    FIELDS.forEach(f => {
+      const el = card.querySelector(`.q-input[data-field="${f}"]`);
+      if (el && dc.vals && dc.vals[f] != null) el.value = dc.vals[f];
+    });
+  });
+  refreshQuickChecks();
+  refreshQuickSummary();
+  return true;
+}
+
 function pickDefaultQuickLot() {
   const keys = lotsKeys();
   const doing = keys.find(k => lotState(k).level === 'doing');
@@ -1830,6 +1901,9 @@ function setQuickLot(key, resetHang) {
   $('#quickNguoi').value = meta.nguoi || '';
   buildQuickCards(resetHang);
   refreshQuickSummary();
+  if (restoreQuickDraft(key)) {
+    toast(qtf('draftRestored', { time: timeHM(readDrafts()[key].at) }), '');
+  }
 }
 
 function applyQuickLang(lang) {
@@ -2049,6 +2123,7 @@ function saveQuick(mode) {
     }
   });
   persist();
+  clearDraft(key);
   if (pause) state.recentLot = key;
   const savedHangs = entries.map(e => e.hang).join(', ');
   if (pause) toast(qtf('pausedSaved', { lot: key, h: resumeHang(key) }), 'ok');
@@ -2373,6 +2448,7 @@ function restoreJSON(file) {
       }
       if (!confirm(t('restoreConfirm'))) return;
       DB = { version: 1, lots: data.lots, updatedAt: data.updatedAt || new Date().toISOString() };
+      clearAllDrafts();
       persist();
       renderHome();
       if (state.view === 'lot') renderLot();
@@ -2409,6 +2485,7 @@ function resetAll() {
   const typed = prompt(t('resetPrompt'));
   if (typed !== 'XOA') { toast(t('resetCancel'), ''); return; }
   DB = emptyDB();
+  clearAllDrafts();
   persist();
   renderHome();
   if (state.view === 'lot') openHome(false);
@@ -2672,8 +2749,14 @@ function setupDialogs() {
     setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
   });
   $('#quickPages').addEventListener('input', e => {
-    if (e.target.matches('input')) { refreshQuickChecks(); refreshQuickSummary(); }
+    if (e.target.matches('input')) {
+      refreshQuickChecks();
+      refreshQuickSummary();
+      saveQuickDraft();
+    }
   });
+  $('#quickNgay').addEventListener('input', saveQuickDraft);
+  $('#quickNguoi').addEventListener('input', saveQuickDraft);
   $('#quickPages').addEventListener('click', e => {
     const btn = e.target.closest('[data-act="qcalc"]');
     if (!btn) return;
@@ -2682,6 +2765,7 @@ function setupDialogs() {
     card.querySelector('.dt-input').value = r.sum;
     refreshQuickChecks();
     refreshQuickSummary();
+    saveQuickDraft();
   });
   quick.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.matches('input')) {
