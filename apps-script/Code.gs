@@ -16,6 +16,7 @@ const PROGRESS_HEADERS = [
   'KV', 'Lô', 'ID lô', 'Đội', 'Giống', 'Năm trồng', 'Diện tích (ha)',
   'Trạng thái', 'Số hàng', 'Tổng ĐT 2027', 'Tổng 2026', 'Lệch',
   'Hoàn tất', 'Hoàn tất lúc', 'Người KK', 'Ngày KK', 'Ghi chú', 'Cập nhật lúc',
+  'Mã trạng thái', 'Cập nhật (ISO)',
 ];
 const DAILY_HEADERS = [
   'Ngày', 'Lô đã nhập', 'Lô hoàn tất', 'Lô cảnh báo',
@@ -27,6 +28,45 @@ const LOG_HEADERS = [
 ];
 
 function doGet(e) {
+  const action = e && e.parameter ? String(e.parameter.action || '') : '';
+  if (action === 'progress') {
+    try {
+      const ss = getSpreadsheet_();
+      const sh = ss.getSheetByName('Tiến độ');
+      const lots = [];
+      if (sh && sh.getLastRow() > 1) {
+        const vals = sh.getRange(2, 1, sh.getLastRow() - 1, PROGRESS_HEADERS.length).getValues();
+        vals.forEach(r => {
+          const lot = String(r[1] || '');
+          if (!lot) return;
+          const entered = Number(r[8]) || 0;
+          const done = String(r[12] || '') === 'Có';
+          if (!entered && !done) return;
+          lots.push({
+            lot: lot,
+            kv: String(r[0] || ''),
+            id: String(r[2] || ''),
+            doi: r[3] || '',
+            status: String(r[18] || (done ? 'done' : 'doing')),
+            statusLabel: String(r[7] || ''),
+            entered: entered,
+            dt: r[9] === '' ? null : Number(r[9]),
+            baseTotal: r[10] === '' ? null : Number(r[10]),
+            delta: r[11] === '' ? null : Number(r[11]),
+            done: done,
+            doneAt: r[13] ? String(r[13]) : '',
+            nguoi: String(r[14] || ''),
+            ngay: r[15] ? String(r[15]) : '',
+            updatedAt: String(r[19] || ''),
+            updatedAtDisplay: r[17] ? String(r[17]) : '',
+          });
+        });
+      }
+      return json_({ ok: true, app: APP_ID, at: now_(), atIso: new Date().toISOString(), count: lots.length, lots: lots });
+    } catch (err) {
+      return json_({ ok: false, error: String((err && err.message) || err) });
+    }
+  }
   return json_({
     ok: true,
     app: APP_ID,
@@ -47,8 +87,9 @@ function doPost(e) {
 
     const ss = getSpreadsheet_();
     const progress = ensureSheet_(ss, 'Tiến độ', PROGRESS_HEADERS);
-    writeProgress_(progress, payload);
-    writeDaily_(ensureSheet_(ss, 'Theo ngày', DAILY_HEADERS), payload);
+    const mergedRows = writeProgress_(progress, payload);
+    const totals = progressTotals_(mergedRows);
+    writeDaily_(ensureSheet_(ss, 'Theo ngày', DAILY_HEADERS), payload, totals);
     if (payload.reason === 'lot_done' || payload.reason === 'manual') {
       appendLog_(ensureSheet_(ss, 'Nhật ký', LOG_HEADERS), payload);
     }
@@ -64,7 +105,7 @@ function doPost(e) {
       sheetUrl: ss.getUrl(),
       mail: mail,
       at: now_(),
-      totals: payload.totals || {},
+      totals: totals,
     });
   } catch (err) {
     return json_({ ok: false, error: String((err && err.message) || err) });
@@ -114,7 +155,49 @@ function styleHeader_(sh, cols) {
 
 function writeProgress_(sh, payload) {
   const lots = payload.lots || [];
-  const rows = lots.map(l => [
+  const header = PROGRESS_HEADERS;
+  const width = header.length;
+  const last = sh.getLastRow();
+  const byLot = new Map();
+  if (last > 1) {
+    const vals = sh.getRange(2, 1, last - 1, width).getValues();
+    vals.forEach(r => {
+      const lot = String(r[1] || '');
+      if (!lot) return;
+      const entered = Number(r[8]) || 0;
+      const done = String(r[12] || '') === 'Có';
+      if (!entered && !done) return;
+      byLot.set(lot, pad_(r, width));
+    });
+  }
+  lots.forEach(l => {
+    if (!l || !l.lot) return;
+    const entered = Number(l.entered) || 0;
+    if (!entered && !l.done) return;
+    const old = byLot.get(l.lot);
+    const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
+    const oldTs = old ? isoTime_(old[19]) : 0;
+    if (old && oldTs && inTs < oldTs) return;
+    byLot.set(l.lot, buildProgressRow_(l, payload));
+  });
+  const rows = [...byLot.entries()]
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'en', { numeric: true }))
+    .map(e => e[1]);
+
+  sh.clearContents();
+  sh.getRange(1, 1, 1, width).setValues([header]);
+  styleHeader_(sh, width);
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, width).setValues(rows);
+    sh.getRange(2, 7, rows.length, 1).setNumberFormat('#,##0.00');
+    sh.getRange(2, 10, rows.length, 3).setNumberFormat('#,##0');
+  }
+  for (let c = 1; c <= width; c++) sh.setColumnWidth(c, [40, 62, 150, 40, 90, 62, 80, 120, 62, 90, 90, 80, 62, 110, 90, 82, 160, 110, 90, 150][c - 1]);
+  return rows;
+}
+
+function buildProgressRow_(l, payload) {
+  return [
     l.kv || '',
     l.lot || '',
     l.id || '',
@@ -133,22 +216,46 @@ function writeProgress_(sh, payload) {
     l.ngay ? formatDate_(l.ngay) : '',
     l.ghiChu || '',
     formatDateTime_(payload.sentAt),
-  ]);
-
-  const header = PROGRESS_HEADERS;
-  sh.clearContents();
-  sh.getRange(1, 1, 1, header.length).setValues([header]);
-  styleHeader_(sh, header.length);
-  if (rows.length) {
-    sh.getRange(2, 1, rows.length, header.length).setValues(rows);
-    sh.getRange(2, 7, rows.length, 1).setNumberFormat('#,##0.00');
-    sh.getRange(2, 10, rows.length, 3).setNumberFormat('#,##0');
-  }
-  for (let c = 1; c <= header.length; c++) sh.setColumnWidth(c, [40, 62, 150, 40, 90, 62, 80, 120, 62, 90, 90, 80, 62, 110, 90, 82, 160, 110][c - 1]);
+    l.status || '',
+    l.updatedAt || l.doneAt || payload.sentAt || '',
+  ];
 }
 
-function writeDaily_(sh, payload) {
-  const t = payload.totals || {};
+function pad_(row, width) {
+  const out = row.slice(0, width);
+  while (out.length < width) out.push('');
+  return out;
+}
+
+function isoTime_(v) {
+  if (!v) return 0;
+  const t = new Date(v).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+function progressTotals_(rows) {
+  let entered = 0;
+  let done = 0;
+  let warn = 0;
+  let rowsCount = 0;
+  let dt = 0;
+  let baselineTotal = 0;
+  rows.forEach(r => {
+    const n = Number(r[8]) || 0;
+    if (n > 0) {
+      entered += 1;
+      baselineTotal += Number(r[10]) || 0;
+    }
+    if (String(r[12] || '') === 'Có') done += 1;
+    if (String(r[18] || '') === 'warn') warn += 1;
+    rowsCount += n;
+    dt += Number(r[9]) || 0;
+  });
+  return { entered, done, warn, rows: rowsCount, dt, baselineTotal, delta: dt - baselineTotal };
+}
+
+function writeDaily_(sh, payload, totals) {
+  const t = totals || payload.totals || {};
   const dateText = formatDate_(payload.today);
   const row = [
     dateText,

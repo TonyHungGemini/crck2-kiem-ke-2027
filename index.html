@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=16">
+<link rel="stylesheet" href="./assets/styles.css?v=17">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -76,6 +76,7 @@
               <span><i class="sw" data-state="doing"></i><span data-i18n="legendDoing">Đang nhập</span></span>
               <span><i class="sw" data-state="done"></i><span data-i18n="legendDone">Hoàn tất</span></span>
               <span><i class="sw" data-state="warn"></i><span data-i18n="legendWarn">Cảnh báo</span></span>
+              <span><i class="sw" data-state="remote"></i><span data-i18n="legendRemote">Từ máy khác</span></span>
             </div>
           </div>
           <div class="map-wrap">
@@ -360,11 +361,14 @@
       <label class="sync-check"><input id="syncEnabled" type="checkbox"> <span data-i18n="syncEnabled">Tự đồng bộ sau khi lưu dữ liệu</span></label>
 
       <div class="sync-status" id="syncStatus">Chưa kết nối.</div>
+      <div class="sync-status" id="remoteStatus"></div>
       <div class="sync-actions">
         <button class="btn btn-sm" id="btnSyncSave" type="button" data-i18n="syncSave">Lưu cấu hình</button>
         <button class="btn btn-sm" id="btnSyncTest" type="button" data-i18n="syncTest">Gửi thử</button>
         <button class="btn btn-primary btn-sm" id="btnSyncNow" type="button" data-i18n="syncNow">Đồng bộ ngay</button>
+        <button class="btn btn-sm" id="btnSyncPull" type="button" data-i18n="syncPull">Tải tiến độ đội về máy</button>
       </div>
+      <p class="footnote" data-i18n="syncPullHint">Bấm “Tải tiến độ đội về máy” để xem lô máy khác đã nhập/hoàn tất trên bản đồ. Chỉ đọc, không ghi vào dữ liệu máy này.</p>
 
       <details class="sync-guide">
         <summary data-i18n="syncGuideTitle">Hướng dẫn cài đặt (5 phút)</summary>
@@ -392,6 +396,6 @@
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=16"></script>
+<script src="./assets/app.js?v=17"></script>
 </body>
 </html>

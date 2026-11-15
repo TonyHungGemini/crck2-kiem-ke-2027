@@ -210,6 +210,7 @@ b{font-weight:650}
 .map-legend .sw[data-state="doing"]{background:#d97757}
 .map-legend .sw[data-state="done"]{background:#3f7d58}
 .map-legend .sw[data-state="warn"]{background:#b3402f}
+.map-legend .sw[data-state="remote"]{background:repeating-linear-gradient(45deg,#cfc7b6 0 3px,#fff 3px 6px);border:1px dashed #6b6457}
 .map-wrap{position:relative;height:min(60vh,560px);min-height:360px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#e9e6de}
 #mapCanvas{position:absolute;inset:0}
 .map-hint{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:13px;color:var(--muted);pointer-events:none;padding:0 16px}
@@ -230,6 +231,7 @@ b{font-weight:650}
 .map-pop .delta-w{color:var(--amber)}
 .map-pop .open-lot{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:650;width:100%;cursor:pointer;min-height:38px}
 .map-pop .open-lot:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.map-pop .remote-note{margin:0 0 9px;font-size:11.5px;color:var(--muted);line-height:1.4}
 
 /* ---------- GUIDE ---------- */
 .guide{margin-top:22px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.6)}

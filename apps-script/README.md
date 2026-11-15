@@ -40,9 +40,12 @@ kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễ
   - **Theo ngày**: mỗi ngày một dòng (lô đã nhập, đã xong, cảnh báo, tổng cây…)
     để xem tiến độ theo ngày.
   - **Nhật ký**: các lần lô hoàn tất và đồng bộ tay.
-- Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet
-  (bản gửi sau ghi đè bảng Tiến độ bằng dữ liệu của máy đó — không tự gộp số liệu).
-  Vì vậy nên nhập tập trung trên 1 máy, hoặc mỗi người xuất Excel phần lô của mình.
+- Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet. Mỗi lần gửi,
+  script **gộp theo lô**: lô nào đã có số liệu và mới hơn (theo thời điểm lưu trên máy)
+  thì giữ bản mới, máy khác không xoá mất lô đã nhập.
+- Trong app, bấm **Đồng bộ Google → Tải tiến độ đội về máy** (hoặc mở tab **Bản đồ tiến độ**)
+  để đọc tiến độ các máy khác về bản đồ: lô do máy khác nhập/hoàn tất hiện viền nét đứt.
+  Dữ liệu chỉ để xem, không ghi vào dữ liệu của máy đang dùng.
 
 ## Khi sửa Code.gs
 

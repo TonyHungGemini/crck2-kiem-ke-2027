@@ -10,6 +10,7 @@ const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
 const LANG_KEY = 'crck2.kk2027.lang.v1';
 const DRAFT_KEY = 'crck2.kk2027.qdraft.v1';
 const GAUTO_KEY = 'crck2.kk2027.gauto.v1';
+const REMOTE_KEY = 'crck2.kk2027.remote.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
   ['g', 'catG'],
@@ -149,6 +150,10 @@ function persist() {
   }
   scheduleSync();
 }
+function touchLot(key) {
+  const lot = key && DB.lots[key];
+  if (lot) lot.updatedAt = new Date().toISOString();
+}
 function lotsKeys() {
   const set = new Set(BASELINE.map(l => l.lot));
   Object.keys(DB.lots).forEach(k => set.add(k));
@@ -271,6 +276,25 @@ function lotState(key) {
   return { key, base, meta, rows, entered, agg, issues, dups, delta, level, hasError };
 }
 
+function remoteLot(key) {
+  const r = state.remote && state.remote.lots ? state.remote.lots[key] : null;
+  return r && (r.entered > 0 || r.done) ? r : null;
+}
+function viewLevel(key) {
+  const st = lotState(key);
+  if (st.level !== 'empty') return { st, level: st.level, remote: null };
+  const r = remoteLot(key);
+  if (!r) return { st, level: 'empty', remote: null };
+  const level = r.status === 'done' || r.status === 'doing' || r.status === 'warn'
+    ? r.status
+    : (r.done ? 'done' : 'doing');
+  return { st, level, remote: r };
+}
+function remoteStatusInfo(level) {
+  const label = level === 'done' ? t('remoteDone') : level === 'warn' ? t('remoteWarn') : t('remoteDoing');
+  return { cls: level, label, dot: level };
+}
+
 /* ============================================================
    Toast
    ============================================================ */
@@ -301,10 +325,19 @@ function readLangChosen() {
 function readGAuto() {
   try { return localStorage.getItem(GAUTO_KEY) !== '0'; } catch (err) { return true; }
 }
+function readRemote() {
+  try {
+    const d = JSON.parse(localStorage.getItem(REMOTE_KEY) || '{}');
+    if (!d || typeof d !== 'object' || !d.lots || typeof d.lots !== 'object') return { at: null, lots: {} };
+    return { at: d.at || null, lots: d.lots };
+  } catch (err) {
+    return { at: null, lots: {} };
+  }
+}
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
-  recentLot: null, gAuto: readGAuto(),
+  recentLot: null, gAuto: readGAuto(), remote: readRemote(),
   lang: readLang() || 'vi', langChosen: readLangChosen(),
 };
 const QUICK_I18N = {
@@ -620,6 +653,19 @@ const APP_I18N = {
     copyOk: 'Đã sao chép Code.gs. Dán vào script.google.com.',
     copyFail: 'Không sao chép được. Bấm "Tải Code.gs" để tải file.',
     langChange: 'Đổi ngôn ngữ',
+    syncPull: 'Tải tiến độ đội về máy',
+    syncPullHint: 'Bấm “Tải tiến độ đội về máy” để xem lô máy khác đã nhập/hoàn tất trên bản đồ. Chỉ đọc, không ghi vào dữ liệu máy này.',
+    legendRemote: 'Từ máy khác',
+    remoteDoing: 'Máy khác đang nhập',
+    remoteDone: 'Máy khác đã hoàn tất',
+    remoteWarn: 'Máy khác: cảnh báo',
+    remotePopNote: 'Số liệu từ máy khác · cập nhật {time}',
+    remoteNone: 'Chưa có tiến độ từ máy khác.',
+    remotePulling: 'Đang tải tiến độ đội…',
+    remotePulled: 'Đã tải tiến độ đội: {n} lô.',
+    remotePullFail: 'Không tải được tiến độ: {err}',
+    remoteOldScript: 'Code.gs trên Google chưa cập nhật. Dán lại Code.gs mới và Triển khai phiên bản mới.',
+    remoteSummary: 'Đội: {doing} đang nhập · {done} hoàn tất · cập nhật {time}',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -885,6 +931,19 @@ const APP_I18N = {
     copyOk: 'បានចម្លង Code.gs។ បិទភ្ជាប់ក្នុង script.google.com។',
     copyFail: 'មិនអាចចម្លងបាន។ ចុច "ទាញយក Code.gs" ដើម្បីទាញឯកសារ។',
     langChange: 'ប្តូរភាសា',
+    syncPull: 'ទាញវឌ្ឍនភាពក្រុម',
+    syncPullHint: 'ចុច “ទាញវឌ្ឍនភាពក្រុម” ដើម្បីមើលដីឡូតិ៍ដែលម៉ាស៊ីនផ្សេងបានបញ្ចូល/រួចរាល់លើផែនទី។ អានប៉ុណ្ណោះ មិនសរសេរចូលទិន្នន័យម៉ាស៊ីននេះទេ។',
+    legendRemote: 'ពីម៉ាស៊ីនផ្សេង',
+    remoteDoing: 'ម៉ាស៊ីនផ្សេងកំពុងបញ្ចូល',
+    remoteDone: 'ម៉ាស៊ីនផ្សេងបានរួចរាល់',
+    remoteWarn: 'ម៉ាស៊ីនផ្សេង៖ ការព្រមាន',
+    remotePopNote: 'ទិន្នន័យពីម៉ាស៊ីនផ្សេង · ធ្វើបច្ចុប្បន្នភាព {time}',
+    remoteNone: 'មិនមានវឌ្ឍនភាពពីម៉ាស៊ីនផ្សេងទេ។',
+    remotePulling: 'កំពុងទាញវឌ្ឍនភាពក្រុម…',
+    remotePulled: 'បានទាញវឌ្ឍនភាព៖ {n} ដីឡូតិ៍។',
+    remotePullFail: 'មិនអាចទាញវឌ្ឍនភាព៖ {err}',
+    remoteOldScript: 'Code.gs លើ Google មិនទាន់បានធ្វើបច្ចុប្បន្នភាពទេ។ បិទភ្ជាប់ Code.gs ថ្មី ហើយដាក់ផ្សព្វផ្សាយកំណែថ្មី។',
+    remoteSummary: 'ក្រុម៖ {doing} កំពុងបញ្ចូល · {done} រួចរាល់ · {time}',
   },
 };
 function t(key, vars) {
@@ -1081,7 +1140,7 @@ function zoneStats(zone) {
     if (f.properties.kv !== zone) return;
     const key = f.properties.ma_lo;
     out.total += 1;
-    out[lotState(key).level].push(key);
+    out[viewLevel(key).level].push(key);
   });
   return out;
 }
@@ -1115,7 +1174,7 @@ function renderZones() {
       <span class="zone-miss${missCls}">${miss}</span>
     </button>`;
   }).join('');
-  const doneCount = [...GEO_BY_LOT.keys()].filter(key => lotState(key).level === 'done').length;
+  const doneCount = [...GEO_BY_LOT.keys()].filter(key => viewLevel(key).level === 'done').length;
   const badge = $('#mapBadge');
   if (badge) badge.textContent = t('mapBadge', { done: doneCount, total: GEO.length });
   const allBtn = $('#btnZoneAll');
@@ -1124,35 +1183,50 @@ function renderZones() {
 
 function mapPopupHtml(key) {
   const st = lotState(key);
+  const v = viewLevel(key);
+  const r = v.remote;
   const base = st.base;
-  const info = statusInfo(st);
+  const info = r ? remoteStatusInfo(v.level) : statusInfo(st);
   const f = GEO_BY_LOT.get(key);
   const p = f ? f.properties : {};
   const bits = [p.kv, base && base.id, base && base.clone, p.area_ha ? fmt2(p.area_ha) + ' ha' : ''].filter(Boolean);
+  const entered = r ? r.entered : st.entered.length;
+  const dt = r ? r.dt : (st.entered.length ? st.agg.dt : null);
+  const deltaNum = r ? r.delta : (base && st.entered.length ? st.delta : null);
+  const isDone = r ? r.done : st.meta.done;
   let delta = '—';
   let deltaCls = 'muted';
-  if (base && st.entered.length) {
-    delta = signed(st.delta);
-    deltaCls = st.delta === 0 ? 'delta-0' : (st.meta.done ? 'delta-x' : 'delta-w');
+  if (deltaNum != null) {
+    delta = signed(deltaNum);
+    deltaCls = deltaNum === 0 ? 'delta-0' : (isDone ? 'delta-x' : 'delta-w');
   }
+  const doneAt = r ? (r.doneAt || '') : (st.meta.done && st.meta.doneAt ? dateTimeVN(st.meta.doneAt) : '');
   return `<div class="map-pop">
     <h4>${t('thLot')} ${esc(key)}</h4>
     <div class="map-pop-sub">${esc(bits.join(' · '))}</div>
     <span class="status-pill ${info.cls}"><span class="status-dot"></span>${esc(info.label)}</span>
     <table>
       <tr><td>2026</td><td>${base ? fmt(base.total) : '—'}</td></tr>
-      <tr><td>2027</td><td>${st.entered.length ? fmt(st.agg.dt) : '—'}</td></tr>
+      <tr><td>2027</td><td>${dt != null ? fmt(dt) : '—'}</td></tr>
       <tr><td>${t('thDelta')}</td><td class="${deltaCls}">${delta}</td></tr>
-      <tr><td>${t('thRows')}</td><td>${st.entered.length}</td></tr>
-      ${st.meta.done && st.meta.doneAt ? `<tr><td>${t('statusDone')}</td><td>${esc(dateTimeVN(st.meta.doneAt))}</td></tr>` : ''}
+      <tr><td>${t('thRows')}</td><td>${entered}</td></tr>
+      ${doneAt ? `<tr><td>${t('statusDone')}</td><td>${esc(doneAt)}</td></tr>` : ''}
     </table>
+    ${r ? `<p class="remote-note">${esc(t('remotePopNote', { time: r.updatedAtDisplay || r.updatedAt || '—' }))}${r.nguoi ? ' · ' + esc(r.nguoi) : ''}</p>` : ''}
     <button class="open-lot" data-openlot="${esc(key)}" type="button">${t('openLot')}</button>
   </div>`;
 }
 
-function mapStyle(st) {
-  const color = STATUS_COLORS[st.level] || STATUS_COLORS.empty;
-  return { color, weight: 1.3, opacity: .95, fillColor: color, fillOpacity: .42 };
+function mapStyle(key) {
+  const v = viewLevel(key);
+  const color = STATUS_COLORS[v.level] || STATUS_COLORS.empty;
+  const style = { color, weight: 1.3, opacity: .95, fillColor: color, fillOpacity: .42 };
+  if (v.remote) {
+    style.weight = 1.8;
+    style.dashArray = '6 4';
+    style.fillOpacity = .24;
+  }
+  return style;
 }
 
 function initMap() {
@@ -1182,7 +1256,7 @@ function initMap() {
   GEO.forEach(f => {
     const key = f.properties.ma_lo;
     const layer = L.geoJSON(f, {
-      style: () => mapStyle(lotState(key)),
+      style: () => mapStyle(key),
       onEachFeature: (_feat, lyr) => lyr.bindPopup(() => mapPopupHtml(key), { maxWidth: 280 }),
     }).addTo(map);
     layers.set(key, layer);
@@ -1205,7 +1279,7 @@ function initMap() {
 function applyZoneStyles() {
   if (!mapCtx) return;
   mapCtx.layers.forEach((layer, key) => {
-    const base = mapStyle(lotState(key));
+    const base = mapStyle(key);
     const kv = GEO_BY_LOT.get(key).properties.kv;
     const dim = state.zone && kv !== state.zone;
     layer.setStyle(dim ? Object.assign({}, base, { opacity: .18, fillOpacity: .06 }) : base);
@@ -1240,6 +1314,7 @@ function setHomeView(mode) {
   $('#listPanel').hidden = state.homeView !== 'list';
   $('#mapPanel').hidden = state.homeView !== 'map';
   if (state.homeView === 'map') {
+    pullRemote(false);
     const ctx = initMap();
     if (ctx) {
       refreshMap();
@@ -1651,6 +1726,7 @@ function setupHomeEvents() {
     $(id).addEventListener('input', e => {
       if (!state.lot) return;
       ensureLot(state.lot).meta[field] = e.target.value;
+      touchLot(state.lot);
       persist();
       refreshLotDerived();
     });
@@ -1673,6 +1749,7 @@ function addCustomLot() {
     return;
   }
   ensureLot(key).meta.custom = true;
+  touchLot(key);
   persist();
   renderHome();
   openLot(key);
@@ -1691,6 +1768,7 @@ function toggleDone() {
     lot.meta.doneAt = null;
     lot.meta.doneBy = '';
   }
+  touchLot(state.lot);
   persist();
   renderLot();
   renderHome();
@@ -1710,6 +1788,7 @@ function addRow() {
   const next = hangs.length ? Math.max(...hangs) + 1 : 1;
   const row = { uid: uid(), hang: next, dt: null, g: null, plus: null, c: null, k1: null, k2: null, o: null };
   lot.rows.push(row);
+  touchLot(state.lot);
   persist();
   rebuildRowsTable();
   refreshLotDerived();
@@ -1729,6 +1808,7 @@ function onRowInput(e) {
   } else {
     row[field] = inp.value.trim() === '' ? null : parseNum(inp.value);
   }
+  touchLot(state.lot);
   persist();
   refreshLotDerived();
 }
@@ -1748,6 +1828,7 @@ function onRowClick(e) {
   if (!row) return;
   if (btn.dataset.act === 'calc') {
     row.dt = rowSum(row);
+    touchLot(state.lot);
     persist();
     const tr = $(`#rowsBody tr[data-uid="${CSS.escape(row.uid)}"]`);
     if (tr) { const dt = tr.querySelector('.dt-input'); if (dt) dt.value = row.dt; }
@@ -1757,6 +1838,7 @@ function onRowClick(e) {
     if (rowHasData(row) && !confirm(t('confirmDelRow', { h: row.hang ?? '' }))) return;
     const lot = ensureLot(state.lot);
     lot.rows = lot.rows.filter(r => r.uid !== row.uid);
+    touchLot(state.lot);
     persist();
     rebuildRowsTable();
     refreshLotDerived();
@@ -2183,6 +2265,7 @@ function saveQuick(mode) {
       });
     }
   });
+  touchLot(key);
   persist();
   clearDraft(key);
   if (pause) state.recentLot = key;
@@ -2612,6 +2695,7 @@ function buildSyncPayload(reason, lotKey) {
       done: !!st.meta.done,
       doneAt: st.meta.doneAt || null,
       doneBy: st.meta.doneBy || '',
+      updatedAt: (DB.lots[key] && DB.lots[key].updatedAt) || st.meta.doneAt || null,
       nguoi: st.meta.nguoi || '',
       ngay: st.meta.ngay || '',
       huong: st.meta.huong || '',
@@ -2760,7 +2844,97 @@ function openSyncDialog() {
   $('#syncUrl').value = syncCfg.url || '';
   $('#syncEnabled').checked = syncCfg.enabled;
   updateSyncUi();
+  updateRemoteUi();
   dlg.showModal();
+}
+
+let remoteBusy = false;
+function remoteCounts() {
+  let doing = 0;
+  let done = 0;
+  Object.keys(state.remote.lots || {}).forEach(key => {
+    const r = state.remote.lots[key];
+    if (!r || (!r.done && !(r.entered > 0))) return;
+    if (r.done) done += 1;
+    else doing += 1;
+  });
+  return { doing, done };
+}
+function updateRemoteUi(message) {
+  const el = $('#remoteStatus');
+  if (!el) return;
+  if (message) {
+    el.textContent = message;
+    el.className = 'sync-status busy';
+    return;
+  }
+  const c = remoteCounts();
+  if (!c.doing && !c.done) {
+    el.textContent = t('remoteNone');
+    el.className = 'sync-status';
+    return;
+  }
+  el.textContent = t('remoteSummary', {
+    doing: c.doing,
+    done: c.done,
+    time: state.remote.at ? dateTimeVN(state.remote.at) : '—',
+  });
+  el.className = 'sync-status ok';
+}
+async function pullRemote(manual) {
+  if (!syncCfg.url) {
+    if (manual) toast(t('syncNoUrl'), 'bad');
+    updateRemoteUi();
+    return;
+  }
+  if (remoteBusy) return;
+  remoteBusy = true;
+  if (manual) updateRemoteUi(t('remotePulling'));
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const u = syncCfg.url.trim();
+    const res = await fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + 'action=progress', {
+      redirect: 'follow',
+      cache: 'no-store',
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
+    const data = await res.json();
+    if (!data || data.ok === false) throw new Error((data && data.error) || t('syncAppError', { err: '' }));
+    if (!Array.isArray(data.lots)) throw new Error(t('remoteOldScript'));
+    const lots = {};
+    (data.lots || []).forEach(l => {
+      if (!l || !l.lot) return;
+      const entered = Number(l.entered) || 0;
+      const done = !!l.done;
+      if (!entered && !done) return;
+      lots[l.lot] = {
+        status: l.status === 'done' || l.status === 'doing' || l.status === 'warn' ? l.status : (done ? 'done' : 'doing'),
+        entered,
+        done,
+        dt: l.dt == null ? null : Number(l.dt),
+        delta: l.delta == null ? null : Number(l.delta),
+        doneAt: l.doneAt || '',
+        nguoi: l.nguoi || '',
+        updatedAt: l.updatedAt || '',
+        updatedAtDisplay: l.updatedAtDisplay || '',
+      };
+    });
+    state.remote = { at: data.atIso || data.at || new Date().toISOString(), lots };
+    try { localStorage.setItem(REMOTE_KEY, JSON.stringify(state.remote)); } catch (err) {}
+    if (mapCtx) {
+      applyZoneStyles();
+      renderZones();
+    }
+    if (manual) toast(t('remotePulled', { n: Object.keys(lots).length }), 'ok');
+  } catch (err) {
+    if (manual) toast(t('remotePullFail', { err: err.message }), 'bad');
+  } finally {
+    clearTimeout(timer);
+    remoteBusy = false;
+    updateRemoteUi();
+  }
 }
 
 function syncUrlFromInput() {
@@ -2800,6 +2974,12 @@ function setupSyncUi() {
     saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
     await syncNow('manual');
   });
+  $('#btnSyncPull').addEventListener('click', async () => {
+    const url = syncUrlFromInput();
+    if (!url) return;
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    await pullRemote(true);
+  });
   $('#btnCopyScript').addEventListener('click', async () => {
     try {
       const res = await fetch('./apps-script/Code.gs');
@@ -2811,6 +2991,7 @@ function setupSyncUi() {
     }
   });
   updateSyncUi();
+  updateRemoteUi();
 }
 
 /* ============================================================
