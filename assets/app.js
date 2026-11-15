@@ -2259,6 +2259,15 @@ function xlStyleRow(ws, r, c0, c1, style) {
     cell.s = Object.assign({}, cell.s || {}, style);
   }
 }
+function xlFormula(ws, r, c, f, v) {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  const cell = ws[addr] || {};
+  cell.t = typeof v === 'number' ? 'n' : 'str';
+  cell.f = f;
+  cell.v = v == null ? '' : v;
+  cell.z = cell.z || '#,##0';
+  ws[addr] = cell;
+}
 function styleLotSheet(ws, maxHang) {
   const center = { horizontal: 'center', vertical: 'center' };
   const headerRow = 4;
@@ -2333,6 +2342,17 @@ function exportLot(key) {
 
   const ws = makeSheet(aoa, ['A2:H2', 'A3:H3', 'A4:H4'], [8.5, 14.73, 13, 10, 10, 10, 10, 12]);
   styleLotSheet(ws, maxHang);
+  for (let h = 1; h <= maxHang; h++) {
+    const r = map.get(h);
+    const rowNo = h + 5;
+    const g = r
+      ? (Number(r.dt) || 0) - ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (Number(r[k]) || 0), 0)
+      : '';
+    xlFormula(ws, h + 4, 2, `IF(B${rowNo}="","",B${rowNo}-SUM(D${rowNo}:H${rowNo}))`, g);
+  }
+  const sumNo = maxHang + 6;
+  xlFormula(ws, maxHang + 5, 2, `B${sumNo}-SUM(D${sumNo}:H${sumNo})`,
+    (Number(agg.dt) || 0) - ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (Number(agg[k]) || 0), 0));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, safeSheetName('Lô ' + key));
 
@@ -2361,6 +2381,9 @@ function exportLot(key) {
   }
   if (base && base.mismatch) cmp.push(['Baseline 2026', `File gốc tự lệch ${base.mismatch} cây giữa tổng và 6 cột.`]);
   const ws2 = makeSheet(cmp, ['A1:D1'], [22, 16, 16, 16]);
+  const gCalc = (Number(agg.dt) || 0) - ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (Number(agg[k]) || 0), 0);
+  xlFormula(ws2, 5, 2, 'C5-SUM(C7:C11)', gCalc);
+  if (base) xlFormula(ws2, 5, 3, 'C6-B6', gCalc - (Number(base.g) || 0));
   XLSX.utils.book_append_sheet(wb, ws2, 'Đối chiếu 2026');
 
   downloadWorkbook(wb, `KK2027_Lo_${key.replace(/[^\w\-]+/g, '_')}.xlsx`);
@@ -2422,6 +2445,17 @@ function exportAll() {
     [6, 20, 6, 9, 10, 8, 10, 11, 14, 15, 14, 15, 15, 17, 13],
     { 7: '#,##0.00' }
   );
+  keys.forEach((key, idx) => {
+    const st = lotState(key);
+    const rowNo = 10 + idx;
+    const g = st.entered.length
+      ? st.agg.dt - (st.agg.plus + st.agg.c + st.agg.k1 + st.agg.k2 + st.agg.o)
+      : '';
+    xlFormula(ws, 9 + idx, 9, `IF(I${rowNo}="","",I${rowNo}-SUM(K${rowNo}:O${rowNo}))`, g);
+  });
+  const totalNo = 10 + keys.length;
+  xlFormula(ws, 9 + keys.length, 9, `I${totalNo}-SUM(K${totalNo}:O${totalNo})`,
+    total.dt - (total.plus + total.c + total.k1 + total.k2 + total.o));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp');
 

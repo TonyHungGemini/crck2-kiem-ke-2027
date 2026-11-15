@@ -17,6 +17,7 @@ Web app tĩnh (PWA) nhập kết quả kiểm kê vườn cây cao su theo dòng
 - **Xuất Excel**:
   - Từng lô: `BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ` theo mẫu `Mẫu nhập KK.xlsx`.
   - Tổng hợp: `BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ VƯỜN CÂY 0H NGÀY 01/01/2027` + sheet `Kiểm tra` + sheet `Tiến độ`.
+  - Ô **cây G** luôn là công thức `= Tổng điểm trồng − (+, C, K1, K2, O)`, sửa các số kia thì G tự cập nhật.
 - **Lưu trên máy**: localStorage, tự lưu khi nhập; có sao lưu/phục hồi JSON.
 - **Đồng bộ Google + mail**: tự ghi tiến độ vào Google Sheets (Drive của anh); khi một lô hoàn tất, Apps Script gửi mail kèm file Excel. Xem `apps-script/README.md`.
 - **Bản đồ tiến độ**: ranh 95 lô tô màu theo trạng thái (chưa nhập / đang nhập / hoàn tất / cảnh báo); tổng hợp theo 8 khu vực, liệt kê lô còn thiếu; bấm khu vực để phóng to, bấm lô để mở.
