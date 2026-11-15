@@ -1,10 +1,11 @@
-const CACHE = 'kk2027-v28';
+const CACHE = 'kk2027-v29';
 const ASSETS = [
   './',
   './index.html',
-  './assets/styles.css?v=28',
-  './assets/app.js?v=28',
+  './assets/styles.css?v=29',
+  './assets/app.js?v=29',
   './assets/baseline.js',
+  './assets/phuctra.js?v=29',
   './assets/geo.js',
   './assets/fonts/source-serif-4-latin.woff2',
   './assets/fonts/source-serif-4-vi.woff2',

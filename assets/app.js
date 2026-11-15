@@ -24,6 +24,8 @@ const CATS = [
 const BASELINE = (window.KK_BASELINE && window.KK_BASELINE.lots) || [];
 const BASE_BY_LOT = new Map(BASELINE.map(l => [l.lot, l]));
 const BASE_ORDER = new Map(BASELINE.map((l, i) => [l.lot, i]));
+const PHUC_TRA = (window.KK_PHUCTRA && window.KK_PHUCTRA.lots) || {};
+const PHUC_TRA_MIN = (window.KK_PHUCTRA && window.KK_PHUCTRA.minDiff) || 2;
 const GEO = (window.KK_GEO && window.KK_GEO.features) || [];
 const GEO_BY_LOT = new Map(GEO.map(f => [f.properties.ma_lo, f]));
 const ZONE_ORDER = ['KV1', 'KV2', 'KV3', 'KV4', 'KV5', 'KV6', 'KV7', 'KV8'];
@@ -280,6 +282,28 @@ function rowIssuesOf(rows) {
     .map(row => ({ row, issue: rowIssue(row) }))
     .filter(x => x.issue);
 }
+function phucTraRef(key, hang) {
+  const lot = PHUC_TRA[key];
+  if (!lot || !Number.isInteger(hang)) return null;
+  const ref = lot[String(hang)];
+  return Number.isFinite(ref) ? ref : null;
+}
+function hasPhucTra(key) {
+  return !!PHUC_TRA[key];
+}
+function phucTraOf(key, row) {
+  if (!rowHasData(row) || row.dt == null) return null;
+  const ref = phucTraRef(key, row.hang);
+  if (ref == null) return null;
+  const diff = (Number(row.dt) || 0) - ref;
+  return { ref, diff, warn: Math.abs(diff) >= PHUC_TRA_MIN };
+}
+function phucTraIssues(key) {
+  return lotRows(key)
+    .filter(rowHasData)
+    .map(row => ({ row, pt: phucTraOf(key, row) }))
+    .filter(x => x.pt && x.pt.warn);
+}
 function lotState(key) {
   const base = BASE_BY_LOT.get(key);
   const meta = lotMeta(key);
@@ -288,15 +312,17 @@ function lotState(key) {
   const agg = aggregate(rows);
   const issues = rowIssuesOf(rows);
   const dups = findDuplicates(rows);
+  const ptIssues = phucTraIssues(key);
   const delta = base && entered.length ? agg.dt - base.total : null;
   const hasError = issues.length > 0 || dups.length > 0;
+  const hasPt = ptIssues.length > 0;
   let level = 'empty';
   if (entered.length) {
-    if (hasError) level = 'warn';
+    if (hasError || hasPt) level = 'warn';
     else if (meta.done) level = delta == null || delta === 0 ? 'done' : 'warn';
     else level = 'doing';
   }
-  return { key, base, meta, rows, entered, agg, issues, dups, delta, level, hasError };
+  return { key, base, meta, rows, entered, agg, issues, dups, ptIssues, hasPt, delta, level, hasError };
 }
 
 function remoteLot(key) {
@@ -518,6 +544,20 @@ const APP_I18N = {
     thHang: 'Hàng',
     thTotal: 'Tổng ĐT',
     thCheck: 'Kiểm tra',
+    thPhucTra: 'Phúc tra',
+    thPhucTraTip: 'So sánh Tổng ĐT từng hàng với bảng chi tiết kiểm kê 2026 · lệch từ 2 cây được tô sáng',
+    phucTraTip: 'Kiểm kê 2026: {ref} cây · 2027 lệch {d}',
+    phucTraNoRef: 'Không có số 2026 cho hàng này',
+    rowsPtNote: 'Phúc tra theo bảng chi tiết 2026. Hàng lệch từ 2 cây được tô sáng để Giám sát kiểm tra lại.',
+    rowsPtNoData: 'Lô này chưa có bảng chi tiết 2026 theo từng hàng (lô chia nhiều hướng A/B/C hoặc lô mới) nên chưa phúc tra từng hàng.',
+    ptSumWarn: '{n} hàng lệch',
+    ptSumWarnTip: '{n} hàng lệch từ 2 cây so với 2026 — cần kiểm tra lại',
+    ptSumOk: 'Khớp 2026',
+    checksPhucTra: '<b>Phúc tra 2026:</b> {n} hàng lệch từ 2 cây: {list}. Đề nghị Giám sát kiểm tra lại.',
+    checksPhucTraOk: 'Phúc tra 2026: các hàng đã nhập khớp bảng chi tiết (lệch dưới 2 cây).',
+    checksPhucTraNoData: 'Lô chia nhiều hướng (A/B/C): chưa có bảng chi tiết 2026 để phúc tra từng hàng.',
+    alertPhucTra: '<b>Phúc tra 2026:</b> {n} hàng lệch từ 2 cây trở lên so với bảng chi tiết 2026: {list}. Đề nghị Giám sát kiểm tra lại các hàng này.',
+    hangChipPt: 'phúc tra lệch {d}',
     total: 'Tổng',
     rowsFoot: 'Nhập số âm? Không. Ô trống được tính là 0. Nút <b>=</b> cạnh Tổng ĐT để tự điền tổng 6 cột.',
     rowMissing: 'Thiếu ĐT',
@@ -570,6 +610,7 @@ const APP_I18N = {
     statusDone: 'Hoàn tất',
     statusMatch2026: 'Khớp 2026',
     statusError: 'Lỗi dữ liệu',
+    statusPhucTra: 'Cần phúc tra',
     statusWarn: 'Có cảnh báo',
     statusDiff: 'Lệch {n}',
     lotOutside: 'Lô ngoài danh mục',
@@ -804,6 +845,20 @@ const APP_I18N = {
     thHang: 'ជួរ',
     thTotal: 'សរុប',
     thCheck: 'ត្រួតពិនិត្យ',
+    thPhucTra: 'ផ្ទៀងផ្ទាត់',
+    thPhucTraTip: 'ប្រៀបធៀបសរុបដាំជួរនីមួយៗជាមួយតារាងលម្អិត 2026 · ខុសគ្នាចាប់ពី 2 ដើម នឹងត្រូវបន្លិច',
+    phucTraTip: 'រាប់ 2026: {ref} ដើម · 2027 ខុស {d}',
+    phucTraNoRef: 'គ្មានលេខ 2026 សម្រាប់ជួរនេះ',
+    rowsPtNote: 'ផ្ទៀងផ្ទាត់តាមតារាងលម្អិត 2026។ ជួរខុសចាប់ពី 2 ដើម ត្រូវបន្លិច ដើម្បីឱ្យអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញ។',
+    rowsPtNoData: 'ដីឡូតិ៍នេះមិនទាន់មានតារាងលម្អិត 2026 តាមជួរ (ដីឡូតិ៍បែងចែកច្រើនទិស A/B/C ឬដីឡូតិ៍ថ្មី) ដូច្នេះមិនអាចផ្ទៀងផ្ទាត់តាមជួរបានទេ។',
+    ptSumWarn: '{n} ជួរខុស',
+    ptSumWarnTip: '{n} ជួរខុសចាប់ពី 2 ដើមធៀប 2026 — ត្រូវពិនិត្យឡើងវិញ',
+    ptSumOk: 'ត្រូវ 2026',
+    checksPhucTra: '<b>ផ្ទៀងផ្ទាត់ 2026:</b> {n} ជួរខុសចាប់ពី 2 ដើម: {list}។ សូមអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញ។',
+    checksPhucTraOk: 'ផ្ទៀងផ្ទាត់ 2026: ជួរដែលបានបញ្ចូលត្រូវតារាងលម្អិត (ខុសក្រោម 2 ដើម)។',
+    checksPhucTraNoData: 'ដីឡូតិ៍បែងចែកច្រើនទិស (A/B/C): មិនទាន់មានតារាងលម្អិត 2026 សម្រាប់ផ្ទៀងផ្ទាត់តាមជួរ។',
+    alertPhucTra: '<b>ផ្ទៀងផ្ទាត់ 2026:</b> {n} ជួរខុសចាប់ពី 2 ដើមធៀបតារាងលម្អិត 2026: {list}។ សូមអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញជួរទាំងនេះ។',
+    hangChipPt: 'ផ្ទៀងផ្ទាត់ខុស {d}',
     total: 'សរុប',
     rowsFoot: 'បញ្ចូលលេខអវិជ្ជមាន? ទេ។ ប្រអប់ទទេគិតជា 0។ ប៊ូតុង <b>=</b> ក្បែរសរុប ដើម្បីបំពេញសរុប 6 ជួរឈរ។',
     rowMissing: 'ខ្វះសរុប',
@@ -856,6 +911,7 @@ const APP_I18N = {
     statusDone: 'រួចរាល់',
     statusMatch2026: 'ត្រូវនឹង 2026',
     statusError: 'ទិន្នន័យមានបញ្ហា',
+    statusPhucTra: 'ត្រូវផ្ទៀងផ្ទាត់',
     statusWarn: 'មានការព្រមាន',
     statusDiff: 'ខុសគ្នា {n}',
     lotOutside: 'ដីឡូតិ៍ក្រៅបញ្ជី',
@@ -1094,6 +1150,7 @@ function statusInfo(st) {
   if (st.level === 'doing') return { cls: 'doing', label: st.meta.pausedAt ? t('statusPaused') : t('statusDoing'), dot: 'doing' };
   if (st.level === 'done') return { cls: 'done', label: st.base ? t('statusMatch2026') : t('statusDone'), dot: 'done' };
   if (st.hasError) return { cls: 'warn', label: t('statusError'), dot: 'warn' };
+  if (st.hasPt) return { cls: 'warn', label: t('statusPhucTra'), dot: 'warn' };
   return { cls: 'warn', label: st.delta != null ? t('statusDiff', { n: signed(st.delta) }) : t('statusWarn'), dot: 'warn' };
 }
 function statusLabelVN(st) {
@@ -1101,6 +1158,7 @@ function statusLabelVN(st) {
   if (st.level === 'doing') return st.meta.pausedAt ? 'Tạm lưu' : 'Đang nhập';
   if (st.level === 'done') return st.base ? 'Khớp 2026' : 'Hoàn tất';
   if (st.hasError) return 'Lỗi dữ liệu';
+  if (st.hasPt) return 'Cần phúc tra';
   return st.delta != null ? `Lệch ${signed(st.delta)}` : 'Có cảnh báo';
 }
 
@@ -1407,11 +1465,25 @@ function sortedRows(key) {
   });
 }
 
+function ptCellHtml(pt) {
+  if (!pt) {
+    return `<span class="pt-empty" title="${esc(t('phucTraNoRef'))}">—</span>`;
+  }
+  const cls = pt.warn ? 'alert' : 'ok';
+  return `<span class="pt-cell ${cls}" title="${esc(t('phucTraTip', { ref: fmt(pt.ref), d: signed(pt.diff) }))}">
+    <span class="pt-ref">2026 · ${fmt(pt.ref)}</span>
+    <span class="pt-diff ${cls}">${signed(pt.diff)}</span>
+  </span>`;
+}
+
 function rowHtml(row, odd) {
+  const key = state.lot;
   const issue = rowIssue(row);
   const has = rowHasData(row);
   const sum = rowSum(row);
   const oddInfo = odd ? odd.get(row.uid) : null;
+  const pt = phucTraOf(key, row);
+  const ptWarn = !!(pt && pt.warn);
   let checkCls = 'empty', checkText = '—';
   if (has) {
     if (issue) {
@@ -1427,8 +1499,9 @@ function rowHtml(row, odd) {
   const dtTitle = oddInfo ? ` title="${t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.ref) })}"` : '';
   const input = (field, cls) => `<input class="${cls || ''}" type="number" inputmode="numeric" min="0" step="1"
       data-field="${field}" data-uid="${row.uid}" value="${row[field] == null ? '' : row[field]}" aria-label="${field}">`;
+  const rowCls = [oddInfo ? 'row-outlier' : '', ptWarn ? 'pt-warn' : ''].filter(Boolean).join(' ');
   return `
-    <tr data-uid="${row.uid}"${oddInfo ? ' class="row-outlier"' : ''}>
+    <tr data-uid="${row.uid}"${rowCls ? ` class="${rowCls}"` : ''}>
       <td><input class="hang-input" type="number" inputmode="numeric" min="1" step="1" data-field="hang" data-uid="${row.uid}" value="${row.hang == null ? '' : row.hang}" aria-label="${t('thHang')}"></td>
       <td><input class="dt-input${dtBad}${dtOdd}"${dtTitle} type="number" inputmode="numeric" min="0" step="1" data-field="dt" data-uid="${row.uid}" value="${row.dt == null ? '' : row.dt}" aria-label="dt"></td>
       <td>${input('g')}</td>
@@ -1437,6 +1510,7 @@ function rowHtml(row, odd) {
       <td>${input('k1')}</td>
       <td>${input('k2')}</td>
       <td>${input('o')}</td>
+      <td class="col-pt">${ptCellHtml(pt)}</td>
       <td class="col-check"><span class="row-check ${checkCls}">${checkText}</span></td>
       <td>
         <div class="row-tools">
@@ -1456,7 +1530,7 @@ function rebuildRowsTable() {
   const rows = sortedRows(state.lot);
   const body = $('#rowsBody');
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10"><div class="empty-rows">${t('emptyRows')}</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="11"><div class="empty-rows">${t('emptyRows')}</div></td></tr>`;
     return;
   }
   const odd = rowOutliers(rows);
@@ -1472,6 +1546,7 @@ function refreshLotDerived() {
   const issues = rowIssuesOf(rows);
   const dups = findDuplicates(rows);
   const dupsSet = new Set(dups);
+  const ptIssues = phucTraIssues(key);
   const base = BASE_BY_LOT.get(key);
   const meta = lotMeta(key);
   const delta = base && entered.length ? agg.dt - base.total : null;
@@ -1520,7 +1595,40 @@ function refreshLotDerived() {
       else if (issue) { cell.className = 'row-check bad'; cell.textContent = row.dt == null ? t('rowMissing') : t('rowDiff', { n: signed(Number(row.dt) - sum) }); }
       else { cell.className = 'row-check ok'; cell.textContent = t('rowOk'); }
     }
+    const pt = phucTraOf(key, row);
+    tr.classList.toggle('pt-warn', !!(pt && pt.warn));
+    const ptCell = tr.querySelector('.col-pt');
+    if (ptCell) ptCell.innerHTML = ptCellHtml(pt);
   });
+
+  const sumPt = $('#sumPt');
+  if (sumPt) {
+    if (!entered.length || !hasPhucTra(key)) {
+      sumPt.textContent = '—';
+      sumPt.className = 'pt-sum';
+      sumPt.removeAttribute('title');
+    } else if (ptIssues.length) {
+      sumPt.textContent = t('ptSumWarn', { n: ptIssues.length });
+      sumPt.className = 'pt-sum alert';
+      sumPt.title = t('ptSumWarnTip', { n: ptIssues.length });
+    } else {
+      sumPt.textContent = t('ptSumOk');
+      sumPt.className = 'pt-sum ok';
+      sumPt.removeAttribute('title');
+    }
+  }
+  const ptNoteEl = $('#rowsPtNote');
+  if (ptNoteEl) {
+    if (!hasPhucTra(key)) {
+      ptNoteEl.textContent = t('rowsPtNoData');
+      ptNoteEl.className = 'rows-pt-note muted';
+      ptNoteEl.hidden = false;
+    } else {
+      ptNoteEl.textContent = t('rowsPtNote');
+      ptNoteEl.className = 'rows-pt-note';
+      ptNoteEl.hidden = false;
+    }
+  }
 
   const oddNote = $('#rowsOddNote');
   if (oddNote) {
@@ -1545,8 +1653,8 @@ function refreshLotDerived() {
   }
 
   renderCompare({ base, agg, entered: entered.length, delta, meta });
-  renderAlerts({ base, agg, entered: entered.length, delta, meta, issues, dups });
-  renderChecks({ key, base, agg, entered: entered.length, delta, meta, issues, dups, rows });
+  renderAlerts({ base, agg, entered: entered.length, delta, meta, issues, dups, ptIssues });
+  renderChecks({ key, base, agg, entered: entered.length, delta, meta, issues, dups, rows, ptIssues });
   renderHangMap(key);
 }
 
@@ -1606,7 +1714,7 @@ function alertHtml(level, body, extraClass) {
   return `<div class="alert ${level}${extraClass ? ' ' + extraClass : ''}">${icon}<div class="alert-body">${body}</div></div>`;
 }
 
-function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
+function renderAlerts({ base, agg, entered, delta, meta, issues, dups, ptIssues }) {
   const alerts = [];
   if (!entered) {
     alerts.push(alertHtml('info', t('alertNoRows')));
@@ -1617,6 +1725,12 @@ function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
   }
   if (dups.length) {
     alerts.push(alertHtml('bad', t('alertDup', { list: dups.map(h => esc(h)).join(', ') })));
+  }
+  if (ptIssues.length) {
+    const list = ptIssues.slice(0, 6)
+      .map(x => `${t('checksRow', { h: esc(x.row.hang ?? '?') })} (${signed(x.pt.diff)})`)
+      .join(', ');
+    alerts.push(alertHtml('warn', t('alertPhucTra', { n: ptIssues.length, list: list + (ptIssues.length > 6 ? '…' : '') }), 'pt'));
   }
   if (entered && base) {
     if (delta !== 0) {
@@ -1640,7 +1754,7 @@ function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
   $('#lotAlerts').innerHTML = alerts.join('');
 }
 
-function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows }) {
+function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows, ptIssues }) {
   const items = [];
   const rowCount = entered;
   items.push(`<li class="check-item info">${t('checksTotalLine', { n: rowCount, dt: fmt(agg.dt) })}</li>`);
@@ -1653,6 +1767,18 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
     items.push(dups.length
       ? `<li class="check-item bad">${t('checksDup', { list: dups.map(h => esc(h)).join(', ') })}</li>`
       : `<li class="check-item ok">${t('checksNoDup')}</li>`);
+    if (hasPhucTra(key)) {
+      if (ptIssues.length) {
+        const list = ptIssues.slice(0, 8)
+          .map(x => `${esc(x.row.hang ?? '?')} (${signed(x.pt.diff)})`)
+          .join(', ');
+        items.push(`<li class="check-item pt">${t('checksPhucTra', { n: ptIssues.length, list: list + (ptIssues.length > 8 ? '…' : '') })}</li>`);
+      } else {
+        items.push(`<li class="check-item ok">${t('checksPhucTraOk')}</li>`);
+      }
+    } else {
+      items.push(`<li class="check-item info">${t('checksPhucTraNoData')}</li>`);
+    }
     const missing = missingHangs(rows);
     if (missing.length) {
       const show = missing.slice(0, 12).map(h => esc(h)).join(', ');
@@ -1696,7 +1822,10 @@ function renderHangMap(key) {
     if (row) {
       const bad = !!rowIssue(row);
       const oddCls = odd.has(row.uid) ? ' odd' : '';
-      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${oddCls}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="${t('hangChipEdit', { h, st: bad ? t('hangChipDiff') : t('hangChipMatched') })}">${h}</button>`);
+      const pt = phucTraOf(key, row);
+      const ptCls = pt && pt.warn ? ' pt' : '';
+      const ptTip = pt && pt.warn ? ' · ' + t('hangChipPt', { d: signed(pt.diff) }) : '';
+      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${oddCls}${ptCls}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="${t('hangChipEdit', { h, st: bad ? t('hangChipDiff') : t('hangChipMatched') })}${ptTip}">${h}</button>`);
     } else {
       chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill" title="${t('hangChipFill', { h })}">${h}</button>`);
     }
@@ -2558,11 +2687,16 @@ function exportLot(key) {
   ];
   const issues = rowIssuesOf(rows);
   const dups = findDuplicates(rows);
-  if (!issues.length && !dups.length) {
+  const ptIssues = phucTraIssues(key);
+  if (!issues.length && !dups.length && !ptIssues.length) {
     cmp.push(['Không có lỗi tổng hàng hoặc hàng trùng.']);
   } else {
     issues.forEach(x => cmp.push([`Hàng ${x.row.hang ?? '?'}`, issueTextVN(x.row)]));
     if (dups.length) cmp.push(['Hàng trùng', dups.join(', ')]);
+    ptIssues.forEach(x => cmp.push([
+      `Phúc tra hàng ${x.row.hang ?? '?'}`,
+      `2026: ${x.pt.ref} · 2027: ${x.row.dt} · lệch ${signed(x.pt.diff)} (≥2 cây — cần kiểm tra lại)`,
+    ]));
   }
   if (base && base.mismatch) cmp.push(['Baseline 2026', `File gốc tự lệch ${base.mismatch} cây giữa tổng và 6 cột.`]);
   const ws2 = makeSheet(cmp, ['A1:D1'], [22, 16, 16, 16]);
@@ -2657,6 +2791,10 @@ function exportAll() {
       checkNo += 1;
       check.push([checkNo, key, 'Lỗi', `Hàng trùng số ${h}`, st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
     });
+    st.ptIssues.forEach(x => {
+      checkNo += 1;
+      check.push([checkNo, key, 'Phúc tra', `Hàng ${x.row.hang ?? '?'}: 2026 ${x.pt.ref} · 2027 ${x.row.dt} · lệch ${signed(x.pt.diff)} (≥2 cây — cần kiểm tra lại)`, x.pt.ref, x.row.dt, x.pt.diff]);
+    });
     if (st.base && st.delta !== 0) {
       checkNo += 1;
       check.push([checkNo, key, st.meta.done ? 'Cảnh báo' : 'Tạm tính', `Tổng 2027 lệch 2026 ${signed(st.delta)} cây (${pct(st.delta, st.base.total)})`, st.base.total, st.agg.dt, st.delta]);
@@ -2674,7 +2812,7 @@ function exportAll() {
   const wsCheck = makeSheet(check, null, [6, 9, 12, 60, 12, 12, 12]);
   XLSX.utils.book_append_sheet(wb, wsCheck, 'Kiểm tra');
 
-  const progress = [['STT', 'Lô', 'ID lô', 'Đội', 'Diện tích (ha)', 'Số hàng đã nhập', 'Tổng ĐT 2027', 'Tổng 2026', 'Lệch', '% lệch', 'Hoàn tất', 'Hoàn tất lúc', 'Trạng thái', 'Lỗi hàng']];
+  const progress = [['STT', 'Lô', 'ID lô', 'Đội', 'Diện tích (ha)', 'Số hàng đã nhập', 'Tổng ĐT 2027', 'Tổng 2026', 'Lệch', '% lệch', 'Hoàn tất', 'Hoàn tất lúc', 'Trạng thái', 'Lỗi hàng', 'Phúc tra lệch']];
   keys.forEach((key, idx) => {
     const st = lotState(key);
     const base = st.base;
@@ -2686,10 +2824,10 @@ function exportAll() {
       st.entered.length, has ? st.agg.dt : '', base ? base.total : '',
       delta, ratio, st.meta.done ? 'Có' : 'Không',
       st.meta.done && st.meta.doneAt ? dateTimeVN(st.meta.doneAt) : '',
-      statusInfo(st).label, st.issues.length + st.dups.length,
+      statusInfo(st).label, st.issues.length + st.dups.length, st.ptIssues.length,
     ]);
   });
-  const wsProgress = makeSheet(progress, null, [6, 9, 20, 6, 11, 12, 14, 12, 10, 9, 9, 18, 15, 9], { 4: '#,##0.00', 9: '0.00%' });
+  const wsProgress = makeSheet(progress, null, [6, 9, 20, 6, 11, 12, 14, 12, 10, 9, 9, 18, 15, 9, 11], { 4: '#,##0.00', 9: '0.00%' });
   XLSX.utils.book_append_sheet(wb, wsProgress, 'Tiến độ');
 
   downloadWorkbook(wb, `KK2027_TongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
