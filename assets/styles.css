@@ -369,6 +369,7 @@ b{font-weight:650}
 #quickDialog.lang-km .qgrid label:not(.qdt),#quickDialog.lang-km .qgrid input,#quickDialog.lang-km .qhang input{font-family:var(--tab-nums)}
 body.lang-km{font-family:var(--font-ui),"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",sans-serif}
 body.lang-km .brand h1,body.lang-km .hero h2,body.lang-km .dialog-head h3{font-family:"Noto Sans Khmer","Khmer OS Battambang",var(--font-ui),sans-serif}
+body.lang-km .lot-head h2{font-family:"Noto Sans Khmer","Khmer OS Battambang",var(--font-ui),sans-serif;font-size:clamp(22px,3vw,30px);line-height:1.6;letter-spacing:0}
 body.lang-km .v,body.lang-km .stat b,body.lang-km .zone-count,body.lang-km .hang-chip,
 body.lang-km .rows-table input{font-family:var(--tab-nums)}
 
