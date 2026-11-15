@@ -419,6 +419,10 @@ const APP_I18N = {
     langVi: 'Tiếng Việt',
     langKm: 'ខ្មែរ',
     langTitle: 'Chọn ngôn ngữ',
+    langToVi: 'Tiếng Việt',
+    langToKm: 'ខ្មែរ',
+    langToggleAriaVi: 'Chuyển sang tiếng Việt',
+    langToggleAriaKm: 'Chuyển sang tiếng Khmer',
     langLead: 'Ngôn ngữ áp dụng cho toàn bộ ứng dụng. Có thể đổi lại trong Menu.',
     langFoot: 'Số, số lô và ký hiệu G, +, C, K1, K2, O giữ nguyên ở cả hai ngôn ngữ.',
     heroEyebrow: 'Kiểm kê 0h · 01/01/2027',
@@ -700,6 +704,10 @@ const APP_I18N = {
     langVi: 'ភាសាវៀតណាម',
     langKm: 'ខ្មែរ',
     langTitle: 'ជ្រើសរើសភាសា',
+    langToVi: 'Tiếng Việt',
+    langToKm: 'ខ្មែរ',
+    langToggleAriaVi: 'ប្តូរទៅភាសាវៀតណាម',
+    langToggleAriaKm: 'ប្តូរទៅភាសាខ្មែរ',
     langLead: 'ភាសានឹងប្រើសម្រាប់កម្មវិធីទាំងមូល។ អាចប្តូរវិញនៅក្នុងម៉ឺនុយ។',
     langFoot: 'លេខ លេខដីឡូតិ៍ និងសញ្ញា G, +, C, K1, K2, O រក្សាដូចដើមទាំងពីរភាសា។',
     heroEyebrow: 'ការរាប់ពេល 0 ម៉ោង · 01/01/2027',
@@ -2135,6 +2143,12 @@ function syncLanguageUi() {
   $$('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
   const langSub = $('#menuLangSub');
   if (langSub) langSub.textContent = t(state.lang === 'km' ? 'langKm' : 'langVi');
+  const langBtn = $('#btnLangToggle');
+  if (langBtn) {
+    langBtn.textContent = state.lang === 'km' ? t('langToVi') : t('langToKm');
+    langBtn.setAttribute('aria-label', state.lang === 'km' ? t('langToggleAriaVi') : t('langToggleAriaKm'));
+    langBtn.title = langBtn.getAttribute('aria-label');
+  }
   applyQuickLang();
   updateSyncUi();
 }
@@ -3120,6 +3134,7 @@ function setupDialogs() {
 
   const menu = $('#menuDialog');
   $('#btnMenu').addEventListener('click', () => menu.showModal());
+  $('#btnLangToggle').addEventListener('click', () => setLang(state.lang === 'km' ? 'vi' : 'km'));
   $('#btnMenuClose').addEventListener('click', () => menu.close());
   $('#menuLang').addEventListener('click', () => {
     menu.close();

@@ -84,6 +84,8 @@ b{font-weight:650}
 .btn-primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);box-shadow:0 6px 18px rgba(217,119,87,.28)}
 .btn-lg{padding:12px 20px;font-size:15px;min-height:48px;border-radius:12px}
 .btn-sm{padding:7px 11px;font-size:13px;min-height:34px;border-radius:9px}
+.btn-lang{padding:7px 12px;font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.01em;font-family:var(--font-ui),"Noto Sans Khmer","Khmer OS Battambang",sans-serif}
+.btn-lang:hover{color:var(--ink)}
 .btn-icon{padding:0;width:40px;height:40px;min-height:0;border-radius:10px}
 .btn-ghost{background:transparent;border-color:transparent}
 .btn-ghost:hover{background:var(--surface-2)}
