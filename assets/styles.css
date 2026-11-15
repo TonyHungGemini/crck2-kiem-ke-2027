@@ -24,7 +24,7 @@
   --radius-sm:10px;
   --shadow:0 1px 2px rgba(43,38,28,.04), 0 8px 24px rgba(43,38,28,.05);
   --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
-  --font-display:"Iowan Old Style","Palatino Linotype","Book Antiqua",Georgia,"Times New Roman",serif;
+  --font-display:"Charter","Bitstream Charter",Georgia,"Noto Serif","Times New Roman",serif;
   --tab-nums:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
@@ -365,12 +365,12 @@ b{font-weight:650}
   font-size:11.5px;font-weight:700;color:var(--muted);line-height:1;
 }
 .lang-seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
-#quickDialog.lang-km{font-family:"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",var(--font-ui),sans-serif}
+#quickDialog.lang-km{font-family:var(--font-ui),"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",sans-serif}
 #quickDialog.lang-km .qgrid label:not(.qdt),#quickDialog.lang-km .qgrid input,#quickDialog.lang-km .qhang input{font-family:var(--tab-nums)}
-body.lang-km{font-family:"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",var(--font-ui),sans-serif}
+body.lang-km{font-family:var(--font-ui),"Noto Sans Khmer","Khmer OS Battambang","Khmer OS",sans-serif}
 body.lang-km .brand h1,body.lang-km .hero h2,body.lang-km .dialog-head h3{font-family:"Noto Sans Khmer","Khmer OS Battambang",var(--font-ui),sans-serif}
-body.lang-km .v,body.lang-km .stat b,body.lang-km .lot-name,body.lang-km .zone-count,body.lang-km .hang-chip,
-body.lang-km .rows-table input,body.lang-km .compare-table td,body.lang-km .map-pop table td{font-family:var(--tab-nums)}
+body.lang-km .v,body.lang-km .stat b,body.lang-km .zone-count,body.lang-km .hang-chip,
+body.lang-km .rows-table input{font-family:var(--tab-nums)}
 
 /* ---------- CHỌN NGÔN NGỮ ---------- */
 .lang-dialog .dialog-shell{width:min(460px,calc(100vw - 28px));margin:min(18vh,140px) auto 20px;padding:24px 22px 20px}
