@@ -205,6 +205,24 @@ function issueTextVN(row) {
   const dt = Number(row.dt) || 0;
   return `Tổng ĐT ${fmt(dt)} ≠ tổng 6 cột ${fmt(sum)} (lệch ${signed(dt - sum)})`;
 }
+/* Hàng có Tổng ĐT lệch bất thường so với trung vị của các hàng còn lại (MAD). */
+function rowOutliers(rows) {
+  const vals = rows
+    .filter(r => rowHasData(r) && r.dt != null && Number(r.dt) > 0)
+    .map(r => ({ uid: r.uid, v: Number(r.dt) }));
+  if (vals.length < 4) return new Map();
+  const sorted = vals.map(o => o.v).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const devs = sorted.map(v => Math.abs(v - median)).sort((a, b) => a - b);
+  const mad = devs[Math.floor(devs.length / 2)];
+  const limit = Math.max(mad ? (3.5 * mad) / 0.6745 : 0, median * 0.2);
+  const flags = new Map();
+  vals.forEach(({ uid, v }) => {
+    const diff = v - median;
+    if (Math.abs(diff) > limit) flags.set(uid, { diff, median });
+  });
+  return flags.size * 2 >= vals.length ? new Map() : flags;
+}
 function aggregate(rows) {
   const a = { dt: 0, g: 0, plus: 0, c: 0, k1: 0, k2: 0, o: 0, count: 0 };
   rows.forEach(row => {
@@ -495,6 +513,8 @@ const APP_I18N = {
     rowMissing: 'Thiếu ĐT',
     rowDiff: 'Lệch {n}',
     rowOk: 'Khớp',
+    rowsOddNote: 'Có {n} hàng có Tổng ĐT khác thường so với các hàng còn lại (trung vị {med}): hàng {list}. Xem lại trước khi chốt lô.',
+    rowOddTip: 'Tổng ĐT lệch {n} cây so với trung vị {med} của lô',
     treeUnit: 'cây',
     emptyRows: 'Chưa có hàng nào. Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ, hoặc <b>+ Thêm hàng</b> để nhập thủ công.',
     sumIssues: '{n} hàng lệch tổng',
@@ -774,6 +794,8 @@ const APP_I18N = {
     rowMissing: 'ខ្វះសរុប',
     rowDiff: 'ខុសគ្នា {n}',
     rowOk: 'ត្រូវគ្នា',
+    rowsOddNote: 'មាន {n} ជួរដែលសរុបដាំមិនធម្មតាធៀបនឹងជួរផ្សេង (មេដ្យាន {med}): ជួរ {list}។ សូមពិនិត្យឡើងវិញមុនបិទដីឡូតិ៍។',
+    rowOddTip: 'សរុបដាំខុស {n} ដើមពីមេដ្យាន {med} នៃដីឡូតិ៍',
     treeUnit: 'ដើម',
     emptyRows: 'មិនទាន់មានជួរណាមួយ។ ចុច <b>បញ្ចូលរហ័ស</b> ដើម្បីបញ្ចូល 2 ជួរក្នុងមួយសន្លឹក ឬ <b>+ បន្ថែមជួរ</b> ដើម្បីបញ្ចូលដោយដៃ។',
     sumIssues: 'ជួរ {n} ខុសសរុប',
@@ -1369,10 +1391,11 @@ function sortedRows(key) {
   });
 }
 
-function rowHtml(row) {
+function rowHtml(row, odd) {
   const issue = rowIssue(row);
   const has = rowHasData(row);
   const sum = rowSum(row);
+  const oddInfo = odd ? odd.get(row.uid) : null;
   let checkCls = 'empty', checkText = '—';
   if (has) {
     if (issue) {
@@ -1384,12 +1407,14 @@ function rowHtml(row) {
     }
   }
   const dtBad = issue && row.dt != null ? ' bad' : '';
+  const dtOdd = oddInfo ? ' odd' : '';
+  const dtTitle = oddInfo ? ` title="${t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.median) })}"` : '';
   const input = (field, cls) => `<input class="${cls || ''}" type="number" inputmode="numeric" min="0" step="1"
       data-field="${field}" data-uid="${row.uid}" value="${row[field] == null ? '' : row[field]}" aria-label="${field}">`;
   return `
-    <tr data-uid="${row.uid}">
+    <tr data-uid="${row.uid}"${oddInfo ? ' class="row-outlier"' : ''}>
       <td><input class="hang-input" type="number" inputmode="numeric" min="1" step="1" data-field="hang" data-uid="${row.uid}" value="${row.hang == null ? '' : row.hang}" aria-label="${t('thHang')}"></td>
-      <td>${input('dt', 'dt-input' + dtBad)}</td>
+      <td><input class="dt-input${dtBad}${dtOdd}"${dtTitle} type="number" inputmode="numeric" min="0" step="1" data-field="dt" data-uid="${row.uid}" value="${row.dt == null ? '' : row.dt}" aria-label="dt"></td>
       <td>${input('g')}</td>
       <td>${input('plus')}</td>
       <td>${input('c')}</td>
@@ -1415,7 +1440,8 @@ function rebuildRowsTable() {
     body.innerHTML = `<tr><td colspan="10"><div class="empty-rows">${t('emptyRows')}</div></td></tr>`;
     return;
   }
-  body.innerHTML = rows.map(rowHtml).join('');
+  const odd = rowOutliers(rows);
+  body.innerHTML = rows.map(row => rowHtml(row, odd)).join('');
 }
 
 function refreshLotDerived() {
@@ -1452,13 +1478,21 @@ function refreshLotDerived() {
   $('#rowCountLabel').textContent = t('rowCount', { n: entered.length });
 
   // cập nhật từng dòng
+  const odd = rowOutliers(rows);
   rows.forEach(row => {
     const tr = $(`#rowsBody tr[data-uid="${CSS.escape(row.uid)}"]`);
     if (!tr) return;
     const issue = rowIssue(row);
     const sum = rowSum(row);
+    const oddInfo = odd.get(row.uid);
+    tr.classList.toggle('row-outlier', !!oddInfo);
     const dtInput = tr.querySelector('input[data-field="dt"]');
-    if (dtInput) dtInput.classList.toggle('bad', !!(issue && row.dt != null));
+    if (dtInput) {
+      dtInput.classList.toggle('bad', !!(issue && row.dt != null));
+      dtInput.classList.toggle('odd', !!oddInfo);
+      if (oddInfo) dtInput.title = t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.median) });
+      else dtInput.removeAttribute('title');
+    }
     const hangInput = tr.querySelector('input[data-field="hang"]');
     if (hangInput) hangInput.classList.toggle('dup', row.hang != null && dupsSet.has(row.hang));
     const cell = tr.querySelector('.row-check');
@@ -1468,6 +1502,22 @@ function refreshLotDerived() {
       else { cell.className = 'row-check ok'; cell.textContent = t('rowOk'); }
     }
   });
+
+  const oddNote = $('#rowsOddNote');
+  if (oddNote) {
+    if (odd.size) {
+      const list = rows
+        .filter(r => odd.has(r.uid))
+        .sort((a, b) => (a.hang == null ? 1e9 : a.hang) - (b.hang == null ? 1e9 : b.hang))
+        .map(r => (r.hang == null ? '—' : r.hang))
+        .join(', ');
+      oddNote.textContent = t('rowsOddNote', { n: odd.size, list, med: fmt(odd.values().next().value.median) });
+      oddNote.hidden = false;
+    } else {
+      oddNote.hidden = true;
+      oddNote.textContent = '';
+    }
+  }
 
   const doneBtn = $('#btnToggleDone');
   if (doneBtn && state.view === 'lot') {
@@ -1618,6 +1668,7 @@ function renderHangMap(key) {
   const byHang = new Map(entered.map(r => [r.hang, r]));
   const gaps = missingHangs(rows);
   const issues = rowIssuesOf(rows).length;
+  const odd = rowOutliers(rows);
   const resume = gaps.length ? gaps[0] : max + 1;
   const chips = [];
   const cap = Math.min(max, 200);
@@ -1625,7 +1676,8 @@ function renderHangMap(key) {
     const row = byHang.get(h);
     if (row) {
       const bad = !!rowIssue(row);
-      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="${t('hangChipEdit', { h, st: bad ? t('hangChipDiff') : t('hangChipMatched') })}">${h}</button>`);
+      const oddCls = odd.has(row.uid) ? ' odd' : '';
+      chips.push(`<button class="hang-chip ${bad ? 'bad' : 'ok'}${oddCls}${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="edit" title="${t('hangChipEdit', { h, st: bad ? t('hangChipDiff') : t('hangChipMatched') })}">${h}</button>`);
     } else {
       chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill" title="${t('hangChipFill', { h })}">${h}</button>`);
     }
