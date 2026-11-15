@@ -1,9 +1,9 @@
-const CACHE = 'kk2027-v21';
+const CACHE = 'kk2027-v22';
 const ASSETS = [
   './',
   './index.html',
-  './assets/styles.css?v=21',
-  './assets/app.js?v=21',
+  './assets/styles.css?v=22',
+  './assets/app.js?v=22',
   './assets/baseline.js',
   './assets/geo.js',
   './apps-script/Code.gs',

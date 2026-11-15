@@ -205,23 +205,27 @@ function issueTextVN(row) {
   const dt = Number(row.dt) || 0;
   return `Tổng ĐT ${fmt(dt)} ≠ tổng 6 cột ${fmt(sum)} (lệch ${signed(dt - sum)})`;
 }
-/* Hàng có Tổng ĐT lệch bất thường so với trung vị của các hàng còn lại (MAD). */
+/* Hàng có Tổng ĐT khác mức chung (giá trị xuất hiện nhiều nhất) của lô. */
 function rowOutliers(rows) {
   const vals = rows
     .filter(r => rowHasData(r) && r.dt != null && Number(r.dt) > 0)
     .map(r => ({ uid: r.uid, v: Number(r.dt) }));
   if (vals.length < 4) return new Map();
-  const sorted = vals.map(o => o.v).sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const devs = sorted.map(v => Math.abs(v - median)).sort((a, b) => a - b);
-  const mad = devs[Math.floor(devs.length / 2)];
-  const limit = Math.max(mad ? (3.5 * mad) / 0.6745 : 0, median * 0.2);
+  const freq = new Map();
+  vals.forEach(o => freq.set(o.v, (freq.get(o.v) || 0) + 1));
+  let ref = null;
+  let best = 0;
+  let tie = false;
+  freq.forEach((count, v) => {
+    if (count > best) { best = count; ref = v; tie = false; }
+    else if (count === best) tie = true;
+  });
+  if (ref == null || best < 2 || tie) return new Map();
   const flags = new Map();
   vals.forEach(({ uid, v }) => {
-    const diff = v - median;
-    if (Math.abs(diff) > limit) flags.set(uid, { diff, median });
+    if (v !== ref) flags.set(uid, { diff: v - ref, ref });
   });
-  return flags.size * 2 >= vals.length ? new Map() : flags;
+  return flags;
 }
 function aggregate(rows) {
   const a = { dt: 0, g: 0, plus: 0, c: 0, k1: 0, k2: 0, o: 0, count: 0 };
@@ -517,8 +521,8 @@ const APP_I18N = {
     rowMissing: 'Thiếu ĐT',
     rowDiff: 'Lệch {n}',
     rowOk: 'Khớp',
-    rowsOddNote: 'Có {n} hàng có Tổng ĐT khác thường so với các hàng còn lại (trung vị {med}): hàng {list}. Xem lại trước khi chốt lô.',
-    rowOddTip: 'Tổng ĐT lệch {n} cây so với trung vị {med} của lô',
+    rowsOddNote: 'Có {n} hàng có Tổng ĐT khác mức chung {med}: hàng {list}. Xem lại trước khi chốt lô.',
+    rowOddTip: 'Tổng ĐT lệch {n} cây so với mức chung {med} của lô',
     treeUnit: 'cây',
     emptyRows: 'Chưa có hàng nào. Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ, hoặc <b>+ Thêm hàng</b> để nhập thủ công.',
     sumIssues: '{n} hàng lệch tổng',
@@ -802,8 +806,8 @@ const APP_I18N = {
     rowMissing: 'ខ្វះសរុប',
     rowDiff: 'ខុសគ្នា {n}',
     rowOk: 'ត្រូវគ្នា',
-    rowsOddNote: 'មាន {n} ជួរដែលសរុបដាំមិនធម្មតាធៀបនឹងជួរផ្សេង (មេដ្យាន {med}): ជួរ {list}។ សូមពិនិត្យឡើងវិញមុនបិទដីឡូតិ៍។',
-    rowOddTip: 'សរុបដាំខុស {n} ដើមពីមេដ្យាន {med} នៃដីឡូតិ៍',
+    rowsOddNote: 'មាន {n} ជួរដែលសរុបដាំខុសពីកម្រិតធម្មតា {med}: ជួរ {list}។ សូមពិនិត្យឡើងវិញមុនបិទដីឡូតិ៍។',
+    rowOddTip: 'សរុបដាំខុស {n} ដើមពីកម្រិតធម្មតា {med} នៃដីឡូតិ៍',
     treeUnit: 'ដើម',
     emptyRows: 'មិនទាន់មានជួរណាមួយ។ ចុច <b>បញ្ចូលរហ័ស</b> ដើម្បីបញ្ចូល 2 ជួរក្នុងមួយសន្លឹក ឬ <b>+ បន្ថែមជួរ</b> ដើម្បីបញ្ចូលដោយដៃ។',
     sumIssues: 'ជួរ {n} ខុសសរុប',
@@ -1416,7 +1420,7 @@ function rowHtml(row, odd) {
   }
   const dtBad = issue && row.dt != null ? ' bad' : '';
   const dtOdd = oddInfo ? ' odd' : '';
-  const dtTitle = oddInfo ? ` title="${t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.median) })}"` : '';
+  const dtTitle = oddInfo ? ` title="${t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.ref) })}"` : '';
   const input = (field, cls) => `<input class="${cls || ''}" type="number" inputmode="numeric" min="0" step="1"
       data-field="${field}" data-uid="${row.uid}" value="${row[field] == null ? '' : row[field]}" aria-label="${field}">`;
   return `
@@ -1498,7 +1502,7 @@ function refreshLotDerived() {
     if (dtInput) {
       dtInput.classList.toggle('bad', !!(issue && row.dt != null));
       dtInput.classList.toggle('odd', !!oddInfo);
-      if (oddInfo) dtInput.title = t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.median) });
+      if (oddInfo) dtInput.title = t('rowOddTip', { n: signed(oddInfo.diff), med: fmt(oddInfo.ref) });
       else dtInput.removeAttribute('title');
     }
     const hangInput = tr.querySelector('input[data-field="hang"]');
@@ -1519,7 +1523,7 @@ function refreshLotDerived() {
         .sort((a, b) => (a.hang == null ? 1e9 : a.hang) - (b.hang == null ? 1e9 : b.hang))
         .map(r => (r.hang == null ? '—' : r.hang))
         .join(', ');
-      oddNote.textContent = t('rowsOddNote', { n: odd.size, list, med: fmt(odd.values().next().value.median) });
+      oddNote.textContent = t('rowsOddNote', { n: odd.size, list, med: fmt(odd.values().next().value.ref) });
       oddNote.hidden = false;
     } else {
       oddNote.hidden = true;
