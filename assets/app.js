@@ -587,7 +587,7 @@ const APP_I18N = {
     alertAllOk: 'Dữ liệu đang khớp. Nếu đã nhập đủ, bấm <b>Đánh dấu hoàn tất</b> để chốt lô.',
     alertMsgDiff: 'Tổng 2027 <b>{dt}</b> so với 2026 <b>{base}</b> · lệch <b>{d}</b> ({p}).',
     alertDoneDiff: '<b>Lô đã hoàn tất nhưng còn lệch.</b> {msg}<br>Kiểm tra lại các hàng đã nhập hoặc phiếu giấy.',
-    alertTempDiff: '<b>Lệch tạm tính.</b> {msg}<br>Nếu lô chưa nhập đủ hàng thì bỏ qua cảnh báo này. Khi nhập xong, đánh dấu hoàn tất để chốt.',
+    alertTempDiff: '<b>Lệch tạm tính.</b> {msg}<br>Nếu lô chưa nhập đủ hàng thì bỏ qua cảnh báo này. Khi nhập xong, <b>đánh dấu hoàn tất</b> để chốt lô — hệ thống sẽ tự động gửi file báo cáo cho Trợ lý tổng hợp.',
     alertMatch: '<b>Tổng 2027 khớp 2026:</b> {n}',
     alertBaseMismatch: '<b>Baseline 2026 có nội bộ lệch {n}.</b> Tổng số cây KK là {total}, nhưng cộng 6 cột chỉ {sum}. Nên kiểm tra lại file 2026 gốc.',
     checksMissingRow: 'Còn thiếu <b>{n}</b> hàng trong dãy 1–{max}: {list}.',
@@ -872,7 +872,7 @@ const APP_I18N = {
     alertAllOk: 'ទិន្នន័យត្រូវគ្នា។ បើបញ្ចូលគ្រប់ ចុច <b>សម្គាល់ថារួចរាល់</b> ដើម្បីបិទដីឡូតិ៍។',
     alertMsgDiff: 'សរុប 2027 <b>{dt}</b> ធៀប 2026 <b>{base}</b> · ខុសគ្នា <b>{d}</b> ({p})។',
     alertDoneDiff: '<b>ដីឡូតិ៍រួចរាល់ហើយ តែនៅខុសគ្នា។</b> {msg}<br>ពិនិត្យជួរដែលបានបញ្ចូល ឬសន្លឹកក្រដាសឡើងវិញ។',
-    alertTempDiff: '<b>ខុសគ្នាបណ្ដោះអាសន្ន។</b> {msg}<br>បើដីឡូតិ៍មិនទាន់បញ្ចូលគ្រប់ជួរ សូមមិនខ្វល់ការព្រមាននេះ។ បញ្ចូលរួចហើយ សម្គាល់ថារួចរាល់។',
+    alertTempDiff: '<b>ខុសគ្នាបណ្ដោះអាសន្ន។</b> {msg}<br>បើដីឡូតិ៍មិនទាន់បញ្ចូលគ្រប់ជួរ សូមមិនខ្វល់ការព្រមាននេះ។ ពេលបញ្ចូលរួចហើយ <b>សម្គាល់ថារួចរាល់</b> ដើម្បីបិទដីឡូតិ៍ — ប្រព័ន្ធនឹងផ្ញើឯកសាររាយការណ៍ដោយស្វ័យប្រវត្តិទៅជំនួយការសម្របសម្រួល។',
     alertMatch: '<b>សរុប 2027 ត្រូវនឹង 2026:</b> {n}',
     alertBaseMismatch: '<b>ទិន្នន័យគោល 2026 ខុសគ្នាខាងក្នុង {n}។</b> សរុបដើមគឺ {total} តែផលបូក 6 ជួរឈរគ្រាន់តែ {sum}។ គួរពិនិត្យឯកសារ 2026 ដើមឡើងវិញ។',
     checksMissingRow: 'នៅខ្វះ <b>{n}</b> ជួរក្នុងជួរលេខ 1–{max}: {list}។',
@@ -1590,13 +1590,13 @@ function renderCompare({ base, agg, entered, delta, meta }) {
   }
 }
 
-function alertHtml(level, body) {
+function alertHtml(level, body, extraClass) {
   const icon = level === 'ok'
     ? '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M5 12.5l4.2 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : level === 'bad'
       ? '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5v5.2M12 16.4v.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
       : '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 4l8.5 15h-17L12 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.2v4M12 16.3v.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
-  return `<div class="alert ${level}">${icon}<div class="alert-body">${body}</div></div>`;
+  return `<div class="alert ${level}${extraClass ? ' ' + extraClass : ''}">${icon}<div class="alert-body">${body}</div></div>`;
 }
 
 function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
@@ -1616,7 +1616,7 @@ function renderAlerts({ base, agg, entered, delta, meta, issues, dups }) {
       const msg = t('alertMsgDiff', { dt: fmt(agg.dt), base: fmt(base.total), d: signed(delta), p: pct(delta, base.total) });
       alerts.push(meta.done
         ? alertHtml('bad', t('alertDoneDiff', { msg }))
-        : alertHtml('warn', t('alertTempDiff', { msg })));
+        : alertHtml('warn', t('alertTempDiff', { msg }), 'alert-cta'));
     } else {
       alerts.push(alertHtml('ok', t('alertMatch', { n: fmt(base.total) })));
     }
