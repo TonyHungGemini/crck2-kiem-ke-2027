@@ -25,7 +25,9 @@ kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễ
    - **Ai có quyền truy cập:** Mọi người
    - Bấm **Triển khai**, cấp quyền nếu được hỏi.
 7. Sao chép URL dạng `https://script.google.com/macros/s/…/exec`.
-8. Quay lại app, dán URL vào ô **URL Web App**, bấm **Lưu cấu hình**, rồi **Gửi thử**.
+8. App đã điền sẵn URL này; máy mới mở app là đồng bộ được ngay.
+   Nếu anh tự tạo dự án Apps Script khác, dán URL của mình vào ô **URL Web App**,
+   bấm **Lưu cấu hình**, rồi **Gửi thử**.
    - Nhận được mail “Mail thử kết nối” là xong.
    - Nếu không thấy mail, kiểm tra mục **Thư rác/Spam**.
 

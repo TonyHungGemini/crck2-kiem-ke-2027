@@ -6,6 +6,7 @@
    ============================================================ */
 const STORE_KEY = 'crck2.kk2027.v1';
 const SYNC_KEY = 'crck2.kk2027.sync.v1';
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbw4IYI3JHEnmt3GdwFp_sdr4obTpT6HCOxoLS4a3SQI_9DWWWKd_2cuWYygu6rgQcYR/exec';
 const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
 const LANG_KEY = 'crck2.kk2027.lang.v1';
 const DRAFT_KEY = 'crck2.kk2027.qdraft.v1';
@@ -122,13 +123,13 @@ function loadSyncCfg() {
   try {
     const d = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}');
     return {
-      url: typeof d.url === 'string' ? d.url : '',
+      url: typeof d.url === 'string' ? d.url : DEFAULT_SYNC_URL,
       enabled: d.enabled !== false,
       lastSyncAt: d.lastSyncAt || null,
       lastResult: d.lastResult || '',
     };
   } catch (err) {
-    return { url: '', enabled: true, lastSyncAt: null, lastResult: '' };
+    return { url: DEFAULT_SYNC_URL, enabled: true, lastSyncAt: null, lastResult: '' };
   }
 }
 let syncCfg = loadSyncCfg();
@@ -661,6 +662,7 @@ const APP_I18N = {
     remoteWarn: 'Máy khác: cảnh báo',
     remotePopNote: 'Số liệu từ máy khác · cập nhật {time}',
     remoteNone: 'Chưa có tiến độ từ máy khác.',
+    remoteEmpty: 'Đã kết nối Google · hiện chưa có lô nào từ máy khác.',
     remotePulling: 'Đang tải tiến độ đội…',
     remotePulled: 'Đã tải tiến độ đội: {n} lô.',
     remotePullFail: 'Không tải được tiến độ: {err}',
@@ -939,6 +941,7 @@ const APP_I18N = {
     remoteWarn: 'ម៉ាស៊ីនផ្សេង៖ ការព្រមាន',
     remotePopNote: 'ទិន្នន័យពីម៉ាស៊ីនផ្សេង · ធ្វើបច្ចុប្បន្នភាព {time}',
     remoteNone: 'មិនមានវឌ្ឍនភាពពីម៉ាស៊ីនផ្សេងទេ។',
+    remoteEmpty: 'បានភ្ជាប់ Google · មិនទាន់មានដីឡូតិ៍ពីម៉ាស៊ីនផ្សេងទេ។',
     remotePulling: 'កំពុងទាញវឌ្ឍនភាពក្រុម…',
     remotePulled: 'បានទាញវឌ្ឍនភាព៖ {n} ដីឡូតិ៍។',
     remotePullFail: 'មិនអាចទាញវឌ្ឍនភាព៖ {err}',
@@ -2849,6 +2852,7 @@ function openSyncDialog() {
 }
 
 let remoteBusy = false;
+let remoteFetched = !!(state.remote && state.remote.at);
 function remoteCounts() {
   let doing = 0;
   let done = 0;
@@ -2870,8 +2874,8 @@ function updateRemoteUi(message) {
   }
   const c = remoteCounts();
   if (!c.doing && !c.done) {
-    el.textContent = t('remoteNone');
-    el.className = 'sync-status';
+    el.textContent = remoteFetched ? t('remoteEmpty') : t('remoteNone');
+    el.className = remoteFetched ? 'sync-status ok' : 'sync-status';
     return;
   }
   el.textContent = t('remoteSummary', {
@@ -2922,6 +2926,7 @@ async function pullRemote(manual) {
       };
     });
     state.remote = { at: data.atIso || data.at || new Date().toISOString(), lots };
+    remoteFetched = true;
     try { localStorage.setItem(REMOTE_KEY, JSON.stringify(state.remote)); } catch (err) {}
     if (mapCtx) {
       applyZoneStyles();
@@ -3138,6 +3143,7 @@ function init() {
   if (syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
     syncTimer = setTimeout(() => syncNow('auto'), 2500);
   }
+  if (syncCfg.url) setTimeout(() => pullRemote(false), 1800);
 }
 init();
 
