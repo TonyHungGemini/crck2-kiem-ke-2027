@@ -9,6 +9,7 @@ const SYNC_KEY = 'crck2.kk2027.sync.v1';
 const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
 const LANG_KEY = 'crck2.kk2027.lang.v1';
 const DRAFT_KEY = 'crck2.kk2027.qdraft.v1';
+const GAUTO_KEY = 'crck2.kk2027.gauto.v1';
 const FIELDS = ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
 const CATS = [
   ['g', 'catG'],
@@ -297,10 +298,13 @@ function readLang() {
 function readLangChosen() {
   try { return !!localStorage.getItem(LANG_KEY); } catch (err) { return false; }
 }
+function readGAuto() {
+  try { return localStorage.getItem(GAUTO_KEY) !== '0'; } catch (err) { return true; }
+}
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
-  recentLot: null,
+  recentLot: null, gAuto: readGAuto(),
   lang: readLang() || 'vi', langChosen: readLangChosen(),
 };
 const QUICK_I18N = {
@@ -311,6 +315,8 @@ const QUICK_I18N = {
     hangNo: 'Hàng số', totalDT: 'Tổng ĐT',
     checkIdle: 'Chưa nhập', checkMissing: 'Thiếu Tổng ĐT', checkDiff: 'Lệch', checkSum6: 'tổng 6 cột',
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
+    gAuto: 'G tự tính', gManual: 'Đủ 7 số', autoPh: 'tự tính',
+    gNote: 'G = Tổng ĐT − (+, C, K1, K2, O)', gManualNote: 'Nhập đủ 7 số — tool dò khớp/lệch.',
     rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter sang ô kế tiếp · Space: Lưu & tờ tiếp.',
     pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
     draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
@@ -332,6 +338,8 @@ const QUICK_I18N = {
     hangNo: 'លេខជួរ', totalDT: 'សរុប',
     checkIdle: 'មិនទាន់បញ្ចូល', checkMissing: 'ខ្វះសរុប', checkDiff: 'ខុសគ្នា', checkSum6: 'សរុប 6 ជួរឈរ',
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
+    gAuto: 'G គណនាស្វ័យប្រវត្តិ', gManual: '7 លេខ', autoPh: 'ស្វ័យប្រវត្តិ',
+    gNote: 'G = សរុប − (+, C, K1, K2, O)', gManualNote: 'បញ្ចូល 7 លេខ — ពិនិត្យត្រូវ/ខុស។',
     rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ទៅប្រអប់បន្ទាប់ · Space: រក្សាទុក & សន្លឹកបន្ទាប់',
     pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
     draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
@@ -395,7 +403,7 @@ const APP_I18N = {
     emptyTitle: 'Không có lô phù hợp',
     emptySub: 'Thử xoá từ khoá tìm kiếm hoặc đổi bộ lọc.',
     guideTitle: 'Hướng dẫn nhanh',
-    guide1: 'Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b> và 7 số ở dòng cuối phiếu: Tổng ĐT, G, (+), C, K1, K2, O. Nút <b>VI / ខ្មែរ</b> đổi ngôn ngữ toàn app; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.',
+    guide1: 'Bấm <b>Nhập nhanh</b>, chọn <b>Khu vực</b> rồi chọn <b>Lô</b>, nhập <b>Hàng số</b>, <b>Tổng ĐT</b> và các số còn lại ở dòng cuối phiếu; mặc định ô <b>G tự tính</b> = Tổng ĐT − (+, C, K1, K2, O). Muốn nhập tay đủ 7 số và dò khớp/lệch thì bấm <b>Đủ 7 số</b>. Nút <b>VI / ខ្មែរ</b> đổi ngôn ngữ toàn app; số và ký hiệu G, +, C, K1, K2, O vẫn giữ nguyên.',
     guide2: 'Tool báo đỏ nếu <b>Tổng ĐT không bằng tổng 6 cột</b>. Sửa lại theo phiếu trước khi lưu.',
     guide3: 'Bấm <b>Lưu &amp; tờ tiếp</b> (hoặc nhấn <b>Space</b>) để nhập liên tục; số hàng tự tăng.',
     guide4: 'Có sự cố (thiếu phiếu…) thì bấm <b>Tạm lưu</b>. Lô sẽ hiện <b>Sơ đồ hàng</b>: ô xanh bấm để sửa, ô viền đứt bấm để nhập hàng còn thiếu; nút <b>Nhập tiếp h.N</b> mở lại đúng hàng đang dở.',
@@ -660,7 +668,7 @@ const APP_I18N = {
     emptyTitle: 'គ្មានដីឡូតិ៍ត្រូវគ្នា',
     emptySub: 'សូមលុបពាក្យស្វែងរក ឬប្តូរតម្រង។',
     guideTitle: 'ការណែនាំខ្លី',
-    guide1: 'ចុច <b>បញ្ចូលរហ័ស</b> ជ្រើស <b>តំបន់</b> រួចជ្រើស <b>ដីឡូតិ៍</b> បញ្ចូល <b>លេខជួរ</b> និង 7 លេខនៅជួរចុងក្រោយនៃសន្លឹក៖ សរុប, G, (+), C, K1, K2, O។ ប៊ូតុង <b>VI / ខ្មែរ</b> ប្តូរភាសាទាំងកម្មវិធី; លេខ និងសញ្ញា G, +, C, K1, K2, O នៅដដែល។',
+    guide1: 'ចុច <b>បញ្ចូលរហ័ស</b> ជ្រើស <b>តំបន់</b> រួចជ្រើស <b>ដីឡូតិ៍</b> បញ្ចូល <b>លេខជួរ</b>, <b>សរុប</b> និងលេខផ្សេងទៀតនៅជួរចុងក្រោយនៃសន្លឹក; តាមលំនាំដើម <b>G គណនាស្វ័យប្រវត្តិ</b> = សរុប − (+, C, K1, K2, O)។ បើចង់បញ្ចូល 7 លេខដោយដៃ និងពិនិត្យត្រូវ/ខុស សូមចុច <b>7 លេខ</b>។ ប៊ូតុង <b>VI / ខ្មែរ</b> ប្តូរភាសាទាំងកម្មវិធី; លេខ និងសញ្ញា G, +, C, K1, K2, O នៅដដែល។',
     guide2: 'កម្មវិធីព្រមានពណ៌ក្រហម បើ <b>សរុបមិនស្មើនឹងសរុប 6 ជួរឈរ</b>។ កែតាមសន្លឹកមុនរក្សាទុក។',
     guide3: 'ចុច <b>រក្សាទុក &amp; សន្លឹកបន្ទាប់</b> (ឬចុច <b>Space</b>) ដើម្បីបញ្ចូលបន្ត; លេខជួរកើនដោយស្វ័យប្រវត្តិ។',
     guide4: 'បើមានបញ្ហា (ខ្វះសន្លឹក…) ចុច <b>រក្សាទុកបណ្ដោះអាសន្ន</b>។ ដីឡូតិ៍នឹងបង្ហាញ <b>តារាងជួរ</b>៖ ប្រអប់ពណ៌បៃតងចុចដើម្បីកែ, ប្រអប់ជួរដេកដាច់ៗចុចដើម្បីបញ្ចូលជួរខ្វះ; ប៊ូតុង <b>បន្ត ជួរ N</b> បើកត្រង់ជួរដែលកំពុងធ្វើ។',
@@ -1906,6 +1914,44 @@ function setQuickLot(key, resetHang) {
   }
 }
 
+function applyQuickMode() {
+  $$('#quickDialog [data-gmode]').forEach(btn => {
+    btn.setAttribute('aria-pressed', String((btn.dataset.gmode === 'auto') === state.gAuto));
+  });
+  const note = $('#quickModeNote');
+  if (note) note.textContent = qt(state.gAuto ? 'gNote' : 'gManualNote');
+  const host = $('#quickPages');
+  if (host) host.classList.toggle('auto-g', state.gAuto);
+  $$('#quickPages .q-input[data-field="g"]').forEach(inp => {
+    inp.readOnly = state.gAuto;
+    inp.classList.toggle('q-auto', state.gAuto);
+    inp.placeholder = state.gAuto ? qt('autoPh') : '';
+    inp.title = state.gAuto ? qt('gNote') : '';
+  });
+}
+function setGAuto(on) {
+  state.gAuto = !!on;
+  try { localStorage.setItem(GAUTO_KEY, state.gAuto ? '1' : '0'); } catch (err) {}
+  applyQuickMode();
+  refreshQuickChecks();
+  refreshQuickSummary();
+  saveQuickDraft();
+}
+function quickInputsInOrder() {
+  const fields = state.gAuto
+    ? ['dt', 'plus', 'c', 'k1', 'k2', 'o']
+    : ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'];
+  const list = [];
+  $$('#quickPages .qcard').forEach(card => {
+    const hang = card.querySelector('.q-hang');
+    if (hang) list.push(hang);
+    fields.forEach(f => {
+      const el = card.querySelector(`.q-input[data-field="${f}"]`);
+      if (el) list.push(el);
+    });
+  });
+  return list;
+}
 function applyQuickLang(lang) {
   if (lang) state.lang = lang === 'km' ? 'km' : 'vi';
   const dlg = $('#quickDialog');
@@ -1923,6 +1969,7 @@ function applyQuickLang(lang) {
   $('#btnQuickSave').textContent = qt('save');
   $('#btnQuickSaveNext').textContent = qt('saveNext');
   $('#quickEyebrow').textContent = qt('eyebrow');
+  applyQuickMode();
   if (state.quickLot) {
     $('#quickTitle').textContent = `${qt('title')} · ${qt('lot')} ${state.quickLot}`;
   } else {
@@ -1981,7 +2028,7 @@ function buildQuickCards() {
       </div>
       <div class="qgrid">
         <label class="qdt"><span class="q-tt">${esc(qt('totalDT'))}</span><input class="q-input dt-input" type="number" inputmode="numeric" min="0" step="1" data-field="dt" aria-label="${esc(qt('totalDT'))}"></label>
-        <label>G<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="g" aria-label="Cây cạo"></label>
+        <label class="q-cell-g">G<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="g" aria-label="Cây cạo"></label>
         <label>+<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="plus" aria-label="Cây cộng"></label>
         <label>C<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="c" aria-label="Cây C"></label>
         <label>K1<input class="q-input" type="number" inputmode="numeric" min="0" step="1" data-field="k1" aria-label="Cây K1"></label>
@@ -1990,6 +2037,7 @@ function buildQuickCards() {
       </div>
       <div class="qcheck idle" data-role="check">${esc(qt('checkIdle'))}</div>
     </div>`).join('');
+  applyQuickMode();
   refreshQuickChecks();
   refreshQuickSummary();
 }
@@ -2000,6 +2048,19 @@ function readQuickCard(card) {
   card.querySelectorAll('.q-input').forEach(inp => {
     vals[inp.dataset.field] = inp.value.trim() === '' ? null : parseNum(inp.value);
   });
+  if (state.gAuto) {
+    const gEl = card.querySelector('.q-input[data-field="g"]');
+    if (vals.dt != null) {
+      const others = ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (vals[k] || 0), 0);
+      vals.g = vals.dt - others;
+    } else {
+      vals.g = null;
+    }
+    if (gEl) {
+      gEl.value = vals.g == null ? '' : String(vals.g);
+      gEl.classList.toggle('neg', vals.g != null && vals.g < 0);
+    }
+  }
   const has = FIELDS.some(k => vals[k] != null);
   const sum = FIELDS.filter(k => k !== 'dt').reduce((s, k) => s + (vals[k] || 0), 0);
   const dt = vals.dt;
@@ -2075,7 +2136,7 @@ function refreshQuickSummary() {
 }
 
 function focusNextQuickInput(current) {
-  const inputs = $$('#quickDialog .q-hang, #quickDialog .q-input');
+  const inputs = quickInputsInOrder();
   const idx = inputs.indexOf(current);
   if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
 }
@@ -2733,6 +2794,9 @@ function setupDialogs() {
         $('#quickLot').value = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
       }
     });
+  });
+  $$('#quickDialog [data-gmode]').forEach(btn => {
+    btn.addEventListener('click', () => setGAuto(btn.dataset.gmode === 'auto'));
   });
   $('#quickZone').addEventListener('change', e => {
     state.quickZone = e.target.value;

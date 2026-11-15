@@ -412,6 +412,21 @@ body.lang-km .rows-table input,body.lang-km .compare-table td,body.lang-km .map-
 .quick-progress .qp-gap{color:var(--amber);font-weight:650}
 .quick-progress .qp-ok{color:var(--green);font-weight:650}
 .quick-progress .qp-next{color:var(--accent-strong);font-weight:700}
+
+/* ---------- CHẾ ĐỘ NHẬP G ---------- */
+.quick-mode{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:11px 0 0}
+.mode-seg{display:inline-flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.mode-seg button{
+  appearance:none;border:0;background:transparent;border-radius:7px;padding:6px 12px;
+  font-size:12.5px;font-weight:650;color:var(--muted);cursor:pointer;min-height:30px;
+  transition:background .15s,color .15s;
+}
+.mode-seg button:hover{color:var(--ink)}
+.mode-seg button[aria-pressed="true"]{background:var(--surface);color:var(--accent-strong);box-shadow:var(--shadow)}
+.quick-mode-note{font-size:12px;color:var(--muted)}
+.qgrid input.q-auto{background:var(--surface-2);border-style:dashed;color:var(--accent-strong);font-weight:650;cursor:default}
+.qgrid input.q-auto.neg{color:var(--red);border-color:#e0a99e}
+#quickPages.auto-g .qgrid .q-cell-g{order:9}
 .hang-map .card-head{margin-bottom:8px}
 .hang-chips{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 11px}
 .hang-chip{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums;cursor:pointer}
