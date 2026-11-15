@@ -357,6 +357,8 @@ function readRemote() {
     return { at: null, lots: {} };
   }
 }
+/* uid hàng → Tổng ĐT trước lần bấm "=" đầu tiên, để hoàn lại khi xem lô. */
+const rowUndo = new Map();
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
@@ -529,6 +531,7 @@ const APP_I18N = {
     sumOk: 'Đã khớp {n} hàng',
     rowCount: '{n} hàng đã nhập',
     calcTitle: 'Điền Tổng ĐT = tổng 6 cột',
+    undoCalcTitle: 'Trả lại Tổng ĐT trước khi bấm =',
     delRowTitle: 'Xoá hàng',
     confirmDelRow: 'Xoá hàng {h}? Dữ liệu của hàng này sẽ mất.',
     toastDone: 'Đã đánh dấu hoàn tất lô {lot} lúc {time}',
@@ -814,6 +817,7 @@ const APP_I18N = {
     sumOk: 'ត្រូវគ្នា {n} ជួរ',
     rowCount: 'បានបញ្ចូល {n} ជួរ',
     calcTitle: 'បំពេញសរុប = ផលបូក 6 ជួរឈរ',
+    undoCalcTitle: 'ស្ដារសរុបមុនពេលចុច =',
     delRowTitle: 'លុបជួរ',
     confirmDelRow: 'លុបជួរ {h}? ទិន្នន័យជួរនេះនឹងបាត់។',
     toastDone: 'បានសម្គាល់ដីឡូតិ៍ {lot} ថាបានបញ្ចប់ នៅ {time}',
@@ -1436,6 +1440,9 @@ function rowHtml(row, odd) {
       <td class="col-check"><span class="row-check ${checkCls}">${checkText}</span></td>
       <td>
         <div class="row-tools">
+          <button class="mini-btn undo" type="button" data-act="undo" data-uid="${row.uid}" title="${t('undoCalcTitle')}"${rowUndo.has(row.uid) ? '' : ' hidden'}>
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 5.5L4.5 9 8 12.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.8 9H14a5.2 5.2 0 0 1 0 10.4h-3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
           <button class="mini-btn calc" type="button" data-act="calc" data-uid="${row.uid}" title="${t('calcTitle')}">=</button>
           <button class="mini-btn del" type="button" data-act="del" data-uid="${row.uid}" title="${t('delRowTitle')}">
             <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M8 7l1 12h6l1-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1894,17 +1901,39 @@ function onRowClick(e) {
   const row = lotRows(state.lot).find(r => r.uid === btn.dataset.uid);
   if (!row) return;
   if (btn.dataset.act === 'calc') {
+    if (!rowUndo.has(row.uid)) rowUndo.set(row.uid, row.dt == null ? null : Number(row.dt));
     row.dt = rowSum(row);
     touchLot(state.lot);
     persist();
     const tr = $(`#rowsBody tr[data-uid="${CSS.escape(row.uid)}"]`);
-    if (tr) { const dt = tr.querySelector('.dt-input'); if (dt) dt.value = row.dt; }
+    if (tr) {
+      const dt = tr.querySelector('.dt-input');
+      if (dt) dt.value = row.dt;
+      const undo = tr.querySelector('.mini-btn.undo');
+      if (undo) undo.hidden = false;
+    }
+    refreshLotDerived();
+  }
+  if (btn.dataset.act === 'undo') {
+    if (!rowUndo.has(row.uid)) return;
+    const prev = rowUndo.get(row.uid);
+    rowUndo.delete(row.uid);
+    row.dt = prev;
+    touchLot(state.lot);
+    persist();
+    const tr = $(`#rowsBody tr[data-uid="${CSS.escape(row.uid)}"]`);
+    if (tr) {
+      const dt = tr.querySelector('.dt-input');
+      if (dt) dt.value = prev == null ? '' : prev;
+    }
+    btn.hidden = true;
     refreshLotDerived();
   }
   if (btn.dataset.act === 'del') {
     if (rowHasData(row) && !confirm(t('confirmDelRow', { h: row.hang ?? '' }))) return;
     const lot = ensureLot(state.lot);
     lot.rows = lot.rows.filter(r => r.uid !== row.uid);
+    rowUndo.delete(row.uid);
     touchLot(state.lot);
     persist();
     rebuildRowsTable();

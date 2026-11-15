@@ -333,6 +333,8 @@ b{font-weight:650}
 .mini-btn:hover{background:var(--surface-2);color:var(--ink)}
 .mini-btn.del:hover{background:var(--red-soft);border-color:#ecc9c2;color:var(--red)}
 .mini-btn.calc{font-family:var(--tab-nums);font-weight:800;font-size:13px}
+.mini-btn.undo{background:#fbeccb;border-color:#e4c07a;color:#a15f18}
+.mini-btn.undo:hover{background:#f8e2b4;border-color:#d9ab5b;color:#8a4c0e}
 .empty-rows{padding:26px 10px;text-align:center;color:var(--muted);font-size:13.5px}
 .empty-rows b{color:var(--ink)}
 #sumCheckNote{font-family:var(--font-ui);font-weight:600;font-size:12px}
