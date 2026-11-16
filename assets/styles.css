@@ -301,6 +301,17 @@ b{font-weight:650}
 .rows-table{min-width:880px}
 .rows-table th,.rows-table td{padding:5px 5px;border-bottom:1px solid var(--line);text-align:center}
 .rows-table thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:700;padding:7px 5px}
+.rows-card .rows-table thead th{
+  color:var(--ink-2);font-weight:800;background:#f3eee4;box-shadow:inset 0 -1px 0 var(--line-strong);
+}
+@media(min-width:981px){
+  .rows-card .table-wrap{overflow:visible}
+  .rows-card .rows-table thead th{position:sticky;top:67px;z-index:20}
+}
+@media(max-width:980px){
+  .rows-card .table-wrap{max-height:65vh;overflow:auto}
+  .rows-card .rows-table thead th{position:sticky;top:0;z-index:20}
+}
 .rows-table tbody tr:hover{background:#fffdf8}
 .rows-table .col-hang{width:64px}
 .rows-table .col-pt{width:94px}
@@ -627,4 +638,6 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
   body{background:#fff}
   .card{box-shadow:none;break-inside:avoid}
   .app-shell{max-width:none;padding:0}
+  .rows-card .table-wrap{max-height:none;overflow:visible}
+  .rows-card .rows-table thead th{position:static}
 }
