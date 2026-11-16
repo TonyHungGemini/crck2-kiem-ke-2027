@@ -467,10 +467,12 @@ const APP_I18N = {
     nameLead: 'Tên này dùng để ghi rõ ai nhập dữ liệu từng lô trên Google Sheets. Chỉ cần điền một lần trên máy này.',
     nameLabel: 'Tên người dùng',
     namePh: 'VD: Lan – Đội 2',
-    nameHint: 'Bắt buộc. Tối đa 40 ký tự. Có thể đổi lại trong ☰ → Đồng bộ Google.',
-    nameContinue: 'Tiếp tục',
-    nameRequired: 'Vui lòng nhập tên trước khi tiếp tục.',
+    nameHint: 'Có thể điền sau. Tối đa 40 ký tự. Đổi lại trong ☰ → Đồng bộ Google.',
+    nameContinue: 'Lưu tên',
+    nameLater: 'Để sau',
+    nameRequired: 'Vui lòng nhập tên trước khi lưu.',
     nameSaved: 'Đã lưu tên người dùng: {name}',
+    nameLaterToast: 'Chưa có tên người dùng. Có thể điền sau trong ☰ → Đồng bộ Google.',
     heroEyebrow: 'Kiểm kê 0h · 01/01/2027',
     heroTitle: 'Nhập kết quả theo dòng tổng từng hàng',
     heroLead: 'Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.',
@@ -799,11 +801,13 @@ const APP_I18N = {
     nameTitle: 'បញ្ចូលឈ្មោះអ្នកប្រើ',
     nameLead: 'ឈ្មោះនេះប្រើដើម្បីកត់ត្រាថាអ្នកណាបញ្ចូលទិន្នន័យដីឡូតិ៍នីមួយៗក្នុង Google Sheets។ បំពេញតែម្តងលើឧបករណ៍នេះ។',
     nameLabel: 'ឈ្មោះអ្នកប្រើ',
-    namePh: 'ឧ. ឡាន – ក្រុម 2',
-    nameHint: 'ត្រូវបំពេញ។ អតិបរមា 40 តួអក្សរ។ អាចប្តូរពេលក្រោយក្នុង ☰ → ធ្វើសមកាល Google។',
-    nameContinue: 'បន្ត',
-    nameRequired: 'សូមបញ្ចូលឈ្មោះមុននឹងបន្ត។',
+    namePh: 'ឧ. Lan – Team 2',
+    nameHint: 'មិនចាំបាច់បំពេញភ្លាមក៏បាន។ អតិបរមា 40 តួអក្សរ។ សូមសរសេរឈ្មោះជាអក្សរឡាតាំង (English)។ អាចប្តូរពេលក្រោយក្នុង ☰ → ធ្វើសមកាល Google។',
+    nameContinue: 'រក្សាទុកឈ្មោះ',
+    nameLater: 'ពេលក្រោយ',
+    nameRequired: 'សូមបញ្ចូលឈ្មោះមុននឹងរក្សាទុក។',
     nameSaved: 'បានរក្សាទុកឈ្មោះអ្នកប្រើ៖ {name}',
+    nameLaterToast: 'មិនទាន់មានឈ្មោះអ្នកប្រើ។ អាចបំពេញពេលក្រោយក្នុង ☰ → ធ្វើសមកាល Google។',
     heroEyebrow: 'ការរាប់ពេល 0 ម៉ោង · 01/01/2027',
     heroTitle: 'បញ្ចូលលទ្ធផលតាមជួរសរុបនៃជួរនីមួយៗ',
     heroLead: 'សន្លឹកមួយមាន 2 ជួរ។ បញ្ចូលតែ 7 លេខនៅជួរចុងក្រោយ។ កម្មវិធីពិនិត្យស្វ័យប្រវត្តិ <span class="nowrap">សរុប = G + (+) + C + K1 + K2 + O</span> ហាមជួរស្ទួន និងប្រៀបធៀបនឹងការរាប់ឆ្នាំ 2026។',
@@ -1013,8 +1017,8 @@ const APP_I18N = {
     syncLead: 'បិទភ្ជាប់ URL Web App របស់ Apps Script។ កម្មវិធីនឹងសរសេរទិន្នន័យទៅ Google Sheets; ពេលដីឡូតិ៍ត្រូវបានសម្គាល់ <b>រួចរាល់</b> Google នឹងផ្ញើអ៊ីមែលជាមួយឯកសារ Excel។',
     syncUrlLabel: 'URL Web App (Apps Script)',
     syncDeviceLabel: 'ឈ្មោះឧបករណ៍ / អ្នកបញ្ចូល',
-    syncDeviceHint: 'បំពេញម្តងលើឧបករណ៍នេះ (ឧ. ឡាន – ក្រុម 2) ដើម្បីឱ្យតារាងលម្អិត និងកំណត់ហេតុកត់ត្រាច្បាស់ថាអ្នកណាបញ្ចូល។',
-    syncDevicePh: 'ឧ. ឡាន – ក្រុម 2',
+    syncDeviceHint: 'បំពេញម្តងលើឧបករណ៍នេះ (ឧ. Lan – Team 2) ដើម្បីឱ្យតារាងលម្អិត និងកំណត់ហេតុកត់ត្រាច្បាស់ថាអ្នកណាបញ្ចូល។ សូមសរសេរឈ្មោះជាអក្សរឡាតាំង (English)។',
+    syncDevicePh: 'ឧ. Lan – Team 2',
     syncEnabled: 'ធ្វើសមកាលស្វ័យប្រវត្តិក្រោយរក្សាទុក',
     syncStatusInit: 'មិនទាន់ភ្ជាប់។',
     syncSave: 'រក្សាទុកការកំណត់',
@@ -3139,7 +3143,7 @@ function updateSyncUi(message) {
 }
 
 function scheduleSync() {
-  if (!syncCfg.url || !syncCfg.enabled || !userName()) return;
+  if (!syncCfg.url || !syncCfg.enabled) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => syncNow('auto'), 5000);
 }
@@ -3149,11 +3153,6 @@ async function syncNow(reason = 'manual', lotKey = null) {
     if (reason !== 'auto') {
       toast(t('syncNoUrl'), 'bad');
     }
-    return;
-  }
-  if (!userName()) {
-    maybePromptName();
-    if (reason !== 'auto') toast(t('nameRequired'), 'bad');
     return;
   }
   if (reason === 'auto' && !syncCfg.enabled) return;
@@ -3471,16 +3470,11 @@ function setupSyncUi() {
   dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
   $('#btnSyncSave').addEventListener('click', () => {
     const raw = $('#syncUrl').value.trim();
-    const device = $('#syncDevice').value.trim();
-    if (!device) {
-      maybePromptName();
-      return;
-    }
     if (raw && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(raw)) {
       toast(t('syncUrlFormat'), 'bad');
       return;
     }
-    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked, device });
+    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     toast(raw ? t('syncSaved') : t('syncDisabled'), 'ok');
   });
   $('#syncDevice').addEventListener('input', e => {
@@ -3489,25 +3483,19 @@ function setupSyncUi() {
   $('#btnSyncTest').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    const device = $('#syncDevice').value.trim();
-    if (!device) { maybePromptName(); return; }
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await syncNow('test');
   });
   $('#btnSyncNow').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    const device = $('#syncDevice').value.trim();
-    if (!device) { maybePromptName(); return; }
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await syncNow('manual');
   });
   $('#btnSyncPull').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    const device = $('#syncDevice').value.trim();
-    if (!device) { maybePromptName(); return; }
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await pullRemote(true);
   });
   $('#btnCopyScript').addEventListener('click', async () => {
@@ -3608,9 +3596,9 @@ function setupDialogs() {
   const nameDlg = $('#nameDialog');
   const nameInput = $('#nameInput');
   const btnNameSave = $('#btnNameSave');
-  nameDlg.addEventListener('cancel', e => e.preventDefault());
+  nameDlg.addEventListener('click', e => { if (e.target === nameDlg) nameDlg.close(); });
   nameDlg.addEventListener('close', () => {
-    if (!userName()) setTimeout(maybePromptName, 0);
+    if (!userName()) toast(t('nameLaterToast'), '');
   });
   nameInput.addEventListener('input', () => {
     btnNameSave.disabled = !nameInput.value.trim();
@@ -3624,6 +3612,7 @@ function setupDialogs() {
     }
   });
   btnNameSave.addEventListener('click', saveUserName);
+  $('#btnNameLater').addEventListener('click', () => nameDlg.close());
   $('#menuExport').addEventListener('click', () => { menu.close(); exportAll(); });
   $('#menuBackup').addEventListener('click', () => { menu.close(); backupJSON(); });
   $('#menuRestore').addEventListener('click', () => { menu.close(); $('#fileRestore').click(); });
@@ -3700,7 +3689,7 @@ function init() {
     if (dlg) setTimeout(() => { if (!state.langChosen) dlg.showModal(); }, 250);
   }
   setTimeout(maybePromptName, 500);
-  if (userName() && syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
+  if (syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
     syncTimer = setTimeout(() => syncNow('auto'), 2500);
   }
   if (syncCfg.url) setTimeout(() => pullRemote(false), 1800);
