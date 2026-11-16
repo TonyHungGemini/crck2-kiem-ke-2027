@@ -144,6 +144,9 @@ function saveSyncCfg(patch) {
   try { localStorage.setItem(SYNC_KEY, JSON.stringify(syncCfg)); } catch (err) {}
   updateSyncUi();
 }
+function userName() {
+  return (syncCfg.device || '').trim();
+}
 
 function persist() {
   DB.updatedAt = new Date().toISOString();
@@ -459,6 +462,15 @@ const APP_I18N = {
     langToggleAriaKm: 'Chuyển sang tiếng Khmer',
     langLead: 'Ngôn ngữ áp dụng cho toàn bộ ứng dụng. Có thể đổi lại trong Menu.',
     langFoot: 'Số, số lô và ký hiệu G, +, C, K1, K2, O giữ nguyên ở cả hai ngôn ngữ.',
+    nameEyebrow: 'Trước khi bắt đầu',
+    nameTitle: 'Nhập tên người dùng',
+    nameLead: 'Tên này dùng để ghi rõ ai nhập dữ liệu từng lô trên Google Sheets. Chỉ cần điền một lần trên máy này.',
+    nameLabel: 'Tên người dùng',
+    namePh: 'VD: Lan – Đội 2',
+    nameHint: 'Bắt buộc. Tối đa 40 ký tự. Có thể đổi lại trong ☰ → Đồng bộ Google.',
+    nameContinue: 'Tiếp tục',
+    nameRequired: 'Vui lòng nhập tên trước khi tiếp tục.',
+    nameSaved: 'Đã lưu tên người dùng: {name}',
     heroEyebrow: 'Kiểm kê 0h · 01/01/2027',
     heroTitle: 'Nhập kết quả theo dòng tổng từng hàng',
     heroLead: 'Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.',
@@ -783,6 +795,15 @@ const APP_I18N = {
     langToggleAriaKm: 'ប្តូរទៅភាសាខ្មែរ',
     langLead: 'ភាសានឹងប្រើសម្រាប់កម្មវិធីទាំងមូល។ អាចប្តូរវិញនៅក្នុងម៉ឺនុយ។',
     langFoot: 'លេខ លេខដីឡូតិ៍ និងសញ្ញា G, +, C, K1, K2, O រក្សាដូចដើមទាំងពីរភាសា។',
+    nameEyebrow: 'មុនពេលចាប់ផ្តើម',
+    nameTitle: 'បញ្ចូលឈ្មោះអ្នកប្រើ',
+    nameLead: 'ឈ្មោះនេះប្រើដើម្បីកត់ត្រាថាអ្នកណាបញ្ចូលទិន្នន័យដីឡូតិ៍នីមួយៗក្នុង Google Sheets។ បំពេញតែម្តងលើឧបករណ៍នេះ។',
+    nameLabel: 'ឈ្មោះអ្នកប្រើ',
+    namePh: 'ឧ. ឡាន – ក្រុម 2',
+    nameHint: 'ត្រូវបំពេញ។ អតិបរមា 40 តួអក្សរ។ អាចប្តូរពេលក្រោយក្នុង ☰ → ធ្វើសមកាល Google។',
+    nameContinue: 'បន្ត',
+    nameRequired: 'សូមបញ្ចូលឈ្មោះមុននឹងបន្ត។',
+    nameSaved: 'បានរក្សាទុកឈ្មោះអ្នកប្រើ៖ {name}',
     heroEyebrow: 'ការរាប់ពេល 0 ម៉ោង · 01/01/2027',
     heroTitle: 'បញ្ចូលលទ្ធផលតាមជួរសរុបនៃជួរនីមួយៗ',
     heroLead: 'សន្លឹកមួយមាន 2 ជួរ។ បញ្ចូលតែ 7 លេខនៅជួរចុងក្រោយ។ កម្មវិធីពិនិត្យស្វ័យប្រវត្តិ <span class="nowrap">សរុប = G + (+) + C + K1 + K2 + O</span> ហាមជួរស្ទួន និងប្រៀបធៀបនឹងការរាប់ឆ្នាំ 2026។',
@@ -2383,6 +2404,38 @@ function setLang(lang) {
   }
 }
 
+function maybePromptName() {
+  const dlg = $('#nameDialog');
+  if (!dlg || dlg.open || userName()) return;
+  const langDlg = $('#langDialog');
+  if (langDlg && langDlg.open) return;
+  const input = $('#nameInput');
+  const save = $('#btnNameSave');
+  const err = $('#nameError');
+  input.value = '';
+  save.disabled = true;
+  if (err) err.hidden = true;
+  dlg.showModal();
+  setTimeout(() => input.focus(), 50);
+}
+
+function saveUserName() {
+  const input = $('#nameInput');
+  if (!input) return;
+  const name = input.value.replace(/\s+/g, ' ').trim().slice(0, 40);
+  const err = $('#nameError');
+  if (!name) {
+    if (err) err.hidden = false;
+    input.focus();
+    return;
+  }
+  saveSyncCfg({ device: name });
+  const dlg = $('#nameDialog');
+  if (dlg && dlg.open) dlg.close();
+  toast(t('nameSaved', { name }), 'ok');
+  if (DB.updatedAt) scheduleSync();
+}
+
 function buildQuickCards() {
   const key = state.quickLot;
   const [h1, h2] = quickHangPair(key, state.quickSeed);
@@ -3086,7 +3139,7 @@ function updateSyncUi(message) {
 }
 
 function scheduleSync() {
-  if (!syncCfg.url || !syncCfg.enabled) return;
+  if (!syncCfg.url || !syncCfg.enabled || !userName()) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => syncNow('auto'), 5000);
 }
@@ -3096,6 +3149,11 @@ async function syncNow(reason = 'manual', lotKey = null) {
     if (reason !== 'auto') {
       toast(t('syncNoUrl'), 'bad');
     }
+    return;
+  }
+  if (!userName()) {
+    maybePromptName();
+    if (reason !== 'auto') toast(t('nameRequired'), 'bad');
     return;
   }
   if (reason === 'auto' && !syncCfg.enabled) return;
@@ -3413,11 +3471,16 @@ function setupSyncUi() {
   dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
   $('#btnSyncSave').addEventListener('click', () => {
     const raw = $('#syncUrl').value.trim();
+    const device = $('#syncDevice').value.trim();
+    if (!device) {
+      maybePromptName();
+      return;
+    }
     if (raw && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(raw)) {
       toast(t('syncUrlFormat'), 'bad');
       return;
     }
-    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
+    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked, device });
     toast(raw ? t('syncSaved') : t('syncDisabled'), 'ok');
   });
   $('#syncDevice').addEventListener('input', e => {
@@ -3426,19 +3489,25 @@ function setupSyncUi() {
   $('#btnSyncTest').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
+    const device = $('#syncDevice').value.trim();
+    if (!device) { maybePromptName(); return; }
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
     await syncNow('test');
   });
   $('#btnSyncNow').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
+    const device = $('#syncDevice').value.trim();
+    if (!device) { maybePromptName(); return; }
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
     await syncNow('manual');
   });
   $('#btnSyncPull').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
+    const device = $('#syncDevice').value.trim();
+    if (!device) { maybePromptName(); return; }
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device });
     await pullRemote(true);
   });
   $('#btnCopyScript').addEventListener('click', async () => {
@@ -3534,6 +3603,27 @@ function setupDialogs() {
   $$('#langDialog [data-lang]').forEach(btn => {
     btn.addEventListener('click', () => setLang(btn.dataset.lang));
   });
+  const langDlg = $('#langDialog');
+  langDlg.addEventListener('close', () => setTimeout(maybePromptName, 80));
+  const nameDlg = $('#nameDialog');
+  const nameInput = $('#nameInput');
+  const btnNameSave = $('#btnNameSave');
+  nameDlg.addEventListener('cancel', e => e.preventDefault());
+  nameDlg.addEventListener('close', () => {
+    if (!userName()) setTimeout(maybePromptName, 0);
+  });
+  nameInput.addEventListener('input', () => {
+    btnNameSave.disabled = !nameInput.value.trim();
+    const err = $('#nameError');
+    if (err) err.hidden = true;
+  });
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.repeat && !e.isComposing) {
+      e.preventDefault();
+      saveUserName();
+    }
+  });
+  btnNameSave.addEventListener('click', saveUserName);
   $('#menuExport').addEventListener('click', () => { menu.close(); exportAll(); });
   $('#menuBackup').addEventListener('click', () => { menu.close(); backupJSON(); });
   $('#menuRestore').addEventListener('click', () => { menu.close(); $('#fileRestore').click(); });
@@ -3609,7 +3699,8 @@ function init() {
     const dlg = $('#langDialog');
     if (dlg) setTimeout(() => { if (!state.langChosen) dlg.showModal(); }, 250);
   }
-  if (syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
+  setTimeout(maybePromptName, 500);
+  if (userName() && syncCfg.url && DB.updatedAt && (!syncCfg.lastSyncAt || new Date(DB.updatedAt) > new Date(syncCfg.lastSyncAt))) {
     syncTimer = setTimeout(() => syncNow('auto'), 2500);
   }
   if (syncCfg.url) setTimeout(() => pullRemote(false), 1800);

@@ -417,6 +417,13 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
 .lang-choice[data-lang="km"] .lang-flag{font-family:"Noto Sans Khmer","Khmer OS Battambang",var(--font-ui),sans-serif}
 .lang-name{font-size:12px;font-weight:600;color:var(--muted)}
 .lang-foot{margin:14px 0 0}
+
+/* ---------- TÊN NGƯỜI DÙNG (BẮT BUỘC) ---------- */
+.name-dialog .dialog-shell{width:min(460px,calc(100vw - 28px));margin:min(18vh,140px) auto 20px;padding:24px 22px 20px}
+.name-lead{margin:0 0 14px;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.name-error{margin:8px 0 0;font-size:12.5px;font-weight:600;color:var(--red)}
+.name-dialog .dialog-foot{margin-top:18px}
+.name-dialog .dialog-foot .btn{min-width:128px}
 .quick-meta{display:grid;grid-template-columns:1fr 1.25fr 1fr 1.25fr;gap:10px;margin-bottom:14px}
 .quick-meta label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted)}
 .quick-meta input,.quick-meta select{
