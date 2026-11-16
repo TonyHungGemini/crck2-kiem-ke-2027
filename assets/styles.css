@@ -352,7 +352,7 @@ b{font-weight:650}
 .rows-table input.bad{border-color:#e0a99e;background:var(--red-soft)}
 .rows-table input.dup{border-color:#e0a99e;background:var(--red-soft)}
 .rows-table tfoot td{padding:9px 6px;border-top:2px solid var(--line-strong);border-bottom:0;font-weight:750;font-family:var(--tab-nums);font-variant-numeric:tabular-nums;font-size:14px;background:var(--surface-2)}
-.rows-table tfoot td:first-child{font-family:var(--font-ui);text-align:left;padding-left:10px}
+.rows-table tfoot td:first-child{font-family:var(--font-ui);text-align:left;padding-left:10px;white-space:nowrap}
 .row-check{font-size:11px;font-weight:700;white-space:nowrap}
 .row-check.ok{color:var(--green)}
 .row-check.bad{color:var(--red)}
@@ -469,6 +469,34 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
 .quick-progress .qp-gap{color:var(--amber);font-weight:650}
 .quick-progress .qp-ok{color:var(--green);font-weight:650}
 .quick-progress .qp-next{color:var(--accent-strong);font-weight:700}
+
+/* ---------- HƯỚNG LÔ (117/351) ---------- */
+.dir-bar{padding:0 2px 12px;margin-bottom:10px;border-bottom:1px dashed var(--line)}
+.dir-bar[hidden]{display:none}
+.dir-bar-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dir-bar-title{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.dir-btns,.dir-seg{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;flex-wrap:wrap}
+.dir-chip{appearance:none;border:0;background:transparent;border-radius:7px;padding:5px 11px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px}
+.dir-chip span{font-family:var(--tab-nums);font-size:11px;background:rgba(0,0,0,.05);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.dir-chip.is-active{background:var(--ink);color:#fff}
+.dir-chip.is-active span{background:rgba(255,255,255,.18);color:#fff}
+.dir-chip.has-warn::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.dir-chip.is-active.has-warn::after{background:#ffd27a}
+.dir-summary{margin-left:auto;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dir-note{margin:8px 0 0;font-size:12px;color:var(--faint);line-height:1.45}
+.dir-select{border:1px solid var(--line);background:var(--surface-2);border-radius:7px;padding:6px 4px;font-size:12.5px;font-weight:700;text-align:center;outline:0;width:52px;cursor:pointer}
+.dir-select:focus{border-color:var(--accent)}
+.rows-table .col-dir{width:60px}
+.hang-block + .hang-block{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.dir-tag{display:inline-block;min-width:16px;padding:0 4px;margin-right:2px;border-radius:5px;background:var(--surface-2);color:var(--muted);font-size:10.5px;font-weight:800}
+.quick-dir{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.quick-dir[hidden]{display:none}
+.quick-dir-label{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)}
+.quick-dir-note{font-size:12px;color:var(--muted)}
+@media(max-width:700px){
+  .dir-summary{margin-left:0;width:100%}
+  .rows-table{min-width:940px}
+}
 
 /* ---------- CHẾ ĐỘ NHẬP G ---------- */
 .quick-mode{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:11px 0 0}

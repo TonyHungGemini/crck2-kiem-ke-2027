@@ -30,7 +30,7 @@ const DETAIL_HEADERS = [
   'Lô', 'KV', 'ID lô', 'Đội', 'Hàng', 'Tổng ĐT',
   'Cây cạo (G)', 'Cây +', 'Cây C', 'Cây K1', 'Cây K2', 'Hố trống (O)',
   '2026', 'Lệch phúc tra', 'Trạng thái', 'Người KK', 'Máy / người nhập',
-  'Cập nhật lúc', 'Cập nhật (ISO)', 'UID',
+  'Cập nhật lúc', 'Cập nhật (ISO)', 'UID', 'Hướng',
 ];
 const WARN_HEADERS = [
   'Lô', 'KV', 'Hàng', 'Loại cảnh báo', 'Chi tiết', '2026', '2027', 'Lệch',
@@ -107,6 +107,7 @@ function doGet(e) {
             dt: numOrBlank_(r[5]), g: numOrBlank_(r[6]), plus: numOrBlank_(r[7]),
             c: numOrBlank_(r[8]), k1: numOrBlank_(r[9]), k2: numOrBlank_(r[10]), o: numOrBlank_(r[11]),
             pt: numOrBlank_(r[12]), pd: numOrBlank_(r[13]), status: status,
+            dir: String(r[20] || ''),
           };
           g.rows.push(row);
           if (status && status !== 'OK') g.warn += 1;
@@ -339,6 +340,7 @@ function writeDetails_(ss, payload) {
   const all = [];
   state.forEach(g => g.rows.forEach(r => all.push(r)));
   all.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'en', { numeric: true })
+    || String(a[20] || '').localeCompare(String(b[20] || ''), 'en')
     || (Number(a[4]) || 99999) - (Number(b[4]) || 99999));
 
   sh.clearContents();
@@ -348,7 +350,7 @@ function writeDetails_(ss, payload) {
     sh.getRange(2, 1, all.length, width).setValues(all);
     sh.getRange(2, 6, all.length, 9).setNumberFormat('#,##0');
   }
-  [58, 34, 145, 34, 50, 76, 76, 58, 58, 58, 58, 76, 64, 76, 128, 88, 108, 108, 150, 80]
+  [58, 34, 145, 34, 50, 76, 76, 58, 58, 58, 58, 76, 64, 76, 128, 88, 108, 108, 150, 80, 50]
     .forEach((w, i) => sh.setColumnWidth(i + 1, w));
   try { sh.hideColumns(width); } catch (err) {}
   return { rows: all, logs: logs };
@@ -359,13 +361,17 @@ function buildDetailRows_(l, payload, device) {
   const hangCount = {};
   rows.forEach(r => {
     const h = intOrNull_(r.hang);
-    if (h != null) hangCount[h] = (hangCount[h] || 0) + 1;
+    if (h != null) {
+      const k = String(r.dir || '') + ':' + h;
+      hangCount[k] = (hangCount[k] || 0) + 1;
+    }
   });
   const updatedIso = l.updatedAt || l.doneAt || payload.sentAt || '';
   const updatedText = formatDateTime_(updatedIso);
   const nguoi = String(l.nguoi || '');
   return rows.map(r => {
     const h = intOrNull_(r.hang);
+    const dir = String(r.dir || '');
     const vals = ['g', 'plus', 'c', 'k1', 'k2', 'o'].map(k => numOrBlank_(r[k]));
     const dt = numOrBlank_(r.dt);
     const sum6 = vals.reduce((s, v) => s + (Number(v) || 0), 0);
@@ -375,7 +381,7 @@ function buildDetailRows_(l, payload, device) {
     if (dt === '') flags.push('Thiếu tổng ĐT');
     else if (dt !== sum6) flags.push('Lệch tổng');
     if (h == null) flags.push('Thiếu số hàng');
-    else if ((hangCount[h] || 0) > 1) flags.push('Trùng hàng');
+    else if ((hangCount[dir + ':' + h] || 0) > 1) flags.push('Trùng hàng');
     if (pt !== '' && pd !== '' && Math.abs(Number(pd)) >= 2) flags.push('Phúc tra ≥2');
     return [
       String(l.lot || ''), String(l.kv || ''), String(l.id || ''), l.doi == null ? '' : l.doi,
@@ -386,6 +392,7 @@ function buildDetailRows_(l, payload, device) {
       nguoi, device || '',
       updatedText, updatedIso,
       String(r.uid || ''),
+      dir,
     ]);
   });
 }
@@ -394,8 +401,8 @@ function detailKey_(r) {
   const uid = String(r[19] || '');
   if (uid) return 'u:' + uid;
   const h = intOrNull_(r[4]);
-  if (h != null) return 'h:' + h;
-  return 'x:' + [r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]].join('|');
+  if (h != null) return 'h:' + String(r[20] || '') + ':' + h;
+  return 'x:' + [r[20], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]].join('|');
 }
 
 function compareDetail_(prevRows, nextRows, ctx) {
@@ -414,7 +421,7 @@ function compareDetail_(prevRows, nextRows, ctx) {
   nextRows.forEach(r => next.set(detailKey_(r), r));
   next.forEach((r, key) => {
     const p = prev.get(key);
-    const hang = r[4] === '' ? '(chưa số)' : String(r[4]);
+    const hang = (r[20] ? 'Hướng ' + r[20] + ' · ' : '') + (r[4] === '' ? '(chưa số)' : String(r[4]));
     if (!p) {
       logs.push([when, who, nguoi, lot, hang, 'Thêm hàng ' + hang + ': ' + briefRow_(r)]);
       return;
@@ -431,7 +438,7 @@ function compareDetail_(prevRows, nextRows, ctx) {
   });
   prev.forEach((p, key) => {
     if (next.has(key)) return;
-    const hang = p[4] === '' ? '(chưa số)' : String(p[4]);
+    const hang = (p[20] ? 'Hướng ' + p[20] + ' · ' : '') + (p[4] === '' ? '(chưa số)' : String(p[4]));
     logs.push([when, who, nguoi, lot, hang, 'Xoá hàng ' + hang + ' (ĐT ' + showVal_(p[5]) + ')']);
   });
 }
@@ -467,7 +474,8 @@ function writeWarnings_(ss, detail) {
     if (status.indexOf('Trùng hàng') >= 0) bits.push('Nhiều dòng cùng số hàng');
     if (status.indexOf('Thiếu số hàng') >= 0) bits.push('Có số liệu nhưng chưa nhập số hàng');
     if (status.indexOf('Thiếu tổng ĐT') >= 0) bits.push('Có số liệu nhưng chưa nhập Tổng ĐT');
-    out.push([r[0], r[1], r[4], status, bits.join(' | '), r[12], r[5], r[13], r[15], r[16], r[17]]);
+    const dirPrefix = r[20] ? 'Hướng ' + r[20] + ': ' : '';
+    out.push([r[0], r[1], (r[20] ? r[20] + '·' : '') + r[4], status, dirPrefix + bits.join(' | '), r[12], r[5], r[13], r[15], r[16], r[17]]);
     colors.push(status.indexOf('Phúc tra') >= 0 ? '#fff1c6' : '#fde7e7');
   });
 

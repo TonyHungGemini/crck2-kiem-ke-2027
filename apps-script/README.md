@@ -46,9 +46,11 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
   - **Theo ngày**: mỗi ngày một dòng (lô đã nhập, đã xong, cảnh báo, tổng cây…)
     để xem tiến độ theo ngày.
   - **Chi tiết**: từng hàng của từng lô — Tổng ĐT, G, +, C, K1, K2, O, số 2026,
-    lệch phúc tra, trạng thái, người nhập, máy nhập, giờ cập nhật.
+    lệch phúc tra, trạng thái, người nhập, máy nhập, giờ cập nhật, **Hướng** (A/B/C
+    với lô 117 và 351).
   - **Cảnh báo**: tự lọc hàng lệch tổng 6 cột, trùng số hàng, thiếu số hàng và
-    lệch phúc tra ≥ 2 cây; hàng phúc tra tô vàng cam, lỗi khác tô hồng đỏ.
+    lệch phúc tra ≥ 2 cây; hàng phúc tra tô vàng cam, lỗi khác tô hồng đỏ; hàng
+    của lô chia hướng ghi rõ “Hướng A/B/C”.
   - **Nhật ký nhập**: ai/máy nào thêm, sửa hay xoá hàng nào, giá trị cũ → mới.
     Lần đồng bộ đầu tiên ghi gọn “Nhập lần đầu: N hàng” cho mỗi lô.
   - **Nhật ký**: các lần lô hoàn tất và đồng bộ tay.

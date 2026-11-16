@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=34">
+<link rel="stylesheet" href="./assets/styles.css?v=35">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -190,6 +190,14 @@
       </div>
 
       <div class="card rows-card">
+        <div class="dir-bar" id="lotDirBar" hidden>
+          <div class="dir-bar-top">
+            <span class="dir-bar-title" data-i18n="dirTitle">Hướng lô</span>
+            <div class="dir-btns" id="lotDirBtns" role="group" aria-label="Hướng lô"></div>
+            <span class="dir-summary" id="lotDirSummary"></span>
+          </div>
+          <p class="dir-note" data-i18n="dirNote"></p>
+        </div>
         <div class="card-head rows-head">
           <h3 data-i18n="rowsTitle">Chi tiết theo hàng</h3>
           <div class="rows-head-actions">
@@ -204,6 +212,7 @@
             <thead>
               <tr>
                 <th class="col-hang" data-i18n="thHang">Hàng</th>
+                <th class="col-dir" data-i18n="thDir" hidden>Hướng</th>
                 <th data-i18n="thTotal">Tổng ĐT</th>
                 <th>G</th>
                 <th>+</th>
@@ -219,7 +228,8 @@
             <tbody id="rowsBody"></tbody>
             <tfoot>
               <tr>
-                <td data-i18n="total">Tổng</td>
+                <td id="sumLabel" data-i18n="total">Tổng</td>
+                <td class="col-dir" hidden></td>
                 <td id="sumDt">0</td>
                 <td id="sumG">0</td>
                 <td id="sumPlus">0</td>
@@ -274,6 +284,12 @@
     </div>
 
     <div id="quickProgress" class="quick-progress"></div>
+
+    <div class="quick-dir" id="quickDirWrap" hidden>
+      <span class="quick-dir-label" data-qk="dirLabel">Hướng nhập</span>
+      <div class="dir-seg" id="quickDirBtns" role="group" aria-label="Hướng nhập"></div>
+      <span class="quick-dir-note" id="quickDirNote"></span>
+    </div>
 
     <div class="quick-mode">
       <div class="mode-seg" role="group" aria-label="Cách nhập ô G">
@@ -490,10 +506,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=34"></script>
+<script src="./assets/phuctra.js?v=35"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=34"></script>
+<script src="./assets/app.js?v=35"></script>
 </body>
 </html>
