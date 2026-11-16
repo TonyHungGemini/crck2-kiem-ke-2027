@@ -443,7 +443,7 @@ const QUICK_I18N = {
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
     gAuto: 'G tự tính', gManual: 'Đủ 7 số', autoPh: 'tự tính',
     gNote: 'G = Tổng ĐT − (+, C, K1, K2, O)', gManualNote: 'Nhập đủ 7 số — tool dò khớp/lệch.',
-    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: 'Enter sang ô kế tiếp · Space: Lưu & tờ tiếp.',
+    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: '<kbd>Enter</kbd> qua ô, qua hàng <span class="qh-sep">·</span> <kbd>Space</kbd> lưu &amp; sang tờ tiếp',
     pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
     draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
@@ -467,7 +467,7 @@ const QUICK_I18N = {
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
     gAuto: 'G គណនាស្វ័យប្រវត្តិ', gManual: '7 លេខ', autoPh: 'ស្វ័យប្រវត្តិ',
     gNote: 'G = សរុប − (+, C, K1, K2, O)', gManualNote: 'បញ្ចូល 7 លេខ — ពិនិត្យត្រូវ/ខុស។',
-    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: 'Enter ទៅប្រអប់បន្ទាប់ · Space: រក្សាទុក & សន្លឹកបន្ទាប់',
+    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: '<kbd>Enter</kbd> ទៅប្រអប់ ឬជួរបន្ទាប់ <span class="qh-sep">·</span> <kbd>Space</kbd> រក្សាទុក &amp; សន្លឹកបន្ទាប់',
     pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
     draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
@@ -2665,7 +2665,7 @@ function applyQuickLang(lang) {
   $$('#quickDialog [data-qk-placeholder]').forEach(el => {
     el.placeholder = qt(el.dataset.qkPlaceholder);
   });
-  $('#quickHint').textContent = qt('hint');
+  $('#quickHint').innerHTML = qt('hint');
   $('#btnQuickSave').textContent = qt('save');
   $('#btnQuickSaveNext').textContent = qt('saveNext');
   $('#quickEyebrow').textContent = qt('eyebrow');

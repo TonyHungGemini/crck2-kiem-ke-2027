@@ -528,6 +528,14 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
 #rowsBody tr.is-flash td{background:var(--accent-soft);transition:background .3s}
 .dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;flex-wrap:wrap}
 .dialog-foot-actions{display:flex;gap:8px;flex-wrap:wrap}
+.quick-hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--ink-2);font-size:12.5px}
+.quick-hint kbd{
+  display:inline-flex;align-items:center;justify-content:center;min-width:24px;padding:2px 7px;
+  border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:6px;
+  background:var(--surface-2);color:var(--ink);font-family:var(--tab-nums);font-size:11px;
+  font-weight:600;line-height:1.35;letter-spacing:.01em;box-shadow:0 1px 0 var(--line-strong);
+}
+.quick-hint .qh-sep{color:var(--faint)}
 .menu-dialog .dialog-shell{width:min(520px,calc(100vw - 28px))}
 .menu-list{display:flex;flex-direction:column;gap:6px}
 .menu-item{
