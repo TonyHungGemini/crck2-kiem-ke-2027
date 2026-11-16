@@ -299,10 +299,17 @@ function rowIssuesOf(rows) {
     .map(row => ({ row, issue: rowIssue(row) }))
     .filter(x => x.issue);
 }
-function phucTraRef(key, hang) {
+function phucTraMap(key, dir) {
   const lot = PHUC_TRA[key];
-  if (!lot || !Number.isInteger(hang)) return null;
-  const ref = lot[String(hang)];
+  if (!lot) return null;
+  if (!lot.dirs) return lot;
+  return lot.dirs[dir] || null;
+}
+function phucTraRef(key, hang, dir) {
+  if (!Number.isInteger(hang)) return null;
+  const map = phucTraMap(key, dir);
+  if (!map) return null;
+  const ref = map[String(hang)];
   return Number.isFinite(ref) ? ref : null;
 }
 function hasPhucTra(key) {
@@ -310,7 +317,7 @@ function hasPhucTra(key) {
 }
 function phucTraOf(key, row) {
   if (!rowHasData(row) || row.dt == null) return null;
-  const ref = phucTraRef(key, row.hang);
+  const ref = phucTraRef(key, row.hang, rowDir(key, row));
   if (ref == null) return null;
   const diff = (Number(row.dt) || 0) - ref;
   return { ref, diff, warn: Math.abs(diff) >= PHUC_TRA_MIN };

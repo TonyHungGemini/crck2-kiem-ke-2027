@@ -28,20 +28,27 @@ base_total = {lot['lot']: lot['total'] for lot in baseline['lots']}
 
 
 def find_header(ws):
+    return find_headers(ws)[0][0] if find_headers(ws) else None
+
+
+def find_headers(ws):
+    found = []
     for r in range(1, min(ws.max_row, 12) + 1):
-        a, b = ws.cell(r, 1).value, ws.cell(r, 2).value
-        if isinstance(a, str) and a.strip().lower().startswith('hàng') and isinstance(b, str) and 'tổng điểm' in b.lower():
-            return r
-    return None
+        for c in range(1, ws.max_column + 1):
+            a, b = ws.cell(r, c).value, ws.cell(r, c + 1).value
+            if isinstance(a, str) and a.strip().lower().startswith('hàng') and isinstance(b, str) and 'tổng điểm' in b.lower():
+                found.append((r, c))
+    return found
 
 
-def parse_sheet(ws):
-    header_row = find_header(ws)
-    if not header_row:
+def parse_sheet(ws, block=0):
+    headers = find_headers(ws)
+    if len(headers) <= block:
         return None
+    header_row, col = headers[block]
     rows, order = {}, []
     for r in range(header_row + 1, ws.max_row + 1):
-        hang, total = ws.cell(r, 1).value, ws.cell(r, 2).value
+        hang, total = ws.cell(r, col).value, ws.cell(r, col + 1).value
         if isinstance(hang, (int, float)) and float(hang).is_integer() and isinstance(total, (int, float)):
             hang = int(hang)
             rows[hang] = total
@@ -62,14 +69,22 @@ def parse_sheet(ws):
         return None
     label = ''
     for r in range(1, header_row):
-        a = ws.cell(r, 1).value
+        a = ws.cell(r, col).value
         if isinstance(a, str) and 'LÔ' in a.upper():
             label = re.split(r'[:：]', a, 1)[1].strip() if (';' not in a and (':' in a or '：' in a)) else a
             break
     return {'rows': cleaned, 'label': label, 'sheet': ws.title}
 
 
+# Lô chia hướng: file chi tiết tách sheet / khối bảng theo hướng.
+# 117AB chứa 3 khối: AB (gộp), A, B; 117C là hướng C (tiêu đề trong file ghi nhầm 117B).
+DIR_DETAIL = {
+    '117': [('117AB', 1, 'A'), ('117AB', 2, 'B'), ('117C', 0, 'C')],
+    '351': [('351A', 0, 'A'), ('351B', 0, 'B'), ('351C', 0, 'C')],
+}
+
 sheets = []
+blocks_by_sheet = {}
 for path in sorted(glob.glob(os.path.join(SRC, '*.xlsx'))):
     if os.path.basename(path).startswith('~$'):
         continue
@@ -81,9 +96,30 @@ for path in sorted(glob.glob(os.path.join(SRC, '*.xlsx'))):
         if parsed:
             parsed['file'] = os.path.basename(path)
             sheets.append(parsed)
+        header_count = len(find_headers(ws))
+        if header_count:
+            blocks_by_sheet[norm(ws.title)] = [parse_sheet(ws, i) for i in range(header_count)]
 
 lots, missing, notes = {}, [], {}
 for lot in base_total:
+    if lot in DIR_DETAIL:
+        dirs, absent = {}, []
+        for sheet_name, block, dir_name in DIR_DETAIL[lot]:
+            blocks = blocks_by_sheet.get(norm(sheet_name), [])
+            parsed = blocks[block] if len(blocks) > block else None
+            if not parsed:
+                absent.append(dir_name)
+                continue
+            dirs[dir_name] = {str(h): v for h, v in sorted(parsed['rows'].items())}
+        if absent:
+            notes[lot] = 'missing dirs: ' + ', '.join(absent)
+            missing.append(lot)
+            continue
+        lots[lot] = {'dirs': dirs}
+        dir_sum = sum(sum(d.values()) for d in dirs.values())
+        if dir_sum != base_total[lot]:
+            notes[lot] = f"dirs sum {dir_sum} vs baseline {base_total[lot]}"
+        continue
     lot_n = norm(lot)
     candidates = []
     for sheet in sheets:
