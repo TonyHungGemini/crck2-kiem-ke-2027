@@ -58,6 +58,9 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
 - Trong app, bấm **Đồng bộ Google → Tải tiến độ đội về máy** (hoặc mở tab **Bản đồ tiến độ**)
   để đọc tiến độ các máy khác về bản đồ: lô do máy khác nhập/hoàn tất hiện viền nét đứt.
   Dữ liệu chỉ để xem, không ghi vào dữ liệu của máy đang dùng.
+- Muốn xem **từng hàng** đã đồng bộ ngay trong app: menu ☰ → **Chi tiết đồng bộ (Google)**,
+  hoặc bấm **Chi tiết đồng bộ** khi đang mở một lô. Màn hình này đọc tab **Chi tiết** trên
+  Sheet, có chọn lô, tô màu cảnh báo/phúc tra và chỉ để xem — không sửa dữ liệu máy.
 
 ## Khi sửa Code.gs
 

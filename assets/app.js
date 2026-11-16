@@ -391,6 +391,7 @@ const state = {
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null,
   recentLot: null, gAuto: readGAuto(), remote: readRemote(),
   lang: readLang() || 'vi', langChosen: readLangChosen(),
+  detailLot: null, remoteDetail: null,
 };
 const QUICK_I18N = {
   vi: {
@@ -652,6 +653,8 @@ const APP_I18N = {
     menuRestoreSub: 'Ghi đè dữ liệu đang có',
     menuSync: 'Đồng bộ Google & báo cáo mail',
     menuSyncSub: 'Chưa kết nối',
+    menuDetail: 'Chi tiết đồng bộ (Google)',
+    menuDetailSub: 'Xem từng hàng máy khác đã nhập',
     menuInstall: 'Cài ứng dụng lên Desktop',
     menuInstallSub: 'Chạy như app, dùng offline',
     menuDemo: 'Điền thử lô 250',
@@ -744,6 +747,24 @@ const APP_I18N = {
     remotePullFail: 'Không tải được tiến độ: {err}',
     remoteOldScript: 'Code.gs trên Google chưa cập nhật. Dán lại Code.gs mới và Triển khai phiên bản mới.',
     remoteSummary: 'Đội: {doing} đang nhập · {done} hoàn tất · cập nhật {time}',
+    btnDetailLot: 'Chi tiết đồng bộ',
+    detailEyebrow: 'Google Sheets',
+    detailTitle: 'Chi tiết đồng bộ',
+    detailLead: 'Dữ liệu đọc từ tab Chi tiết trên Google Sheets. Chỉ xem, không sửa dữ liệu trên máy này.',
+    detailLotLabel: 'Lô',
+    detailRefresh: 'Tải lại',
+    detailDiff: 'Lệch phúc tra',
+    detailLoading: 'Đang tải chi tiết từ Google…',
+    detailError: 'Không tải được chi tiết: {err}',
+    detailEmpty: 'Chưa có dữ liệu chi tiết trên Google Sheets. Hãy đồng bộ từ máy đã nhập dữ liệu.',
+    detailFoot: 'Dòng tô vàng: phúc tra lệch từ 2 cây. Dòng tô hồng: thiếu/lệch tổng, thiếu hoặc trùng số hàng. Dữ liệu này chỉ để xem, mọi chỉnh sửa phải thực hiện trên máy đã nhập lô.',
+    detailUpdated: 'Cập nhật {time}',
+    detailRowsCount: '{n} hàng',
+    detailWarnCount: '{n} cảnh báo',
+    detailNoWarn: 'Không có cảnh báo',
+    detailDevice: 'Máy / người nhập: {device}',
+    detailNguoi: 'Người KK: {nguoi}',
+    detailOption: '{lot} · {n} hàng',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -956,6 +977,8 @@ const APP_I18N = {
     menuRestoreSub: 'សរសេរជាន់ទិន្នន័យបច្ចុប្បន្ន',
     menuSync: 'ធ្វើសមកាល Google & របាយការណ៍អ៊ីមែល',
     menuSyncSub: 'មិនទាន់ភ្ជាប់',
+    menuDetail: 'លម្អិតសមកាល (Google)',
+    menuDetailSub: 'មើលជួរនីមួយៗដែលឧបករណ៍ផ្សេងបានបញ្ចូល',
     menuInstall: 'ដំឡើងកម្មវិធីលើ Desktop',
     menuInstallSub: 'ដំណើរការដូចកម្មវិធី, ប្រើក្រៅបណ្ដាញ',
     menuDemo: 'បំពេញសាកល្បងដីឡូតិ៍ 250',
@@ -1048,6 +1071,24 @@ const APP_I18N = {
     remotePullFail: 'មិនអាចទាញវឌ្ឍនភាព៖ {err}',
     remoteOldScript: 'Code.gs លើ Google មិនទាន់បានធ្វើបច្ចុប្បន្នភាពទេ។ បិទភ្ជាប់ Code.gs ថ្មី ហើយដាក់ផ្សព្វផ្សាយកំណែថ្មី។',
     remoteSummary: 'ក្រុម៖ {doing} កំពុងបញ្ចូល · {done} រួចរាល់ · {time}',
+    btnDetailLot: 'លម្អិតសមកាល',
+    detailEyebrow: 'Google Sheets',
+    detailTitle: 'លម្អិតសមកាល',
+    detailLead: 'ទិន្នន័យអានពីផ្ទាំង លម្អិត ក្នុង Google Sheets។ មើលបានតែប៉ុណ្ណោះ មិនកែទិន្នន័យលើឧបករណ៍នេះទេ។',
+    detailLotLabel: 'ដីឡូតិ៍',
+    detailRefresh: 'ផ្ទុកឡើងវិញ',
+    detailDiff: 'ខុសគ្នាផ្ទៀងផ្ទាត់',
+    detailLoading: 'កំពុងផ្ទុកលម្អិតពី Google…',
+    detailError: 'មិនអាចផ្ទុកលម្អិតបាន៖ {err}',
+    detailEmpty: 'មិនទាន់មានទិន្នន័យលម្អិតនៅ Google Sheets។ សូមធ្វើសមកាលពីឧបករណ៍ដែលបានបញ្ចូលទិន្នន័យ។',
+    detailFoot: 'ជួរពណ៌លឿង៖ ផ្ទៀងផ្ទាត់ខុសគ្នាចាប់ពី 2 ដើម។ ជួរពណ៌ផ្កាឈូក៖ ខ្វះ/សរុបមិនត្រូវ ខ្វះ ឬស្ទួនលេខជួរ។ ទិន្នន័យនេះសម្រាប់តែមើល ត្រូវកែនៅឧបករណ៍ដែលបានបញ្ចូលដីឡូតិ៍។',
+    detailUpdated: 'ធ្វើបច្ចុប្បន្នភាព {time}',
+    detailRowsCount: '{n} ជួរ',
+    detailWarnCount: '{n} ការព្រមាន',
+    detailNoWarn: 'គ្មានការព្រមាន',
+    detailDevice: 'ឧបករណ៍ / អ្នកបញ្ចូល៖ {device}',
+    detailNguoi: 'អ្នករាប់៖ {nguoi}',
+    detailOption: '{lot} · {n} ជួរ',
   },
 };
 function t(key, vars) {
@@ -2335,6 +2376,11 @@ function setLang(lang) {
   if (state.view === 'home') renderHome();
   else if (state.lot) renderLot();
   if (state.view === 'home' && state.homeView === 'map' && mapCtx) refreshMap();
+  const detailDlg = $('#detailDialog');
+  if (detailDlg && detailDlg.open && state.remoteDetail) {
+    fillDetailLotSelect();
+    renderDetailLot();
+  }
 }
 
 function buildQuickCards() {
@@ -3195,6 +3241,160 @@ async function pullRemote(manual) {
   }
 }
 
+let detailBusy = false;
+const DETAIL_STATUS_KM = {
+  'Thiếu tổng ĐT': 'ខ្វះសរុប',
+  'Lệch tổng': 'សរុបមិនត្រូវ',
+  'Thiếu số hàng': 'ខ្វះលេខជួរ',
+  'Trùng hàng': 'ជួរស្ទួន',
+  'Phúc tra ≥2': 'ផ្ទៀងផ្ទាត់ ≥2',
+};
+
+function detailStatusText(status) {
+  const s = String(status || '');
+  if (!s) return '—';
+  if (state.lang !== 'km') return s;
+  return s.split('; ').map(part => DETAIL_STATUS_KM[part] || part).join(' · ');
+}
+
+function detailCell(v) {
+  if (v === '' || v == null) return '—';
+  const n = Number(v);
+  return Number.isFinite(n) ? fmt(n) : '—';
+}
+
+function setDetailStatus(text, bad) {
+  const el = $('#detailStatusLine');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'muted' + (bad ? ' bad' : '');
+}
+
+function detailLotList() {
+  const lots = (state.remoteDetail && Array.isArray(state.remoteDetail.lots)) ? state.remoteDetail.lots.slice() : [];
+  return lots.sort((a, b) => String(a.lot).localeCompare(String(b.lot), 'vi', { numeric: true }));
+}
+
+function fillDetailLotSelect() {
+  const sel = $('#detailLot');
+  if (!sel) return;
+  const lots = detailLotList();
+  sel.innerHTML = lots.map(l => `<option value="${esc(l.lot)}">${esc(t('detailOption', { lot: l.lot, n: (l.rows || []).length }))}</option>`).join('');
+  const current = [state.detailLot, state.lot].find(key => key && lots.some(l => l.lot === key)) || (lots[0] && lots[0].lot) || '';
+  sel.value = current;
+  sel.disabled = !lots.length;
+  state.detailLot = current || null;
+}
+
+function renderDetailLot() {
+  const lot = detailLotList().find(l => l.lot === state.detailLot);
+  const rows = (lot && Array.isArray(lot.rows)) ? lot.rows : [];
+  const body = $('#detailBody');
+  const empty = $('#detailEmpty');
+  if (!body || !empty) return;
+
+  const sums = { dt: 0, g: 0, plus: 0, c: 0, k1: 0, k2: 0, o: 0, pt: 0, pd: 0 };
+  let warn = 0;
+  body.innerHTML = rows.map(r => {
+    FIELDS.forEach(k => { sums[k] += Number(r[k]) || 0; });
+    sums.pt += Number(r.pt) || 0;
+    sums.pd += Number(r.pd) || 0;
+    const status = String(r.status || '');
+    const isWarn = !!status && status !== 'OK';
+    if (isWarn) warn += 1;
+    const cls = isWarn ? (status.indexOf('Phúc tra') >= 0 ? 'detail-pt' : 'detail-warn') : '';
+    const pdVal = r.pd === '' || r.pd == null ? '—' : signed(r.pd);
+    const pdCls = r.pd !== '' && r.pd != null && Math.abs(Number(r.pd)) >= PHUC_TRA_MIN ? ' class="pd-warn"' : '';
+    return `<tr class="${cls}">
+      <td>${r.hang == null ? '—' : esc(r.hang)}</td>
+      <td>${detailCell(r.dt)}</td>
+      <td>${detailCell(r.g)}</td>
+      <td>${detailCell(r.plus)}</td>
+      <td>${detailCell(r.c)}</td>
+      <td>${detailCell(r.k1)}</td>
+      <td>${detailCell(r.k2)}</td>
+      <td>${detailCell(r.o)}</td>
+      <td>${detailCell(r.pt)}</td>
+      <td${pdCls}>${pdVal}</td>
+      <td><span class="st ${isWarn ? 'st-warn' : 'st-ok'}">${esc(detailStatusText(status))}</span></td>
+    </tr>`;
+  }).join('');
+
+  empty.hidden = rows.length > 0;
+  empty.className = 'detail-empty';
+  empty.textContent = t('detailEmpty');
+  ['dt', 'g', 'plus', 'c', 'k1', 'k2', 'o'].forEach(k => {
+    const el = $('#detailSum' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.textContent = fmt(sums[k]);
+  });
+  const sumPt = $('#detailSumPt');
+  const sumPd = $('#detailSumPd');
+  if (sumPt) sumPt.textContent = rows.length ? fmt(sums.pt) : '0';
+  if (sumPd) sumPd.textContent = rows.length ? signed(sums.pd) : '0';
+
+  if (!lot) {
+    setDetailStatus('');
+    const box = $('#detailSummary');
+    if (box) box.innerHTML = '';
+    return;
+  }
+  setDetailStatus(t('detailUpdated', { time: dateTimeVN(lot.updatedAt || state.remoteDetail.at) }));
+  const bits = [
+    t('detailRowsCount', { n: `<b>${fmt(rows.length)}</b>` }),
+    warn
+      ? t('detailWarnCount', { n: `<b class="warn">${fmt(warn)}</b>` })
+      : t('detailNoWarn'),
+  ];
+  if (lot.device) bits.push(t('detailDevice', { device: `<b>${esc(lot.device)}</b>` }));
+  if (lot.nguoi) bits.push(t('detailNguoi', { nguoi: `<b>${esc(lot.nguoi)}</b>` }));
+  const box = $('#detailSummary');
+  if (box) box.innerHTML = bits.map(b => `<span>${b}</span>`).join('');
+}
+
+async function loadRemoteDetail() {
+  if (detailBusy) return;
+  const url = syncCfg.url.trim();
+  const empty = $('#detailEmpty');
+  if (!url) {
+    setDetailStatus(t('syncNoUrl'), true);
+    if (empty) { empty.hidden = false; empty.className = 'detail-empty bad'; empty.textContent = t('syncNoUrl'); }
+    return;
+  }
+  detailBusy = true;
+  setDetailStatus(t('detailLoading'));
+  const btn = $('#btnDetailRefresh');
+  if (btn) btn.disabled = true;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const u = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'action=detail';
+    const res = await fetch(u, { redirect: 'follow', cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
+    const data = await res.json();
+    if (!data || data.ok === false) throw new Error((data && data.error) || t('syncAppError', { err: '' }));
+    if (!Array.isArray(data.lots)) throw new Error(t('remoteOldScript'));
+    state.remoteDetail = { at: data.atIso || new Date().toISOString(), sheetUrl: data.sheetUrl || '', lots: data.lots };
+    fillDetailLotSelect();
+    renderDetailLot();
+  } catch (err) {
+    setDetailStatus(t('detailError', { err: err.message }), true);
+    const hasOld = !!(state.remoteDetail && state.remoteDetail.lots && state.remoteDetail.lots.length);
+    if (empty && !hasOld) { empty.hidden = false; empty.className = 'detail-empty bad'; empty.textContent = t('detailError', { err: err.message }); }
+  } finally {
+    clearTimeout(timer);
+    detailBusy = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openDetailDialog(lotKey) {
+  const dlg = $('#detailDialog');
+  if (!dlg) return;
+  state.detailLot = lotKey || (state.view === 'lot' ? state.lot : null) || state.detailLot;
+  if (!dlg.open) dlg.showModal();
+  await loadRemoteDetail();
+}
+
 function syncUrlFromInput() {
   const url = $('#syncUrl').value.trim();
   if (!url) { toast(t('syncPasteFirst'), 'bad'); return null; }
@@ -3338,7 +3538,19 @@ function setupDialogs() {
   $('#menuBackup').addEventListener('click', () => { menu.close(); backupJSON(); });
   $('#menuRestore').addEventListener('click', () => { menu.close(); $('#fileRestore').click(); });
   $('#menuDemo').addEventListener('click', () => { menu.close(); demoLot250(); });
+  $('#menuDetail').addEventListener('click', () => {
+    menu.close();
+    openDetailDialog(state.view === 'lot' ? state.lot : null);
+  });
   $('#menuReset').addEventListener('click', () => { menu.close(); resetAll(); });
+  const detailDlg = $('#detailDialog');
+  $('#btnDetailLot').addEventListener('click', () => openDetailDialog(state.lot));
+  $('#btnDetailClose').addEventListener('click', () => detailDlg.close());
+  $('#btnDetailRefresh').addEventListener('click', () => loadRemoteDetail());
+  $('#detailLot').addEventListener('change', e => {
+    state.detailLot = e.target.value;
+    renderDetailLot();
+  });
   $('#fileRestore').addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     if (f) restoreJSON(f);
@@ -3350,7 +3562,7 @@ function setupDialogs() {
       else $('#fileRestore').click();
     });
   });
-  [quick, menu].forEach(dlg => {
+  [quick, menu, detailDlg].forEach(dlg => {
     dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
   });
 }

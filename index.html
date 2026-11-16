@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=30">
+<link rel="stylesheet" href="./assets/styles.css?v=31">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -155,6 +155,7 @@
         </div>
         <div class="lot-head-actions">
           <button class="btn" id="btnQuickLot" type="button" data-i18n="quickEntry">Nhập nhanh</button>
+          <button class="btn" id="btnDetailLot" type="button" data-i18n="btnDetailLot">Chi tiết đồng bộ</button>
           <button class="btn" id="btnExportLot" type="button" data-i18n="exportLot">Xuất Excel lô</button>
           <button class="btn" id="btnToggleDone" type="button" data-i18n="markDone">Đánh dấu hoàn tất</button>
         </div>
@@ -336,6 +337,7 @@
       <button class="menu-item" id="menuBackup" type="button"><span data-i18n="menuBackup">Sao lưu dữ liệu (JSON)</span><small data-i18n="menuBackupSub">Tải file dự phòng về máy</small></button>
       <button class="menu-item" id="menuRestore" type="button"><span data-i18n="menuRestore">Phục hồi từ JSON</span><small data-i18n="menuRestoreSub">Ghi đè dữ liệu đang có</small></button>
       <button class="menu-item" id="menuSync" type="button"><span data-i18n="menuSync">Đồng bộ Google &amp; báo cáo mail</span><small id="menuSyncSub">Chưa kết nối</small></button>
+      <button class="menu-item" id="menuDetail" type="button"><span data-i18n="menuDetail">Chi tiết đồng bộ (Google)</span><small data-i18n="menuDetailSub">Xem từng hàng máy khác đã nhập</small></button>
       <button class="menu-item" id="menuInstall" type="button" hidden><span data-i18n="menuInstall">Cài ứng dụng lên Desktop</span><small data-i18n="menuInstallSub">Chạy như app, dùng offline</small></button>
       <button class="menu-item" id="menuDemo" type="button"><span data-i18n="menuDemo">Điền thử lô 250</span><small data-i18n="menuDemoSub">Hàng 01 + 02 từ ảnh phiếu mẫu</small></button>
       <button class="menu-item danger" id="menuReset" type="button"><span data-i18n="menuReset">Xoá toàn bộ dữ liệu</span><small data-i18n="menuResetSub">Không thể hoàn tác</small></button>
@@ -398,14 +400,75 @@
   </div>
 </dialog>
 
+<!-- ================= SYNCED DETAIL DIALOG ================= -->
+<dialog id="detailDialog" class="dialog detail-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow" data-i18n="detailEyebrow">Google Sheets</div>
+        <h3 data-i18n="detailTitle">Chi tiết đồng bộ</h3>
+      </div>
+      <button class="btn btn-icon" id="btnDetailClose" type="button" aria-label="Đóng" data-i18n-aria="close">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <p class="detail-lead" data-i18n="detailLead">Dữ liệu đọc từ tab Chi tiết trên Google Sheets. Chỉ xem, không sửa dữ liệu trên máy này.</p>
+    <div class="detail-toolbar">
+      <label><span data-i18n="detailLotLabel">Lô</span>
+        <select id="detailLot"></select>
+      </label>
+      <span class="muted" id="detailStatusLine"></span>
+      <button class="btn btn-sm" id="btnDetailRefresh" type="button" data-i18n="detailRefresh">Tải lại</button>
+    </div>
+    <div class="detail-summary" id="detailSummary"></div>
+    <div class="table-wrap">
+      <table class="rows-table detail-table">
+        <thead>
+          <tr>
+            <th data-i18n="thHang">Hàng</th>
+            <th data-i18n="thTotal">Tổng ĐT</th>
+            <th>G</th>
+            <th>+</th>
+            <th>C</th>
+            <th>K1</th>
+            <th>K2</th>
+            <th>O</th>
+            <th>2026</th>
+            <th data-i18n="detailDiff">Lệch phúc tra</th>
+            <th data-i18n="thStatus">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody id="detailBody"></tbody>
+        <tfoot>
+          <tr>
+            <td data-i18n="total">Tổng</td>
+            <td id="detailSumDt">0</td>
+            <td id="detailSumG">0</td>
+            <td id="detailSumPlus">0</td>
+            <td id="detailSumC">0</td>
+            <td id="detailSumK1">0</td>
+            <td id="detailSumK2">0</td>
+            <td id="detailSumO">0</td>
+            <td id="detailSumPt">0</td>
+            <td id="detailSumPd">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="detail-empty" id="detailEmpty" hidden data-i18n="detailEmpty">Chưa có dữ liệu chi tiết trên Google Sheets. Hãy đồng bộ từ máy đã nhập dữ liệu.</p>
+    <p class="footnote" data-i18n="detailFoot">Dòng tô vàng: phúc tra lệch từ 2 cây. Dòng tô hồng: thiếu/lệch tổng, thiếu hoặc trùng số hàng. Dữ liệu này chỉ để xem, mọi chỉnh sửa phải thực hiện trên máy đã nhập lô.</p>
+  </div>
+</dialog>
+
 <input type="file" id="fileRestore" accept="application/json,.json" hidden>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=30"></script>
+<script src="./assets/phuctra.js?v=31"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=30"></script>
+<script src="./assets/app.js?v=31"></script>
 </body>
 </html>

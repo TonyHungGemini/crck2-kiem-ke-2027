@@ -84,6 +84,49 @@ function doGet(e) {
       return json_({ ok: false, error: String((err && err.message) || err) });
     }
   }
+  if (action === 'detail') {
+    try {
+      const ss = getSpreadsheet_();
+      const sh = ss.getSheetByName('Chi tiết');
+      const lotFilter = String((e && e.parameter && e.parameter.lot) || '');
+      const groups = new Map();
+      if (sh && sh.getLastRow() > 1) {
+        const width = DETAIL_HEADERS.length;
+        const vals = sh.getRange(2, 1, sh.getLastRow() - 1, width).getValues();
+        vals.forEach(r => {
+          const lot = String(r[0] || '');
+          if (!lot || (lotFilter && lot !== lotFilter)) return;
+          let g = groups.get(lot);
+          if (!g) {
+            g = { lot: lot, kv: String(r[1] || ''), id: String(r[2] || ''), doi: r[3] == null ? '' : r[3], rows: [], warn: 0, updatedAt: '', updatedAtDisplay: '', device: '', nguoi: '' };
+            groups.set(lot, g);
+          }
+          const status = String(r[14] || '');
+          const row = {
+            hang: r[4] === '' || r[4] == null ? null : Number(r[4]),
+            dt: numOrBlank_(r[5]), g: numOrBlank_(r[6]), plus: numOrBlank_(r[7]),
+            c: numOrBlank_(r[8]), k1: numOrBlank_(r[9]), k2: numOrBlank_(r[10]), o: numOrBlank_(r[11]),
+            pt: numOrBlank_(r[12]), pd: numOrBlank_(r[13]), status: status,
+          };
+          g.rows.push(row);
+          if (status && status !== 'OK') g.warn += 1;
+          if (String(r[18] || '')) g.updatedAt = String(r[18]);
+          if (String(r[17] || '')) g.updatedAtDisplay = String(r[17]);
+          if (String(r[16] || '')) g.device = String(r[16]);
+          if (String(r[15] || '')) g.nguoi = String(r[15]);
+        });
+      }
+      const lots = Array.from(groups.values());
+      lots.forEach(g => g.rows.sort((a, b) => (a.hang == null ? 99999 : a.hang) - (b.hang == null ? 99999 : b.hang)));
+      lots.sort((a, b) => String(a.lot).localeCompare(String(b.lot), 'en', { numeric: true }));
+      return json_({
+        ok: true, app: APP_ID, at: now_(), atIso: new Date().toISOString(),
+        sheetUrl: ss.getUrl(), count: lots.length, lots: lots,
+      });
+    } catch (err) {
+      return json_({ ok: false, error: String((err && err.message) || err) });
+    }
+  }
   return json_({
     ok: true,
     app: APP_ID,
