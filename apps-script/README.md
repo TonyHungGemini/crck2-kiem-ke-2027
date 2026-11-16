@@ -3,6 +3,8 @@
 App tĩnh không tự gửi mail được. Phần này dùng **Google Apps Script của chính anh**:
 app gửi dữ liệu lên một Web App, script ghi vào Google Sheets trong Drive và gửi mail
 kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễn phí, không lộ mật khẩu.
+Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh sách cảnh báo** và
+**nhật ký nhập** (ai/máy nào sửa hàng nào, lúc nào).
 
 ## Cài đặt
 
@@ -35,12 +37,20 @@ kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễ
 
 - Sau mỗi lần lưu dữ liệu, app tự gửi bản mới lên Google sau ~5 giây
   (bật/tắt bằng ô **Tự đồng bộ sau khi lưu dữ liệu**).
+- Điền **Tên máy / người nhập** trong menu **Đồng bộ Google** (một lần trên mỗi
+  điện thoại) để cột “Máy / người nhập” trong các tab ghi đúng người thực hiện.
 - Khi bấm **Đánh dấu hoàn tất** một lô, app gửi ngay và Google gửi 1 mail kèm file
   Excel `.xlsx` của toàn bộ tiến độ.
-- Trong Google Sheets có 3 tab:
+- Trong Google Sheets có 6 tab:
   - **Tiến độ**: 95 lô + KV, trạng thái, tổng 2026/2027, lệch, giờ hoàn tất.
   - **Theo ngày**: mỗi ngày một dòng (lô đã nhập, đã xong, cảnh báo, tổng cây…)
     để xem tiến độ theo ngày.
+  - **Chi tiết**: từng hàng của từng lô — Tổng ĐT, G, +, C, K1, K2, O, số 2026,
+    lệch phúc tra, trạng thái, người nhập, máy nhập, giờ cập nhật.
+  - **Cảnh báo**: tự lọc hàng lệch tổng 6 cột, trùng số hàng, thiếu số hàng và
+    lệch phúc tra ≥ 2 cây; hàng phúc tra tô vàng cam, lỗi khác tô hồng đỏ.
+  - **Nhật ký nhập**: ai/máy nào thêm, sửa hay xoá hàng nào, giá trị cũ → mới.
+    Lần đồng bộ đầu tiên ghi gọn “Nhập lần đầu: N hàng” cho mỗi lô.
   - **Nhật ký**: các lần lô hoàn tất và đồng bộ tay.
 - Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet. Mỗi lần gửi,
   script **gộp theo lô**: lô nào đã có số liệu và mới hơn (theo thời điểm lưu trên máy)
@@ -53,6 +63,9 @@ kèm file Excel **mỗi khi một lô được đánh dấu hoàn tất**. Miễ
 
 Sửa xong phải vào **Triển khai → Quản lý triển khai → biểu tượng bút → Phiên bản: Mới**
 rồi **Triển khai**. Không cần đổi URL nếu vẫn dùng đúng deployment cũ.
+
+Bản mới tự tạo thêm 3 tab **Chi tiết**, **Cảnh báo**, **Nhật ký nhập** ngay lần đồng bộ
+kế tiếp. Muốn tạo trước, chạy hàm `testSetup` trong editor.
 
 ## Xử lý sự cố
 

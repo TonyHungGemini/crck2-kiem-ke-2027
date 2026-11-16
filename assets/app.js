@@ -127,11 +127,12 @@ function loadSyncCfg() {
     return {
       url: typeof d.url === 'string' ? d.url : DEFAULT_SYNC_URL,
       enabled: d.enabled !== false,
+      device: typeof d.device === 'string' ? d.device : '',
       lastSyncAt: d.lastSyncAt || null,
       lastResult: d.lastResult || '',
     };
   } catch (err) {
-    return { url: DEFAULT_SYNC_URL, enabled: true, lastSyncAt: null, lastResult: '' };
+    return { url: DEFAULT_SYNC_URL, enabled: true, device: '', lastSyncAt: null, lastResult: '' };
   }
 }
 let syncCfg = loadSyncCfg();
@@ -663,6 +664,9 @@ const APP_I18N = {
     syncTitle: 'Đồng bộ & báo cáo mail',
     syncLead: 'Dán URL Web App của Apps Script. App tự ghi dữ liệu vào Google Sheets; khi một lô được đánh dấu <b>hoàn tất</b>, Google gửi mail kèm file Excel báo cáo cho anh.',
     syncUrlLabel: 'URL Web App (Apps Script)',
+    syncDeviceLabel: 'Tên máy / người nhập',
+    syncDeviceHint: 'Điền một lần trên máy này (VD: Lan – Đội 2) để tab Chi tiết và Nhật ký ghi rõ ai nhập.',
+    syncDevicePh: 'VD: Lan – Đội 2',
     syncEnabled: 'Tự đồng bộ sau khi lưu dữ liệu',
     syncStatusInit: 'Chưa kết nối.',
     syncSave: 'Lưu cấu hình',
@@ -964,6 +968,9 @@ const APP_I18N = {
     syncTitle: 'ធ្វើសមកាល & របាយការណ៍អ៊ីមែល',
     syncLead: 'បិទភ្ជាប់ URL Web App របស់ Apps Script។ កម្មវិធីនឹងសរសេរទិន្នន័យទៅ Google Sheets; ពេលដីឡូតិ៍ត្រូវបានសម្គាល់ <b>រួចរាល់</b> Google នឹងផ្ញើអ៊ីមែលជាមួយឯកសារ Excel។',
     syncUrlLabel: 'URL Web App (Apps Script)',
+    syncDeviceLabel: 'ឈ្មោះឧបករណ៍ / អ្នកបញ្ចូល',
+    syncDeviceHint: 'បំពេញម្តងលើឧបករណ៍នេះ (ឧ. ឡាន – ក្រុម 2) ដើម្បីឱ្យតារាងលម្អិត និងកំណត់ហេតុកត់ត្រាច្បាស់ថាអ្នកណាបញ្ចូល។',
+    syncDevicePh: 'ឧ. ឡាន – ក្រុម 2',
     syncEnabled: 'ធ្វើសមកាលស្វ័យប្រវត្តិក្រោយរក្សាទុក',
     syncStatusInit: 'មិនទាន់ភ្ជាប់។',
     syncSave: 'រក្សាទុកការកំណត់',
@@ -2940,7 +2947,13 @@ function buildSyncPayload(reason, lotKey) {
       ngay: st.meta.ngay || '',
       huong: st.meta.huong || '',
       ghiChu: st.meta.ghiChu || '',
-      rows: st.entered.map(r => ({ hang: r.hang, dt: r.dt, g: r.g, plus: r.plus, c: r.c, k1: r.k1, k2: r.k2, o: r.o })),
+      rows: st.entered.map(r => {
+        const pt = phucTraOf(key, r);
+        return {
+          uid: r.uid, hang: r.hang, dt: r.dt, g: r.g, plus: r.plus, c: r.c, k1: r.k1, k2: r.k2, o: r.o,
+          pt: pt ? pt.ref : null, pd: pt ? pt.diff : null,
+        };
+      }),
     };
   });
   const entered = lots.filter(l => l.entered > 0).length;
@@ -2960,7 +2973,8 @@ function buildSyncPayload(reason, lotKey) {
   const eventLot = reason === 'lot_done' && lotKey ? lots.find(l => l.lot === lotKey) : null;
   return {
     app: 'crck2-kiem-ke-2027',
-    version: 2,
+    version: 3,
+    device: (syncCfg.device || '').trim(),
     sentAt: new Date().toISOString(),
     today: todayISO(),
     reason,
@@ -3082,6 +3096,8 @@ function openSyncDialog() {
   const dlg = $('#syncDialog');
   if (!dlg) return;
   $('#syncUrl').value = syncCfg.url || '';
+  const deviceEl = $('#syncDevice');
+  if (deviceEl) deviceEl.value = syncCfg.device || '';
   $('#syncEnabled').checked = syncCfg.enabled;
   updateSyncUi();
   updateRemoteUi();
@@ -3201,25 +3217,28 @@ function setupSyncUi() {
       toast(t('syncUrlFormat'), 'bad');
       return;
     }
-    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked });
+    saveSyncCfg({ url: raw, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     toast(raw ? t('syncSaved') : t('syncDisabled'), 'ok');
+  });
+  $('#syncDevice').addEventListener('input', e => {
+    saveSyncCfg({ device: e.target.value.trim().slice(0, 40) });
   });
   $('#btnSyncTest').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await syncNow('test');
   });
   $('#btnSyncNow').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await syncNow('manual');
   });
   $('#btnSyncPull').addEventListener('click', async () => {
     const url = syncUrlFromInput();
     if (!url) return;
-    saveSyncCfg({ url, enabled: $('#syncEnabled').checked });
+    saveSyncCfg({ url, enabled: $('#syncEnabled').checked, device: $('#syncDevice').value.trim() });
     await pullRemote(true);
   });
   $('#btnCopyScript').addEventListener('click', async () => {

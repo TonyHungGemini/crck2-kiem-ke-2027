@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=29">
+<link rel="stylesheet" href="./assets/styles.css?v=30">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -363,6 +363,10 @@
       <label class="sync-field"><span data-i18n="syncUrlLabel">URL Web App (Apps Script)</span>
         <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
       </label>
+      <label class="sync-field"><span data-i18n="syncDeviceLabel">Tên máy / người nhập</span>
+        <input id="syncDevice" type="text" maxlength="40" autocomplete="off" data-i18n-ph="syncDevicePh" placeholder="VD: Lan – Đội 2">
+      </label>
+      <p class="footnote" data-i18n="syncDeviceHint">Điền một lần trên máy này (VD: Lan – Đội 2) để tab Chi tiết và Nhật ký ghi rõ ai nhập.</p>
       <label class="sync-check"><input id="syncEnabled" type="checkbox"> <span data-i18n="syncEnabled">Tự đồng bộ sau khi lưu dữ liệu</span></label>
 
       <div class="sync-status" id="syncStatus">Chưa kết nối.</div>
@@ -398,10 +402,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=29"></script>
+<script src="./assets/phuctra.js?v=30"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=29"></script>
+<script src="./assets/app.js?v=30"></script>
 </body>
 </html>
