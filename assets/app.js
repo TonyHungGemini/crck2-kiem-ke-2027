@@ -833,6 +833,22 @@ const APP_I18N = {
     detailDevice: 'Máy / người nhập: {device}',
     detailNguoi: 'Người KK: {nguoi}',
     detailOption: '{lot} · {n} hàng',
+    detailOptionKv: '{lot} · {kv} · {n} hàng',
+    notiAria: 'Thông báo lô nhập hôm nay',
+    notiTitle: 'Lô nhập hôm nay',
+    notiEyebrow: 'Tiến độ đội',
+    notiLead: 'Các lô máy khác đã nhập hôm nay. Bấm một lô để xem chi tiết từ Google Sheets.',
+    notiEmpty: 'Hôm nay chưa có lô nào từ máy khác.',
+    notiNotSynced: 'Chưa tải được tiến độ đội. Kiểm tra kết nối rồi bấm Tải lại.',
+    notiRefresh: 'Tải lại',
+    notiFoot: 'Thông báo tính riêng trên máy này — máy khác chưa xem vẫn thấy thông báo của họ.',
+    notiNew: 'Mới',
+    notiStatusDone: 'Hoàn tất',
+    notiStatusWarn: 'Cảnh báo',
+    notiStatusDoing: 'Đang nhập',
+    notiLot: 'Lô {lot}',
+    notiRows: '{n} hàng',
+    notiTree: 'cây',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1184,6 +1200,22 @@ const APP_I18N = {
     detailDevice: 'ឧបករណ៍ / អ្នកបញ្ចូល៖ {device}',
     detailNguoi: 'អ្នករាប់៖ {nguoi}',
     detailOption: '{lot} · {n} ជួរ',
+    detailOptionKv: '{lot} · {kv} · {n} ជួរ',
+    notiAria: 'ដំណឹងដីឡូតិ៍បញ្ចូលថ្ងៃនេះ',
+    notiTitle: 'ដីឡូតិ៍បញ្ចូលថ្ងៃនេះ',
+    notiEyebrow: 'វឌ្ឍនភាពក្រុម',
+    notiLead: 'ដីឡូតិ៍ដែលម៉ាស៊ីនផ្សេងបានបញ្ចូលថ្ងៃនេះ។ ចុចដីឡូតិ៍ដើម្បីមើលលម្អិតពី Google Sheets។',
+    notiEmpty: 'ថ្ងៃនេះមិនទាន់មានដីឡូតិ៍ពីម៉ាស៊ីនផ្សេងទេ។',
+    notiNotSynced: 'មិនទាន់ទាញបានវឌ្ឍនភាពក្រុមទេ។ ពិនិត្យការតភ្ជាប់ ហើយចុច ទាញឡើងវិញ។',
+    notiRefresh: 'ទាញឡើងវិញ',
+    notiFoot: 'ដំណឹងគិតដោយឡែកលើម៉ាស៊ីននេះ — ម៉ាស៊ីនផ្សេងមិនទាន់មើល នៅតែឃើញដំណឹងរបស់ពួកគេ។',
+    notiNew: 'ថ្មី',
+    notiStatusDone: 'រួចរាល់',
+    notiStatusWarn: 'ការព្រមាន',
+    notiStatusDoing: 'កំពុងបញ្ចូល',
+    notiLot: 'ដីឡូតិ៍ {lot}',
+    notiRows: '{n} ជួរ',
+    notiTree: 'ដើម',
   },
 };
 function t(key, vars) {
@@ -2727,6 +2759,9 @@ function setLang(lang) {
     fillDetailLotSelect();
     renderDetailLot();
   }
+  const notiDlg = $('#notiDialog');
+  if (notiDlg && notiDlg.open) renderNotiList();
+  refreshNotiUi();
 }
 
 function maybePromptName() {
@@ -3586,6 +3621,7 @@ function updateRemoteUi(message) {
   if (!c.doing && !c.done) {
     el.textContent = remoteFetched ? t('remoteEmpty') : t('remoteNone');
     el.className = remoteFetched ? 'sync-status ok' : 'sync-status';
+    refreshNotiUi();
     return;
   }
   el.textContent = t('remoteSummary', {
@@ -3594,6 +3630,7 @@ function updateRemoteUi(message) {
     time: state.remote.at ? dateTimeVN(state.remote.at) : '—',
   });
   el.className = 'sync-status ok';
+  refreshNotiUi();
 }
 async function pullRemote(manual) {
   if (!syncCfg.url) {
@@ -3625,6 +3662,7 @@ async function pullRemote(manual) {
       if (!entered && !done) return;
       lots[l.lot] = {
         status: l.status === 'done' || l.status === 'doing' || l.status === 'warn' ? l.status : (done ? 'done' : 'doing'),
+        kv: l.kv || '',
         entered,
         done,
         dt: l.dt == null ? null : Number(l.dt),
@@ -3650,6 +3688,106 @@ async function pullRemote(manual) {
     remoteBusy = false;
     updateRemoteUi();
   }
+}
+
+const NOTI_KEY = 'crck2.kk2027.noti.v1';
+function readNotiSeen() {
+  try {
+    const d = JSON.parse(localStorage.getItem(NOTI_KEY) || '{}');
+    return d && typeof d === 'object' ? d : {};
+  } catch (err) { return {}; }
+}
+let notiSeen = readNotiSeen();
+function saveNotiSeen(map) {
+  try { localStorage.setItem(NOTI_KEY, JSON.stringify(map)); } catch (err) {}
+}
+function sameLocalDay(iso, now) {
+  const d = new Date(iso);
+  return !Number.isNaN(d.getTime())
+    && d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+}
+function notiItems() {
+  const remote = (state.remote && state.remote.lots) || {};
+  const now = new Date();
+  const items = [];
+  Object.keys(remote).forEach(key => {
+    const r = remote[key];
+    if (!r || !(Number(r.entered) > 0) || !r.updatedAt) return;
+    if (!sameLocalDay(r.updatedAt, now)) return;
+    const local = DB.lots[key];
+    if (local && local.updatedAt === r.updatedAt) return;
+    items.push({
+      key, kv: r.kv || '', nguoi: r.nguoi || '', at: r.updatedAt,
+      entered: Number(r.entered) || 0, dt: r.dt, status: r.status, done: !!r.done,
+      unread: notiSeen[key] !== r.updatedAt,
+    });
+  });
+  items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return items;
+}
+function refreshNotiUi() {
+  const btn = $('#btnNoti');
+  if (!btn) return;
+  const show = !!syncCfg.url;
+  btn.hidden = !show;
+  if (!show) return;
+  const n = notiItems().filter(x => x.unread).length;
+  const badge = $('#notiBadge');
+  if (badge) {
+    badge.hidden = n === 0;
+    badge.textContent = n > 9 ? '9+' : String(n);
+  }
+  btn.classList.toggle('has-unread', n > 0);
+  const label = n ? `${t('notiAria')} (${n})` : t('notiAria');
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+}
+function renderNotiList() {
+  const host = $('#notiList');
+  if (!host) return;
+  const items = notiItems();
+  if (!items.length) {
+    const msg = state.remote && state.remote.at ? t('notiEmpty') : t('notiNotSynced');
+    host.innerHTML = `<p class="noti-empty">${esc(msg)}</p>`;
+    return;
+  }
+  host.innerHTML = items.map(it => {
+    const stateText = it.done ? t('notiStatusDone') : (it.status === 'warn' ? t('notiStatusWarn') : t('notiStatusDoing'));
+    const stateCls = it.done ? 'st-done' : (it.status === 'warn' ? 'st-warn' : 'st-doing');
+    const meta = [`${esc(it.nguoi || '—')} · ${timeHM(it.at)}`, t('notiRows', { n: fmt(it.entered) })];
+    if (it.dt != null) meta.push(`${fmt(it.dt)} ${esc(t('notiTree'))}`);
+    return `<button class="noti-item${it.unread ? ' is-new' : ''}" type="button" data-noti-lot="${esc(it.key)}">
+      <span class="noti-item-main">
+        <span class="noti-lot">${esc(t('notiLot', { lot: it.key }))}${it.kv ? `<span class="noti-kv">${esc(it.kv)}</span>` : ''}${it.unread ? `<span class="noti-new">${esc(t('notiNew'))}</span>` : ''}</span>
+        <span class="noti-sub">${meta.join(' · ')}</span>
+      </span>
+      <span class="noti-state ${stateCls}">${esc(stateText)}</span>
+    </button>`;
+  }).join('');
+}
+function markNotiSeen() {
+  const items = notiItems();
+  if (!items.length) return;
+  const map = Object.assign({}, notiSeen);
+  items.forEach(it => { map[it.key] = it.at; });
+  notiSeen = map;
+  saveNotiSeen(map);
+}
+function openNoti() {
+  const dlg = $('#notiDialog');
+  if (!dlg) return;
+  renderNotiList();
+  markNotiSeen();
+  refreshNotiUi();
+  if (!dlg.open) dlg.showModal();
+  pullRemote(false).then(() => {
+    if (!dlg.open) return;
+    renderNotiList();
+    markNotiSeen();
+    refreshNotiUi();
+  });
 }
 
 let detailBusy = false;
@@ -3690,7 +3828,12 @@ function fillDetailLotSelect() {
   const sel = $('#detailLot');
   if (!sel) return;
   const lots = detailLotList();
-  sel.innerHTML = lots.map(l => `<option value="${esc(l.lot)}">${esc(t('detailOption', { lot: l.lot, n: (l.rows || []).length }))}</option>`).join('');
+  sel.innerHTML = lots.map(l => {
+    const label = l.kv
+      ? t('detailOptionKv', { lot: l.lot, kv: l.kv, n: (l.rows || []).length })
+      : t('detailOption', { lot: l.lot, n: (l.rows || []).length });
+    return `<option value="${esc(l.lot)}">${esc(label)}</option>`;
+  }).join('');
   const current = [state.detailLot, state.lot].find(key => key && lots.some(l => l.lot === key)) || (lots[0] && lots[0].lot) || '';
   sel.value = current;
   sel.disabled = !lots.length;
@@ -3985,6 +4128,24 @@ function setupDialogs() {
   $('#btnDetailLot').addEventListener('click', () => openDetailDialog(state.lot));
   $('#btnDetailClose').addEventListener('click', () => detailDlg.close());
   $('#btnDetailRefresh').addEventListener('click', () => loadRemoteDetail());
+  const notiDlg = $('#notiDialog');
+  $('#btnNoti').addEventListener('click', openNoti);
+  $('#btnNotiClose').addEventListener('click', () => notiDlg.close());
+  $('#btnNotiRefresh').addEventListener('click', async () => {
+    const btn = $('#btnNotiRefresh');
+    btn.disabled = true;
+    await pullRemote(false);
+    renderNotiList();
+    markNotiSeen();
+    refreshNotiUi();
+    btn.disabled = false;
+  });
+  $('#notiList').addEventListener('click', e => {
+    const item = e.target.closest('[data-noti-lot]');
+    if (!item) return;
+    notiDlg.close();
+    openDetailDialog(item.dataset.notiLot);
+  });
   $('#detailLot').addEventListener('change', e => {
     state.detailLot = e.target.value;
     renderDetailLot();
@@ -4041,6 +4202,7 @@ function init() {
   setupSyncUi();
   setupPWA();
   syncLanguageUi();
+  refreshNotiUi();
   window.addEventListener('popstate', routeFromHash);
   routeFromHash();
   if (!state.langChosen) {

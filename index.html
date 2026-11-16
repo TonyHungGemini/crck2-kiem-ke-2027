@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=36">
+<link rel="stylesheet" href="./assets/styles.css?v=37">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -26,6 +26,10 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <button class="btn btn-icon btn-bell" id="btnNoti" type="button" aria-label="Thông báo lô nhập hôm nay" title="Thông báo lô nhập hôm nay" data-i18n-aria="notiAria" data-i18n-title="notiAria" hidden>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9a6 6 0 0112 0c0 4.2 1.5 5.6 1.5 5.6h-15S6 13.2 6 9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="noti-badge" id="notiBadge" hidden>0</span>
+      </button>
       <button class="btn btn-sm btn-lang" id="btnLangToggle" type="button">ខ្មែរ</button>
       <button class="btn btn-primary" id="btnQuickHome" type="button" data-i18n="quickEntry">Nhập nhanh</button>
       <button class="btn btn-icon" id="btnMenu" type="button" aria-label="Mở menu" title="Menu" data-i18n-aria="menu" data-i18n-title="menu">
@@ -442,6 +446,26 @@
 </dialog>
 
 <!-- ================= SYNCED DETAIL DIALOG ================= -->
+<dialog id="notiDialog" class="dialog noti-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow" data-i18n="notiEyebrow">Tiến độ đội</div>
+        <h3 data-i18n="notiTitle">Lô nhập hôm nay</h3>
+      </div>
+      <button class="btn btn-icon" id="btnNotiClose" type="button" aria-label="Đóng" data-i18n-aria="close">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <p class="noti-lead" data-i18n="notiLead">Các lô máy khác đã nhập hôm nay. Bấm một lô để xem chi tiết từ Google Sheets.</p>
+    <div class="noti-list" id="notiList"></div>
+    <div class="noti-foot-row">
+      <p class="footnote" data-i18n="notiFoot">Thông báo tính riêng trên máy này — máy khác chưa xem vẫn thấy thông báo của họ.</p>
+      <button class="btn btn-sm" id="btnNotiRefresh" type="button" data-i18n="notiRefresh">Tải lại</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="detailDialog" class="dialog detail-dialog">
   <div class="dialog-shell">
     <header class="dialog-head">
@@ -506,10 +530,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=36"></script>
+<script src="./assets/phuctra.js?v=37"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=36"></script>
+<script src="./assets/app.js?v=37"></script>
 </body>
 </html>
