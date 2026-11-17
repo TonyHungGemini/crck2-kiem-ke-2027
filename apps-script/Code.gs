@@ -242,8 +242,17 @@ function writeProgress_(sh, payload) {
   lots.forEach(l => {
     if (!l || !l.lot) return;
     const entered = Number(l.entered) || 0;
-    if (!entered && !l.done) return;
     const old = byLot.get(l.lot);
+    if (!entered && !l.done) {
+      // Lô đã xoá nháp: chỉ gỡ dòng khi bản gửi kèm mốc thờigian mới hơn
+      // (không dùng sentAt để tránh máy khác xoá nhầm dữ liệu lô đang nhập).
+      if (old) {
+        const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
+        const oldTs = isoTime_(old[19]);
+        if (inTs && inTs > oldTs) byLot.delete(l.lot);
+      }
+      return;
+    }
     const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
     const oldTs = old ? isoTime_(old[19]) : 0;
     if (old && oldTs && inTs < oldTs) return;
@@ -326,10 +335,18 @@ function writeDetails_(ss, payload) {
   const logs = [];
   (payload.lots || []).forEach(l => {
     if (!l || !l.lot) return;
-    if (!(Number(l.entered) > 0)) return;
     const lot = String(l.lot);
-    const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || isoTime_(payload.sentAt);
     const old = state.get(lot);
+    if (!(Number(l.entered) > 0)) {
+      // Lô đã xoá nháp: bản có updatedAt mới hơn sẽ gỡ các dòng chi tiết cũ
+      // (chỉ tin updatedAt/doneAt của máy đã xoá, không dùng sentAt).
+      if (old && old.maxTs) {
+        const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
+        if (inTs && inTs > old.maxTs) state.set(lot, { rows: [], maxTs: inTs });
+      }
+      return;
+    }
+    const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || isoTime_(payload.sentAt);
     if (old && old.maxTs && inTs && inTs <= old.maxTs) return;
     const rows = buildDetailRows_(l, payload, device);
     if (!rows.length) return;
