@@ -2,10 +2,10 @@ const CACHE = 'kk2027-v40';
 const ASSETS = [
   './',
   './index.html',
-  './assets/styles.css?v=39',
-  './assets/app.js?v=39',
+  './assets/styles.css?v=40',
+  './assets/app.js?v=40',
   './assets/baseline.js',
-  './assets/phuctra.js?v=39',
+  './assets/phuctra.js?v=40',
   './assets/geo.js',
   './assets/fonts/source-serif-4-latin.woff2',
   './assets/fonts/source-serif-4-vi.woff2',
