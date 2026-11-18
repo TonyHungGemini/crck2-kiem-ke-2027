@@ -377,7 +377,9 @@ function remoteLot(key) {
 }
 function viewLevel(key) {
   const st = lotState(key);
-  if (st.level !== 'empty') return { st, level: st.level, remote: null };
+  // Bản đồ là "tiến độ": lô đã hoàn tất luôn tô xanh, kể cả khi lệch/cảnh báo
+  // (chi tiết lệch xem trong popup và màn hình lô).
+  if (st.level !== 'empty') return { st, level: st.meta.done ? 'done' : st.level, remote: null };
   const r = remoteLot(key);
   if (!r) return { st, level: 'empty', remote: null };
   const level = r.status === 'done' || r.status === 'doing' || r.status === 'warn'
