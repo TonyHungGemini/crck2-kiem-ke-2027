@@ -3151,9 +3151,16 @@ function buildLotSheet(key, meta, rows, agg, dirLabel) {
 
 function exportLot(key) {
   if (!key) return;
+  if (!lotState(key).entered.length) { toast(t('toastNoExportData'), 'bad'); return; }
+  if (!lotMeta(key).done && !confirm(t('exportConfirm'))) return;
+  const wb = buildLotWorkbook(key);
+  if (!wb) return;
+  downloadWorkbook(wb, `KK2027_Lo_${key.replace(/[^\w\-]+/g, '_')}.xlsx`);
+}
+
+function buildLotWorkbook(key) {
   const st = lotState(key);
-  if (!st.entered.length) { toast(t('toastNoExportData'), 'bad'); return; }
-  if (!st.meta.done && !confirm(t('exportConfirm'))) return;
+  if (!st.entered.length) return null;
   const { rows, agg, meta, base } = st;
   const dirs = lotDirs(key);
   const wb = XLSX.utils.book_new();
@@ -3205,8 +3212,7 @@ function exportLot(key) {
   xlFormula(ws2, 5, 2, 'C5-SUM(C7:C11)', gCalc);
   if (base) xlFormula(ws2, 5, 3, 'C6-B6', gCalc - (Number(base.g) || 0));
   XLSX.utils.book_append_sheet(wb, ws2, 'Đối chiếu 2026');
-
-  downloadWorkbook(wb, `KK2027_Lo_${key.replace(/[^\w\-]+/g, '_')}.xlsx`);
+  return wb;
 }
 
 function exportAll() {
@@ -3470,6 +3476,21 @@ function buildSyncPayload(reason, lotKey) {
     };
   });
   const eventLot = reason === 'lot_done' && lotKey ? lots.find(l => l.lot === lotKey) : null;
+  if (eventLot) {
+    // Đính kèm file KK lô (theo mẫu Xuất Excel lô) để mail gửi về tổng hợp.
+    try {
+      const wb = buildLotWorkbook(lotKey);
+      if (wb) {
+        const data = XLSX.write(wb, { type: 'base64', bookType: 'xlsx', compression: true, cellStyles: true });
+        if (data && data.length < 8 * 1024 * 1024) {
+          eventLot.attachment = {
+            name: `KK2027_Lo_${String(lotKey).replace(/[^\w\-]+/g, '_')}.xlsx`,
+            data,
+          };
+        }
+      }
+    } catch (err) {}
+  }
   return {
     app: 'crck2-kiem-ke-2027',
     version: 3,

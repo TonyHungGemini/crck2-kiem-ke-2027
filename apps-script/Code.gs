@@ -632,13 +632,25 @@ function sendReportMail_(ss, payload) {
     : '[KK2027] Lô ' + (event.lot || '') + ' hoàn tất – ' + now_();
   const html = buildMailBody_(payload, lot, isTest);
   const xlsx = exportXlsx_(ss, 'KK2027_TienDo_' + stamp_() + '.xlsx');
+  const attachments = [xlsx];
+  const att = lot && lot.attachment;
+  if (att && typeof att.data === 'string' && att.data.length < 12 * 1024 * 1024) {
+    try {
+      const blob = Utilities.newBlob(
+        Utilities.base64Decode(att.data),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        String(att.name || ('KK2027_Lo_' + event.lot + '.xlsx'))
+      );
+      attachments.unshift(blob);
+    } catch (err) {}
+  }
 
   MailApp.sendEmail({
     to: to,
     subject: subject,
     htmlBody: html,
     body: html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-    attachments: [xlsx],
+    attachments: attachments,
     name: 'KK2027',
   });
 }

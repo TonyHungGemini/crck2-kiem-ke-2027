@@ -39,8 +39,9 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
   (bật/tắt bằng ô **Tự đồng bộ sau khi lưu dữ liệu**).
 - Điền **Tên máy / người nhập** trong menu **Đồng bộ Google** (một lần trên mỗi
   điện thoại) để cột “Máy / người nhập” trong các tab ghi đúng người thực hiện.
-- Khi bấm **Đánh dấu hoàn tất** một lô, app gửi ngay và Google gửi 1 mail kèm file
-  Excel `.xlsx` của toàn bộ tiến độ.
+- Khi bấm **Đánh dấu hoàn tất** một lô, app gửi ngay và Google gửi 1 mail kèm **2 file Excel**:
+  file **KK2027_Lo_…xlsx** của chính lô đó (đúng mẫu **Xuất Excel lô**: sheet `Lô …` + `Đối chiếu 2026`)
+  và file tiến độ chung của cả vườn.
 - Trong Google Sheets có 6 tab:
   - **Tiến độ**: 95 lô + KV, trạng thái, tổng 2026/2027, lệch, giờ hoàn tất.
   - **Theo ngày**: mỗi ngày một dòng (lô đã nhập, đã xong, cảnh báo, tổng cây…)
