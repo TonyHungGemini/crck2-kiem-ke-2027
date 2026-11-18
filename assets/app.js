@@ -371,15 +371,19 @@ function lotState(key) {
   return { key, base, meta, rows, entered, agg, dirStates, issues, dups, ptIssues, hasPt, delta, level, hasError };
 }
 
+function progressLevel(st) {
+  // "Tiến độ": lô đã hoàn tất luôn tính là done (xanh), kể cả khi lệch/cảnh báo;
+  // chi tiết lệch vẫn xem ở pill trạng thái và màn hình lô.
+  return st.meta.done && st.level !== 'empty' ? 'done' : st.level;
+}
 function remoteLot(key) {
   const r = state.remote && state.remote.lots ? state.remote.lots[key] : null;
   return r && (r.entered > 0 || r.done) ? r : null;
 }
 function viewLevel(key) {
   const st = lotState(key);
-  // Bản đồ là "tiến độ": lô đã hoàn tất luôn tô xanh, kể cả khi lệch/cảnh báo
-  // (chi tiết lệch xem trong popup và màn hình lô).
-  if (st.level !== 'empty') return { st, level: st.meta.done ? 'done' : st.level, remote: null };
+  const lv = progressLevel(st);
+  if (lv !== 'empty') return { st, level: lv, remote: null };
   const r = remoteLot(key);
   if (!r) return { st, level: 'empty', remote: null };
   const level = r.status === 'done' || r.status === 'doing' || r.status === 'warn'
@@ -1291,8 +1295,9 @@ function renderHome() {
   keys.forEach(key => {
     const st = lotState(key);
     if (st.entered.length) enteredLots += 1;
-    if (st.level === 'done') doneLots += 1;
-    if (st.level === 'warn') warnLots += 1;
+    const lv = progressLevel(st);
+    if (lv === 'done') doneLots += 1;
+    if (lv === 'warn') warnLots += 1;
     totalRows += st.entered.length;
     totalTrees += st.agg.dt;
   });
@@ -1399,11 +1404,11 @@ function renderLotList() {
   const recent = state.recentLot && all.includes(state.recentLot) ? state.recentLot : null;
   let keys = all.filter(key => {
     if (key === recent) return false;
-    const st = lotState(key);
-    if (state.filter === 'empty' && st.level !== 'empty') return false;
-    if (state.filter === 'doing' && st.level !== 'doing') return false;
-    if (state.filter === 'done' && st.level !== 'done') return false;
-    if (state.filter === 'warn' && st.level !== 'warn') return false;
+    const lv = progressLevel(lotState(key));
+    if (state.filter === 'empty' && lv !== 'empty') return false;
+    if (state.filter === 'doing' && lv !== 'doing') return false;
+    if (state.filter === 'done' && lv !== 'done') return false;
+    if (state.filter === 'warn' && lv !== 'warn') return false;
     if (!q) return true;
     const base = BASE_BY_LOT.get(key);
     const hay = [key, base && base.id, base && base.clone, base && base.year].filter(Boolean).join(' ').toLowerCase();
@@ -2567,7 +2572,7 @@ function populateQuickLotSelect(zone) {
     const st = lotState(key);
     const base = BASE_BY_LOT.get(key);
     const suffix = base ? ` · ${base.clone || ''}` : ` · ${qt('lotOther')}`;
-    const done = st.level === 'done' ? ` · ${qt('lotDone')}` : '';
+    const done = progressLevel(st) === 'done' ? ` · ${qt('lotDone')}` : '';
     return `<option value="${esc(key)}">${esc(key)}${esc(suffix)}${done}</option>`;
   }).join('');
   return keys;
