@@ -223,6 +223,8 @@ b{font-weight:650}
 .leaflet-container{font-family:var(--font-ui);background:#e9e6de;font-size:13px}
 .leaflet-bar a{color:var(--ink)}
 .leaflet-control-attribution{font-size:9.5px;background:rgba(255,255,255,.75)}
+.leaflet-tooltip.map-lot-label{padding:0;border:0;border-radius:0;background:none;box-shadow:none;color:#fff;font-size:11px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums;text-shadow:-1px -1px 1px #25241f,1px -1px 1px #25241f,-1px 1px 1px #25241f,1px 1px 1px #25241f;pointer-events:none}
+.leaflet-tooltip.map-lot-label::before{display:none}
 .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 10px 30px rgba(31,30,27,.22)}
 .leaflet-popup-content{margin:14px 16px;font-size:13px;line-height:1.5;min-width:196px}
 .map-pop h4{font-family:var(--font-display);font-size:20px;line-height:1.15;margin:0}
@@ -441,6 +443,16 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
   border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 10px;font-size:14px;outline:0;width:100%;height:42px;
 }
 .quick-meta input:focus,.quick-meta select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,119,87,.1)}
+.quick-dialog{width:100vw}
+.quick-nav{display:flex;flex-direction:column;gap:8px;margin:14px 0 12px}
+.quick-nav-steps{display:flex;align-items:center;gap:10px}
+.quick-nav-steps .btn{flex-shrink:0;min-height:42px}
+.quick-nav .btn:disabled{opacity:.4;cursor:default}
+.quick-position{flex:1;text-align:center;font-size:12.5px;font-weight:700;color:var(--accent-strong);line-height:1.5}
+.quick-return{align-self:center;color:var(--accent-strong);background:var(--accent-soft)}
+.quick-return[hidden]{display:none}
+.quick-nav-note{font-size:12px;color:var(--muted);line-height:1.5}
+.qhang input[readonly]{border-style:dashed;color:var(--muted)}
 .quick-pages{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .qcard{border:1px solid var(--line);border-radius:15px;background:var(--surface);padding:14px;box-shadow:var(--shadow)}
 .qcard-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}

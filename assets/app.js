@@ -441,6 +441,7 @@ const rowUndo = new Map();
 const state = {
   view: 'home', homeView: 'list', zone: null, lot: null, filter: 'all', q: '',
   quickLot: null, quickFrom: 'home', quickZone: '', quickSeed: null, quickDir: 'A',
+  quickReview: null, quickFocus: null,
   lotDir: 'ALL',
   recentLot: null, gAuto: readGAuto(), remote: readRemote(),
   lang: readLang() || 'vi', langChosen: readLangChosen(),
@@ -470,6 +471,11 @@ const QUICK_I18N = {
     confirmOverwrite: 'Hàng {h} đã có dữ liệu. Ghi đè?',
     confirmMismatch: 'Có hàng lệch tổng:\n\n{list}\n\nVẫn lưu và đánh dấu cảnh báo?',
     savedRows: 'Đã lưu hàng {h}.',
+    navLabel: 'Điều hướng tờ nhập', previous: 'Lui', next: 'Tới', returnCurrent: 'Về tờ đang nhập',
+    reviewing: 'Đang xem hàng {list}', currentSheet: 'Tờ đang nhập · hàng {list}',
+    navHint: 'Lui để kiểm tra hàng đã lưu. Bản nháp tờ đang nhập được giữ nguyên.',
+    reviewHint: 'Sửa tờ này sẽ được lưu khi chuyển tờ. Tờ đang nhập vẫn được giữ riêng.',
+    saveReviewNext: 'Lưu sửa & nhập tiếp',
   },
   km: {
     eyebrow: 'បញ្ចូលរហ័សតាមសន្លឹក', title: 'បញ្ចូលរហ័ស', zone: 'តំបន់', zoneAll: 'គ្រប់តំបន់', zoneItem: 'តំបន់ {z}',
@@ -494,6 +500,11 @@ const QUICK_I18N = {
     confirmOverwrite: 'ជួរ {h} មានទិន្នន័យរួចហើយ។ សរសេរជាន់?',
     confirmMismatch: 'មានជួរខុសសរុប:\n\n{list}\n\nនៅតែរក្សាទុក និងសម្គាល់ថាមានបញ្ហា?',
     savedRows: 'បានរក្សាទុកជួរ {h}។',
+    navLabel: 'ប្ដូរសន្លឹកបញ្ចូល', previous: 'ថយក្រោយ', next: 'ទៅមុខ', returnCurrent: 'ត្រឡប់ទៅសន្លឹកកំពុងបញ្ចូល',
+    reviewing: 'កំពុងពិនិត្យជួរ {list}', currentSheet: 'សន្លឹកកំពុងបញ្ចូល · ជួរ {list}',
+    navHint: 'ថយក្រោយដើម្បីពិនិត្យជួរដែលបានរក្សាទុក។ សេចក្ដីព្រាងកំពុងបញ្ចូលនៅដដែល។',
+    reviewHint: 'ការកែសន្លឹកនេះនឹងត្រូវរក្សាទុកពេលប្ដូរសន្លឹក។ សន្លឹកកំពុងបញ្ចូលត្រូវបានរក្សាទុកដោយឡែក។',
+    saveReviewNext: 'រក្សាទុកការកែ & បន្តបញ្ចូល',
   },
 };
 const APP_I18N = {
@@ -575,7 +586,7 @@ const APP_I18N = {
     legendDone: 'Hoàn tất',
     legendWarn: 'Cảnh báo',
     mapLoading: 'Đang tải bản đồ…',
-    mapFoot: 'Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.',
+    mapFoot: 'Phóng to hoặc chọn khu vực để xem rõ số lô. Bấm vào ranh lô để xem nhanh và bấm <b>Mở lô</b> để nhập. Nền vệ tinh cần internet; khi offline ranh lô vẫn hiển thị. Lô thêm ngoài danh mục (+ Lô khác) không có ranh trên bản đồ.',
     mapLibError: 'Không tải được thư viện bản đồ.',
     mapNoGeo: 'Chưa có dữ liệu ranh lô.',
     zoneDone: '{a}/{b} xong',
@@ -942,7 +953,7 @@ const APP_I18N = {
     legendDone: 'រួចរាល់',
     legendWarn: 'ការព្រមាន',
     mapLoading: 'កំពុងផ្ទុកផែនទី…',
-    mapFoot: 'ចុចព្រំដីឡូតិ៍ដើម្បីមើលរហ័ស រួចចុច <b>បើកដីឡូតិ៍</b> ដើម្បីបញ្ចូល។ ផ្ទៃខាងក្រោយផ្កាយរណបត្រូវការអ៊ីនធឺណិត; ពេលក្រៅបណ្ដាញព្រំដីឡូតិ៍នៅបង្ហាញ។ ដីឡូតិ៍បន្ថែមក្រៅបញ្ជី (+ ដីឡូតិ៍ផ្សេង) គ្មានព្រំលើផែនទី។',
+    mapFoot: 'ពង្រីកផែនទី ឬជ្រើសរើសតំបន់ ដើម្បីមើលលេខដីឡូតិ៍ឱ្យច្បាស់។ ចុចព្រំដីឡូតិ៍ដើម្បីមើលរហ័ស រួចចុច <b>បើកដីឡូតិ៍</b> ដើម្បីបញ្ចូល។ ផ្ទៃខាងក្រោយផ្កាយរណបត្រូវការអ៊ីនធឺណិត; ពេលក្រៅបណ្ដាញព្រំដីឡូតិ៍នៅបង្ហាញ។ ដីឡូតិ៍បន្ថែមក្រៅបញ្ជី (+ ដីឡូតិ៍ផ្សេង) គ្មានព្រំលើផែនទី។',
     mapLibError: 'មិនអាចផ្ទុកបណ្ណាល័យផែនទី។',
     mapNoGeo: 'មិនទាន់មានទិន្នន័យព្រំដីឡូតិ៍។',
     zoneDone: '{a}/{b} រួចរាល់',
@@ -1549,7 +1560,9 @@ function initMap() {
     const key = f.properties.ma_lo;
     const layer = L.geoJSON(f, {
       style: () => mapStyle(key),
-      onEachFeature: (_feat, lyr) => lyr.bindPopup(() => mapPopupHtml(key), { maxWidth: 280 }),
+      onEachFeature: (_feat, lyr) => lyr
+        .bindPopup(() => mapPopupHtml(key), { maxWidth: 280 })
+        .bindTooltip(esc(key), { permanent: true, direction: 'center', className: 'map-lot-label', opacity: 1 }),
     }).addTo(map);
     layers.set(key, layer);
     const kv = f.properties.kv;
@@ -1562,10 +1575,28 @@ function initMap() {
   });
 
   mapCtx = { map, layers, zoneBounds, allBounds };
+  map.on('zoomend resize', updateMapLabels);
   if (allBounds.isValid()) map.fitBounds(allBounds, { padding: [18, 18] });
   const wrap = el.closest('.map-wrap');
   if (wrap) wrap.classList.add('is-ready');
   return mapCtx;
+}
+
+function updateMapLabels() {
+  if (!mapCtx) return;
+  const placed = [];
+  mapCtx.layers.forEach((layer, key) => {
+    const dim = state.zone && GEO_BY_LOT.get(key).properties.kv !== state.zone;
+    layer.eachLayer(lyr => {
+      const tooltip = lyr.getTooltip();
+      const rect = tooltip.getElement().getBoundingClientRect();
+      const overlaps = placed.some(r => rect.left < r.right + 3 && rect.right + 3 > r.left
+        && rect.top < r.bottom + 3 && rect.bottom + 3 > r.top);
+      const visible = !dim && !overlaps;
+      tooltip.setOpacity(visible ? 1 : 0);
+      if (visible) placed.push(rect);
+    });
+  });
 }
 
 function applyZoneStyles() {
@@ -1576,6 +1607,7 @@ function applyZoneStyles() {
     const dim = state.zone && kv !== state.zone;
     layer.setStyle(dim ? Object.assign({}, base, { opacity: .18, fillOpacity: .06 }) : base);
   });
+  updateMapLabels();
 }
 
 function refreshMap() {
@@ -2501,49 +2533,136 @@ function timeHM(iso) {
   if (Number.isNaN(d.getTime())) return '';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
-function saveQuickDraft() {
-  const key = state.quickLot;
-  if (!key) return;
-  const dk = draftKey(key, state.quickDir);
-  const cards = $$('#quickPages .qcard').map(card => {
+function quickDraftCards() {
+  return $$('#quickPages .qcard').map(card => {
     const vals = {};
     card.querySelectorAll('.q-input').forEach(inp => { vals[inp.dataset.field] = inp.value; });
     return { hang: card.querySelector('.q-hang').value, vals };
   });
-  const hasAny = cards.some(c => Object.values(c.vals).some(v => (v || '').trim() !== ''))
-    || ($('#quickNguoi').value || '').trim() !== '';
+}
+function saveQuickDraft() {
+  const key = state.quickLot;
+  if (!key) return;
+  const dk = draftKey(key, state.quickDir);
   const map = readDrafts();
-  if (!hasAny) {
-    if (map[dk]) { delete map[dk]; writeDrafts(map); }
-    return;
-  }
-  map[dk] = {
+  const draft = Object.assign({}, map[dk], {
     zone: state.quickZone || '',
     ngay: $('#quickNgay').value,
     nguoi: $('#quickNguoi').value,
-    cards,
     at: new Date().toISOString(),
-  };
+  });
+  if (state.quickReview) {
+    draft.review = { ...state.quickReview, cards: quickDraftCards(), gAuto: state.gAuto };
+  } else {
+    draft.cards = quickDraftCards();
+    draft.gAuto = state.gAuto;
+    draft.focus = state.quickFocus;
+    delete draft.review;
+  }
+  map[dk] = draft;
   writeDrafts(map);
+}
+function fillQuickCards(saved) {
+  const cards = $$('#quickPages .qcard');
+  (saved || []).slice(0, cards.length).forEach((dc, i) => {
+    const card = cards[i];
+    if (dc.hang != null) card.querySelector('.q-hang').value = dc.hang;
+    FIELDS.forEach(f => {
+      card.querySelector(`.q-input[data-field="${f}"]`).value = dc.vals[f] ?? '';
+    });
+  });
+  refreshQuickChecks();
+  refreshQuickSummary();
 }
 function restoreQuickDraft(key) {
   const draft = key && readDrafts()[draftKey(key, state.quickDir)];
   if (!draft) return false;
   if (draft.ngay != null) $('#quickNgay').value = draft.ngay;
   if (draft.nguoi != null) $('#quickNguoi').value = draft.nguoi;
-  const cards = $$('#quickPages .qcard');
-  (draft.cards || []).slice(0, cards.length).forEach((dc, i) => {
-    const card = cards[i];
-    if (!card) return;
-    if (dc.hang != null) card.querySelector('.q-hang').value = dc.hang;
-    FIELDS.forEach(f => {
-      const el = card.querySelector(`.q-input[data-field="${f}"]`);
-      if (el && dc.vals && dc.vals[f] != null) el.value = dc.vals[f];
+  state.quickFocus = draft.focus || null;
+  const gAuto = draft.review ? draft.review.gAuto : draft.gAuto;
+  if (gAuto != null) {
+    state.gAuto = gAuto;
+    try { localStorage.setItem(GAUTO_KEY, state.gAuto ? '1' : '0'); } catch (err) {}
+    applyQuickMode();
+  }
+  if (draft.review) {
+    state.quickReview = { start: draft.review.start, original: draft.review.original, metaChanged: draft.review.metaChanged };
+    buildQuickCards();
+    const rows = state.quickDir ? rowsInDir(key, state.quickDir) : lotRows(key);
+    const saved = draft.review.cards.map((card, i) => {
+      const row = rows.find(r => r.hang === parseHang(card.hang));
+      if (FIELDS.some(f => card.vals[f] !== draft.review.original[i].vals[f])) {
+        $$('#quickPages .qcard')[i].dataset.recalculate = 'true';
+      }
+      return { ...card, vals: Object.fromEntries(FIELDS.map(f => [f,
+        card.vals[f] !== draft.review.original[i].vals[f] ? card.vals[f] : String(row?.[f] ?? '')])) };
     });
-  });
-  refreshQuickChecks();
-  refreshQuickSummary();
+    state.quickReview.original = draft.review.cards.map(card => {
+      const row = rows.find(r => r.hang === parseHang(card.hang));
+      return { hang: card.hang, vals: Object.fromEntries(FIELDS.map(f => [f, String(row?.[f] ?? '')])) };
+    });
+    fillQuickCards(saved);
+  } else {
+    fillQuickCards(draft.cards);
+  }
   return true;
+}
+function quickSavedSheets() {
+  const rows = state.quickDir ? rowsInDir(state.quickLot, state.quickDir) : lotRows(state.quickLot);
+  return [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger)
+    .map(h => Math.floor((h - 1) / 2) * 2 + 1))].sort((a, b) => a - b);
+}
+function refreshQuickNav() {
+  const sheets = quickSavedSheets();
+  const review = state.quickReview;
+  const index = review ? sheets.indexOf(review.start) : sheets.length;
+  $('#btnQuickPrev').disabled = index <= 0;
+  $('#btnQuickNext').disabled = !review;
+  $('#btnQuickReturn').hidden = !review;
+  const pair = quickDraftCards().map(c => c.hang).filter(Boolean).join(', ');
+  $('#quickPosition').textContent = qtf(review ? 'reviewing' : 'currentSheet', { list: pair });
+  $('#quickNavNote').textContent = qt(review ? 'reviewHint' : 'navHint');
+  $('#btnQuickSaveNext').textContent = qt(review ? 'saveReviewNext' : 'saveNext');
+}
+function focusQuickCard() {
+  const focus = !state.quickReview && state.quickFocus;
+  const cards = $$('#quickPages .qcard');
+  const card = focus && cards[focus.index];
+  const input = card && (focus.field === 'hang' ? card.querySelector('.q-hang')
+    : [...card.querySelectorAll('.q-input')].find(el => el.dataset.field === focus.field && !el.readOnly));
+  (input || $('#quickPages .qcard .dt-input'))?.focus();
+}
+function showQuickSheet(start) {
+  state.quickReview = start == null ? null : { start, original: [] };
+  buildQuickCards();
+  if (state.quickReview) {
+    const rows = state.quickDir ? rowsInDir(state.quickLot, state.quickDir) : lotRows(state.quickLot);
+    fillQuickCards([start, start + 1].map(hang => {
+      const row = rows.find(r => r.hang === hang);
+      return { hang, vals: Object.fromEntries(FIELDS.map(f => [f, row?.[f] ?? ''])) };
+    }));
+    state.quickReview.original = quickDraftCards();
+  } else {
+    restoreQuickDraft(state.quickLot);
+  }
+  saveQuickDraft();
+  focusQuickCard();
+}
+function navigateQuickSheet(target) {
+  if (state.quickReview) {
+    if (!saveQuick('review')) return;
+  } else {
+    saveQuickDraft();
+  }
+  showQuickSheet(target);
+}
+function stepQuickSheet(step) {
+  const sheets = quickSavedSheets();
+  const index = state.quickReview ? sheets.indexOf(state.quickReview.start) : sheets.length;
+  const next = index + step;
+  if (next < 0 || next > sheets.length) return;
+  navigateQuickSheet(sheets[next] ?? null);
 }
 
 function pickDefaultQuickLot() {
@@ -2606,15 +2725,14 @@ function openQuick(fromLot, seed, dir) {
   setQuickLot(state.quickLot, true, fromLot ? dir : '');
   const dlg = $('#quickDialog');
   if (!dlg.open) dlg.showModal();
-  setTimeout(() => {
-    const first = dlg.querySelector('.qcard .dt-input');
-    if (first) first.focus();
-  }, 60);
+  setTimeout(focusQuickCard, 60);
 }
 
 function setQuickLot(key, resetHang, dir) {
   if (!key) return;
   state.quickLot = key;
+  state.quickReview = null;
+  state.quickFocus = null;
   const dirs = lotDirs(key);
   state.quickDir = dirs
     ? (dir && dirs.includes(dir) ? dir : defaultQuickDir(key))
@@ -2636,14 +2754,13 @@ function switchQuickDir(dir) {
   saveQuickDraft();
   state.quickDir = dir;
   state.quickSeed = null;
+  state.quickReview = null;
+  state.quickFocus = null;
   buildQuickCards(true);
   refreshQuickDirBar();
   refreshQuickSummary();
   restoreQuickDraft(state.quickLot);
-  setTimeout(() => {
-    const first = $('#quickPages .qcard .dt-input');
-    if (first) first.focus();
-  }, 40);
+  setTimeout(focusQuickCard, 40);
 }
 
 function refreshQuickDirBar() {
@@ -2680,6 +2797,7 @@ function setGAuto(on) {
   state.gAuto = !!on;
   try { localStorage.setItem(GAUTO_KEY, state.gAuto ? '1' : '0'); } catch (err) {}
   applyQuickMode();
+  $$('#quickPages .qcard').forEach(card => { card.dataset.recalculate = 'true'; });
   refreshQuickChecks();
   refreshQuickSummary();
   saveQuickDraft();
@@ -2691,7 +2809,7 @@ function quickInputsInOrder() {
   const list = [];
   $$('#quickPages .qcard').forEach(card => {
     const hang = card.querySelector('.q-hang');
-    if (hang) list.push(hang);
+    if (hang && !hang.readOnly) list.push(hang);
     fields.forEach(f => {
       const el = card.querySelector(`.q-input[data-field="${f}"]`);
       if (el) list.push(el);
@@ -2711,6 +2829,9 @@ function applyQuickLang(lang) {
   });
   $$('#quickDialog [data-qk-placeholder]').forEach(el => {
     el.placeholder = qt(el.dataset.qkPlaceholder);
+  });
+  $$('#quickDialog [data-qk-aria]').forEach(el => {
+    el.setAttribute('aria-label', qt(el.dataset.qkAria));
   });
   $('#quickHint').innerHTML = qt('hint');
   $('#btnQuickSave').textContent = qt('save');
@@ -2813,11 +2934,12 @@ function saveUserName() {
 
 function buildQuickCards() {
   const key = state.quickLot;
-  const [h1, h2] = quickHangPair(key, state.quickSeed, state.quickDir);
+  const [h1, h2] = state.quickReview ? [state.quickReview.start, state.quickReview.start + 1]
+    : quickHangPair(key, state.quickSeed, state.quickDir);
   $('#quickPages').innerHTML = [h1, h2].map((hang, i) => `
     <div class="qcard" data-idx="${i}">
       <div class="qcard-head">
-        <div class="qhang"><span class="q-hang-i18n">${esc(qt('hangNo') + ' ')}</span><input class="q-hang" type="number" inputmode="numeric" min="1" step="1" value="${hang}" aria-label="${esc(qt('hangNo'))}"></div>
+        <div class="qhang"><span class="q-hang-i18n">${esc(qt('hangNo') + ' ')}</span><input class="q-hang" type="number" inputmode="numeric" min="1" step="1" value="${hang}" ${state.quickReview ? 'readonly' : ''} aria-label="${esc(qt('hangNo'))}"></div>
         <button class="mini-btn calc" type="button" data-act="qcalc" title="Tổng ĐT = G + (+) + C + K1 + K2 + O">=</button>
       </div>
       <div class="qgrid">
@@ -2843,7 +2965,8 @@ function readQuickCard(card) {
   card.querySelectorAll('.q-input').forEach(inp => {
     vals[inp.dataset.field] = inp.value.trim() === '' ? null : parseNum(inp.value);
   });
-  if (state.gAuto) {
+  // Viewing saved rows must not silently recalculate G, including existing discrepancies.
+  if (state.gAuto && (!state.quickReview || card.dataset.recalculate === 'true')) {
     const gEl = card.querySelector('.q-input[data-field="g"]');
     if (vals.dt != null) {
       const others = ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (vals[k] || 0), 0);
@@ -2904,7 +3027,7 @@ function renderQuickProgress() {
     bits.push(gaps.length
       ? `<span class="qp-gap">${esc(qtf('progressMissing', { list: gaps.slice(0, 10).join(', ') + (gaps.length > 10 ? '…' : '') }))}</span>`
       : `<span class="qp-ok">${esc(qtf('progressContinuous', { max: Math.max(...filled) }))}</span>`);
-    if (pair.length) bits.push(`<span class="qp-next">${esc(qtf('progressEntering', { list: pair.join(', ') }))}</span>`);
+    if (pair.length) bits.push(`<span class="qp-next">${esc(qtf(state.quickReview ? 'reviewing' : 'progressEntering', { list: pair.join(', ') }))}</span>`);
   }
   host.innerHTML = bits.join('');
 }
@@ -2933,6 +3056,7 @@ function refreshQuickSummary() {
   html += `<span class="muted">${enteredCards.length}/2 ${esc(qt('rowsWithData'))}</span>`;
   $('#quickSummary').innerHTML = html;
   renderQuickProgress();
+  refreshQuickNav();
 }
 
 function focusNextQuickInput(current) {
@@ -2944,70 +3068,92 @@ function focusNextQuickInput(current) {
 function saveQuick(mode) {
   const advance = mode === 'next';
   const pause = mode === 'pause';
+  const review = state.quickReview;
   const key = state.quickLot;
-  if (!key) return;
+  if (!key) return false;
   const lot = ensureLot(key);
   const dir = state.quickDir || '';
   const cards = $$('#quickPages .qcard').map(readQuickCard);
+  const rawCards = quickDraftCards();
   const entries = [];
   const errors = [];
   const mismatches = [];
   cards.forEach((c, i) => {
-    if (!c.has) return;
+    if (review && JSON.stringify(rawCards[i]) === JSON.stringify(review.original[i])) return;
+    if (!c.has) {
+      if (review) errors.push(qt('errEmptySheet'));
+      return;
+    }
     if (c.hang == null) { errors.push(qtf('errNoHang', { n: i + 1 })); return; }
     if (c.dt == null) mismatches.push(qtf('warnMissing', { h: c.hang, sum: fmt(c.sum) }));
     else if (c.diff !== 0) mismatches.push(qtf('warnDiff', { h: c.hang, dt: fmt(c.dt), diff: signed(c.diff) }));
     entries.push({ hang: c.hang, vals: c.vals });
   });
-  if (!entries.length) { toast(qt('errEmptySheet'), 'bad'); return; }
-  if (errors.length) { alert(errors.join('\n')); return; }
+  if (errors.length) { alert(errors.join('\n')); return false; }
+  if (!entries.length && !review) { toast(qt('errEmptySheet'), 'bad'); return false; }
   const hset = new Set(entries.map(e => e.hang));
-  if (hset.size !== entries.length) { alert(qt('warnDup')); return; }
+  if (hset.size !== entries.length) { alert(qt('warnDup')); return false; }
   const dirRows = dir ? rowsInDir(key, dir) : lot.rows;
   const existingHangs = new Set(dirRows.map(r => r.hang).filter(Number.isInteger));
   const replacing = entries.filter(e => existingHangs.has(e.hang)).map(e => e.hang);
-  if (replacing.length && !confirm(qtf('confirmOverwrite', { h: replacing.join(', ') }))) return;
-  if (mismatches.length && !confirm(qtf('confirmMismatch', { list: mismatches.join('\n') }))) return;
+  if (replacing.length && !confirm(qtf('confirmOverwrite', { h: replacing.join(', ') }))) return false;
+  if (mismatches.length && !confirm(qtf('confirmMismatch', { list: mismatches.join('\n') }))) return false;
 
-  lot.meta.ngay = $('#quickNgay').value || '';
-  lot.meta.nguoi = $('#quickNguoi').value.trim();
-  if (pause) lot.meta.pausedAt = new Date().toISOString();
-  else if (advance) lot.meta.pausedAt = null;
-  entries.forEach(entry => {
-    const old = dirRows.find(r => r.hang === entry.hang);
-    if (old) {
-      FIELDS.forEach(k => { old[k] = entry.vals[k]; });
-      if (dir) old.dir = dir;
-    } else {
-      const row = {
-        uid: uid(), hang: entry.hang,
-        dt: entry.vals.dt, g: entry.vals.g, plus: entry.vals.plus,
-        c: entry.vals.c, k1: entry.vals.k1, k2: entry.vals.k2, o: entry.vals.o,
-      };
-      if (dir) row.dir = dir;
-      lot.rows.push(row);
-    }
-  });
-  touchLot(key);
-  persist();
-  clearDraft(key, dir);
-  if (pause) state.recentLot = key;
-  const savedHangs = entries.map(e => e.hang).join(', ');
-  if (pause) toast(qtf('pausedSaved', { lot: key, h: resumeHang(key, dir || undefined) }), 'ok');
-  else toast(qtf('savedRows', { h: savedHangs }), 'ok');
-  renderHome();
-  if (state.view === 'lot' && state.lot === key) {
-    renderLot();
+  if (entries.length || pause || (review ? Object.keys(review.metaChanged || {}).length : (
+    lot.meta.ngay !== $('#quickNgay').value || lot.meta.nguoi !== $('#quickNguoi').value.trim()))) {
+    if (!review || review.metaChanged?.ngay) lot.meta.ngay = $('#quickNgay').value || '';
+    if (!review || review.metaChanged?.nguoi) lot.meta.nguoi = $('#quickNguoi').value.trim();
+    if (pause) lot.meta.pausedAt = new Date().toISOString();
+    else if (advance) lot.meta.pausedAt = null;
+    entries.forEach(entry => {
+      const old = dirRows.find(r => r.hang === entry.hang);
+      if (old) {
+        FIELDS.forEach(k => { old[k] = entry.vals[k]; });
+        if (dir) old.dir = dir;
+      } else {
+        const row = {
+          uid: uid(), hang: entry.hang,
+          dt: entry.vals.dt, g: entry.vals.g, plus: entry.vals.plus,
+          c: entry.vals.c, k1: entry.vals.k1, k2: entry.vals.k2, o: entry.vals.o,
+        };
+        if (dir) row.dir = dir;
+        lot.rows.push(row);
+      }
+    });
+    touchLot(key);
+    persist();
+    renderHome();
+    if (state.view === 'lot' && state.lot === key) renderLot();
   }
-  if (advance) {
-    state.quickSeed = null;
-    buildQuickCards();
-    setTimeout(() => {
-      const first = $('#quickPages .qcard .dt-input');
-      if (first) first.focus();
-    }, 40);
+  if (review) {
+    const drafts = readDrafts();
+    delete drafts[draftKey(key, dir)].review;
+    writeDrafts(drafts);
+  } else {
+    clearDraft(key, dir);
+  }
+  if (pause) {
+    state.recentLot = key;
+    renderHome();
+    const draft = readDrafts()[draftKey(key, dir)];
+    const h = parseHang(draft?.cards?.[0]?.hang) || resumeHang(key, dir || undefined);
+    toast(qtf('pausedSaved', { lot: key, h }), 'ok');
+  } else if (entries.length) {
+    toast(qtf('savedRows', { h: entries.map(e => e.hang).join(', ') }), 'ok');
+  }
+  if (mode === 'review') return true;
+  if (review) {
+    showQuickSheet(null);
   } else {
     state.quickSeed = null;
+    state.quickFocus = null;
+    if (advance) {
+      buildQuickCards();
+      saveQuickDraft();
+      setTimeout(focusQuickCard, 40);
+    }
+  }
+  if (!advance) {
     $('#quickDialog').close();
     if (pause && state.quickFrom === 'home') {
       setHomeView('list');
@@ -3017,6 +3163,7 @@ function saveQuick(mode) {
       }, 80);
     }
   }
+  return true;
 }
 
 /* ============================================================
@@ -4051,7 +4198,18 @@ function setupSyncUi() {
    ============================================================ */
 function setupDialogs() {
   const quick = $('#quickDialog');
-  $('#btnQuickClose').addEventListener('click', () => quick.close());
+  $('#btnQuickClose').addEventListener('click', () => { saveQuickDraft(); quick.close(); });
+  quick.addEventListener('cancel', saveQuickDraft);
+  $('#btnQuickPrev').addEventListener('click', () => stepQuickSheet(-1));
+  $('#btnQuickNext').addEventListener('click', () => stepQuickSheet(1));
+  $('#btnQuickReturn').addEventListener('click', () => navigateQuickSheet(null));
+  $('#quickPages').addEventListener('focusin', e => {
+    const card = e.target.closest('.qcard');
+    if (!state.quickReview && card && e.target.matches('input')) {
+      state.quickFocus = { index: Number(card.dataset.idx), field: e.target.dataset.field || 'hang' };
+      saveQuickDraft();
+    }
+  });
   $$('[data-quicklang]').forEach(btn => {
     btn.addEventListener('click', () => {
       setLang(btn.dataset.quicklang);
@@ -4070,34 +4228,44 @@ function setupDialogs() {
     if (btn) switchQuickDir(btn.dataset.qdir);
   });
   $('#quickZone').addEventListener('change', e => {
+    saveQuickDraft();
     state.quickZone = e.target.value;
     state.quickSeed = null;
     const keys = populateQuickLotSelect(state.quickZone);
     const next = keys.includes(state.quickLot) ? state.quickLot : (keys[0] || '');
     $('#quickLot').value = next;
     setQuickLot(next, true);
-    setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
+    setTimeout(focusQuickCard, 40);
   });
   $('#quickLot').addEventListener('change', e => {
+    saveQuickDraft();
     state.quickSeed = null;
     setQuickLot(e.target.value, true);
-    setTimeout(() => { const f = $('#quickPages .qcard .dt-input'); if (f) f.focus(); }, 40);
+    setTimeout(focusQuickCard, 40);
   });
   $('#quickPages').addEventListener('input', e => {
     if (e.target.matches('input')) {
+      e.target.closest('.qcard').dataset.recalculate = 'true';
       refreshQuickChecks();
       refreshQuickSummary();
       saveQuickDraft();
     }
   });
-  $('#quickNgay').addEventListener('input', saveQuickDraft);
-  $('#quickNguoi').addEventListener('input', saveQuickDraft);
+  [['#quickNgay', 'ngay'], ['#quickNguoi', 'nguoi']].forEach(([selector, field]) => {
+    $(selector).addEventListener('input', () => {
+      if (state.quickReview) {
+        state.quickReview.metaChanged = { ...state.quickReview.metaChanged, [field]: true };
+      }
+      saveQuickDraft();
+    });
+  });
   $('#quickPages').addEventListener('click', e => {
     const btn = e.target.closest('[data-act="qcalc"]');
     if (!btn) return;
     const card = btn.closest('.qcard');
     const r = readQuickCard(card);
     card.querySelector('.dt-input').value = r.sum;
+    card.dataset.recalculate = 'true';
     refreshQuickChecks();
     refreshQuickSummary();
     saveQuickDraft();
