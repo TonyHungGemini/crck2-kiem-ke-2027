@@ -386,9 +386,10 @@ function viewLevel(key) {
   if (lv !== 'empty') return { st, level: lv, remote: null };
   const r = remoteLot(key);
   if (!r) return { st, level: 'empty', remote: null };
-  const level = r.status === 'done' || r.status === 'doing' || r.status === 'warn'
-    ? r.status
-    : (r.done ? 'done' : 'doing');
+  const level = r.done ? 'done'
+    : r.status === 'done' || r.status === 'doing' || r.status === 'warn'
+      ? r.status
+      : 'doing';
   return { st, level, remote: r };
 }
 function remoteStatusInfo(level) {
