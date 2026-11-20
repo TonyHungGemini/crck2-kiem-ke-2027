@@ -273,25 +273,35 @@ function missingHangs(rows) {
 function rowsInDir(key, dir) {
   return lotRows(key).filter(r => rowDir(key, r) === dir);
 }
-function resumeHang(key, dir) {
+function quickRowsInfo(key, dir) {
   const rows = dir ? rowsInDir(key, dir) : lotRows(key);
-  const gaps = missingHangs(rows);
-  if (gaps.length) return gaps[0];
-  const filled = rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger);
-  return filled.length ? Math.max(...filled) + 1 : 1;
+  const filled = [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger))]
+    .sort((a, b) => a - b);
+  const map = phucTraMap(key, dir);
+  const baseline = map ? Object.keys(map).map(Number).filter(Number.isInteger) : [];
+  const all = filled.concat(baseline);
+  const first = all.length ? Math.min(...all) : 1;
+  // Một số lô/hướng đánh số tiếp từ hàng 5, 50, 53… thay vì 1, 2, 3.
+  const start = first >= 4 ? first : 1;
+  const max = filled.length ? Math.max(...filled) : start - 1;
+  const has = new Set(filled);
+  const gaps = [];
+  for (let h = start; h <= max; h++) if (!has.has(h)) gaps.push(h);
+  return { filled, gaps, start, max };
+}
+function resumeHang(key, dir) {
+  return quickHangPair(key, null, dir)[0];
 }
 function quickHangPair(key, seed, dir) {
-  const rows = dir ? rowsInDir(key, dir) : lotRows(key);
-  const filled = new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger));
-  const gaps = missingHangs(rows);
-  const max = filled.size ? Math.max(...filled) : 0;
+  const { gaps, start, max } = quickRowsInfo(key, dir);
   const secondFrom = first => {
     const gap = gaps.find(h => h > first);
     return gap != null ? gap : Math.max(max, first) + 1;
   };
   if (Number.isInteger(seed) && seed > 0) return [seed, secondFrom(seed)];
   if (gaps.length) return [gaps[0], secondFrom(gaps[0])];
-  return [max + 1, max + 2];
+  const next = Math.max(max + 1, start);
+  return [next, next + 1];
 }
 function rowIssuesOf(rows) {
   return rows
@@ -463,7 +473,7 @@ const QUICK_I18N = {
     draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
     progressEntered: 'Đã nhập {n} hàng', progressMissing: 'Còn thiếu hàng {list}',
-    progressContinuous: 'Đã nhập liên tục 1–{max}', progressEntering: 'Đang vào hàng {list}',
+    progressContinuous: 'Đã nhập liên tục {a}–{b}', progressEntering: 'Đang vào hàng {list}',
     errEmptySheet: 'Chưa nhập số liệu cho tờ này.', errNoHang: 'Tờ {n}: chưa nhập số hàng.',
     warnMissing: 'Hàng {h}: thiếu Tổng ĐT (tổng 6 cột {sum})',
     warnDiff: 'Hàng {h}: Tổng ĐT {dt} lệch {diff} so với tổng 6 cột',
@@ -492,7 +502,7 @@ const QUICK_I18N = {
     draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
     progressEntered: 'បានបញ្ចូល {n} ជួរ', progressMissing: 'នៅខ្វះជួរ {list}',
-    progressContinuous: 'បញ្ចូលជាប់គ្នា 1–{max}', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
+    progressContinuous: 'បញ្ចូលជាប់គ្នា {a}–{b}', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
     errEmptySheet: 'មិនទាន់បញ្ចូលទិន្នន័យសម្រាប់សន្លឹកនេះទេ។', errNoHang: 'សន្លឹក {n}: មិនទាន់បញ្ចូលលេខជួរ។',
     warnMissing: 'ជួរ {h}: ខ្វះសរុប (សរុប 6 ជួរឈរ {sum})',
     warnDiff: 'ជួរ {h}: សរុប {dt} ខុសគ្នា {diff} ពីសរុប 6 ជួរឈរ',
@@ -2609,9 +2619,9 @@ function restoreQuickDraft(key) {
   return true;
 }
 function quickSavedSheets() {
-  const rows = state.quickDir ? rowsInDir(state.quickLot, state.quickDir) : lotRows(state.quickLot);
-  return [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger)
-    .map(h => Math.floor((h - 1) / 2) * 2 + 1))].sort((a, b) => a - b);
+  const { filled, start } = quickRowsInfo(state.quickLot, state.quickDir);
+  return [...new Set(filled.map(h => start + Math.floor((h - start) / 2) * 2))]
+    .sort((a, b) => a - b);
 }
 function refreshQuickNav() {
   const sheets = quickSavedSheets();
@@ -3014,9 +3024,7 @@ function renderQuickProgress() {
   if (!host) return;
   const key = state.quickLot;
   if (!key) { host.innerHTML = ''; return; }
-  const rows = state.quickDir ? rowsInDir(key, state.quickDir) : lotRows(key);
-  const filled = [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger))].sort((a, b) => a - b);
-  const gaps = missingHangs(rows);
+  const { filled, gaps, start } = quickRowsInfo(key, state.quickDir);
   const pair = $$('#quickPages .qcard').map(c => readQuickCard(c).hang).filter(Number.isInteger);
   const bits = [];
   if (!filled.length) {
@@ -3026,7 +3034,7 @@ function renderQuickProgress() {
     bits.push(`<span>${esc(qtf('progressEntered', { n: filled.length }))}</span>`);
     bits.push(gaps.length
       ? `<span class="qp-gap">${esc(qtf('progressMissing', { list: gaps.slice(0, 10).join(', ') + (gaps.length > 10 ? '…' : '') }))}</span>`
-      : `<span class="qp-ok">${esc(qtf('progressContinuous', { max: Math.max(...filled) }))}</span>`);
+      : `<span class="qp-ok">${esc(qtf('progressContinuous', { a: start, b: Math.max(...filled) }))}</span>`);
     if (pair.length) bits.push(`<span class="qp-next">${esc(qtf(state.quickReview ? 'reviewing' : 'progressEntering', { list: pair.join(', ') }))}</span>`);
   }
   host.innerHTML = bits.join('');
