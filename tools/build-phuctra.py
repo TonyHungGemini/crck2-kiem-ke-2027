@@ -19,6 +19,14 @@ OUT = os.path.join(ROOT, 'assets', 'phuctra.js')
 DIR_FILE = os.path.join(ROOT, 'tools', 'data', 'khu-vuc-8-directions.xlsx')
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Desktop/Kiểm kê chi tiết 2026')
 
+# Cột thành phần bên phải "Tổng điểm trồng" trên bảng chi tiết.
+COMP_COLS = [('g', 2), ('plus', 3), ('c', 4), ('k1', 5), ('k2', 6), ('o', 7)]
+
+
+def add_sums(dst, src):
+    for field in ['dt'] + [name for name, _ in COMP_COLS]:
+        dst[field] = dst.get(field, 0) + src.get(field, 0)
+
 
 def norm(s):
     return re.sub(r'\s+', '', str(s or '')).upper()
@@ -47,13 +55,14 @@ def parse_sheet(ws, block=0):
     if len(headers) <= block:
         return None
     header_row, col = headers[block]
-    rows, order = {}, []
+    rows, order, row_of = {}, [], {}
     for r in range(header_row + 1, ws.max_row + 1):
         hang, total = ws.cell(r, col).value, ws.cell(r, col + 1).value
         if isinstance(hang, (int, float)) and float(hang).is_integer() and isinstance(total, (int, float)):
             hang = int(hang)
             rows[hang] = total
             order.append(hang)
+            row_of[hang] = r
     if not rows:
         return None
     values = list(rows.values())
@@ -68,13 +77,21 @@ def parse_sheet(ws, block=0):
         cleaned[hang] = int(value) if float(value).is_integer() else value
     if not cleaned:
         return None
+    sums = {'dt': sum(cleaned.values())}
+    for field, offset in COMP_COLS:
+        total = 0
+        for hang in cleaned:
+            v = ws.cell(row_of[hang], col + offset).value
+            if isinstance(v, (int, float)):
+                total += v
+        sums[field] = int(total) if float(total).is_integer() else total
     label = ''
     for r in range(1, header_row):
         a = ws.cell(r, col).value
         if isinstance(a, str) and 'LÔ' in a.upper():
             label = re.split(r'[:：]', a, 1)[1].strip() if (';' not in a and (':' in a or '：' in a)) else a
             break
-    return {'rows': cleaned, 'label': label, 'sheet': ws.title}
+    return {'rows': cleaned, 'label': label, 'sheet': ws.title, 'sums': sums}
 
 
 # Lô chia hướng: file chi tiết tách sheet / khối bảng theo hướng.
@@ -125,13 +142,13 @@ if os.path.exists(DIR_FILE):
         if header_count:
             dir_blocks_by_sheet[norm(ws.title)] = [parse_sheet(ws, i) for i in range(header_count)]
 
-lots, missing, notes = {}, [], {}
+lots, missing, notes, sums_by_lot = {}, [], {}, {}
 for lot in base_total:
     use_dir_file = lot in DIR_FILE_DETAIL
     detail = DIR_FILE_DETAIL.get(lot) or DIR_DETAIL.get(lot)
     if detail:
         blocks_source = dir_blocks_by_sheet if use_dir_file else blocks_by_sheet
-        dirs, absent = {}, []
+        dirs, absent, dir_sums = {}, [], {}
         for sheet_name, block, dir_name in detail:
             blocks = blocks_source.get(norm(sheet_name), [])
             parsed = blocks[block] if len(blocks) > block else None
@@ -139,21 +156,24 @@ for lot in base_total:
                 absent.append(dir_name)
                 continue
             dirs[dir_name] = {str(h): v for h, v in sorted(parsed['rows'].items())}
+            add_sums(dir_sums, parsed['sums'])
         if absent:
             notes[lot] = 'missing dirs: ' + ', '.join(absent)
             missing.append(lot)
             continue
         lots[lot] = {'dirs': dirs}
+        sums_by_lot[lot] = dir_sums
         dir_sum = sum(sum(d.values()) for d in dirs.values())
         ref_detail = MERGE_REF_DETAIL.get(lot)
         if ref_detail:
-            ref, absent_ref = {}, []
+            ref, absent_ref, ref_sums = {}, [], {}
             for sheet_name, block in ref_detail:
                 blocks = blocks_by_sheet.get(norm(sheet_name), [])
                 parsed = blocks[block] if len(blocks) > block else None
                 if not parsed:
                     absent_ref.append(sheet_name)
                     continue
+                add_sums(ref_sums, parsed['sums'])
                 for hang, value in parsed['rows'].items():
                     ref[hang] = ref.get(hang, 0) + value
             if absent_ref:
@@ -161,6 +181,7 @@ for lot in base_total:
             elif ref:
                 lots[lot]['ref'] = {str(h): int(v) if float(v).is_integer() else v
                                     for h, v in sorted(ref.items())}
+                sums_by_lot[lot] = ref_sums
                 ref_sum = sum(ref.values())
                 notes[lot] = f"ref sum {ref_sum}"
                 if dir_sum != ref_sum:
@@ -200,6 +221,7 @@ for lot in base_total:
         continue
     chosen = tied[0]
     lots[lot] = {str(h): v for h, v in sorted(chosen[2]['rows'].items())}
+    sums_by_lot[lot] = chosen[2]['sums']
     if chosen[1] != base_total[lot]:
         notes[lot] = f"sum {chosen[1]} vs baseline {base_total[lot]} (sheet {chosen[2]['sheet']})"
 
@@ -210,6 +232,7 @@ payload = {
     'minDiff': 2,
     'missing': sorted(missing),
     'lots': lots,
+    'sums': sums_by_lot,
 }
 with open(OUT, 'w') as f:
     f.write('/* Sinh bởi tools/build-phuctra.py — dữ liệu Tổng điểm trồng 2026 theo từng hàng */\n')

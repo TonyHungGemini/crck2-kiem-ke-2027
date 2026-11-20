@@ -25,6 +25,7 @@ const BASELINE = (window.KK_BASELINE && window.KK_BASELINE.lots) || [];
 const BASE_BY_LOT = new Map(BASELINE.map(l => [l.lot, l]));
 const BASE_ORDER = new Map(BASELINE.map((l, i) => [l.lot, i]));
 const PHUC_TRA = (window.KK_PHUCTRA && window.KK_PHUCTRA.lots) || {};
+const PHUC_TRA_SUMS = (window.KK_PHUCTRA && window.KK_PHUCTRA.sums) || {};
 const PHUC_TRA_MIN = (window.KK_PHUCTRA && window.KK_PHUCTRA.minDiff) || 2;
 /* Lô chia hướng: nhập và kiểm tra riêng từng hướng, tổng chung so với 2026. */
 const LOT_DIRECTIONS = {
@@ -378,6 +379,30 @@ function phucTraRef(key, hang, dir, merged) {
 function hasPhucTra(key) {
   return !!PHUC_TRA[key];
 }
+// Tổng 2026 đối chiếu: ưu tiên bảng chi tiết (phúc tra), thiếu mới dùng file tổng hợp.
+function ref2026(key) {
+  const base = BASE_BY_LOT.get(key);
+  const s = PHUC_TRA_SUMS[key];
+  if (s && Number.isFinite(Number(s.dt))) {
+    const g = Number(s.g) || 0;
+    const plus = Number(s.plus) || 0;
+    const c = Number(s.c) || 0;
+    const k1 = Number(s.k1) || 0;
+    const k2 = Number(s.k2) || 0;
+    const o = Number(s.o) || 0;
+    const sum = g + plus + c + k1 + k2 + o;
+    const total = Number(s.dt);
+    return {
+      total,
+      g, plus, c, k1, k2, o,
+      mismatch: total - sum,
+      sum,
+      detail: true,
+      base,
+    };
+  }
+  return base ? { ...base, detail: false, base } : null;
+}
 function phucTraOf(key, row) {
   if (!rowHasData(row) || row.dt == null) return null;
   const ref = phucTraRef(key, row.hang, rowDir(key, row), !!row._merged);
@@ -415,6 +440,7 @@ function lotDirStates(key) {
 }
 function lotState(key) {
   const base = BASE_BY_LOT.get(key);
+  const ref = ref2026(key);
   const meta = lotMeta(key);
   const rows = lotRows(key);
   const entered = rows.filter(rowHasData);
@@ -430,7 +456,7 @@ function lotState(key) {
     ? (mergedRefMap(key) ? mergedPhucTraIssues(key)
       : dirStates.flatMap(d => d.ptIssues.map(x => ({ ...x, dir: d.dir }))))
     : phucTraIssues(key);
-  const delta = base && entered.length ? agg.dt - base.total : null;
+  const delta = ref && entered.length ? agg.dt - ref.total : null;
   const hasError = issues.length > 0 || dups.length > 0;
   const hasPt = ptIssues.length > 0;
   let level = 'empty';
@@ -439,7 +465,7 @@ function lotState(key) {
     else if (meta.done) level = delta == null || delta === 0 ? 'done' : 'warn';
     else level = 'doing';
   }
-  return { key, base, meta, rows, entered, agg, dirStates, issues, dups, ptIssues, hasPt, delta, level, hasError };
+  return { key, base, ref, meta, rows, entered, agg, dirStates, issues, dups, ptIssues, hasPt, delta, level, hasError };
 }
 
 function progressLevel(st) {
@@ -774,6 +800,7 @@ const APP_I18N = {
     baselineEqual: 'Tổng so 2026: khớp <b>{n}</b> cây.',
     baselineDiff: 'Tổng so 2026: 2027 <b>{a}</b> / 2026 <b>{b}</b> · lệch <b>{d}</b> ({p}).',
     baselineMismatch: 'Baseline 2026 tự lệch <b>{n}</b> cây (tổng 6 cột {sum}).',
+    detailMismatch: 'Bảng chi tiết 2026 tự lệch {n} cây giữa tổng và 6 cột (tổng 6 cột {sum}).',
     checksNoBaseline: 'Lô ngoài danh mục, không có baseline 2026.',
     checksDone: 'Lô đã được đánh dấu hoàn tất.',
     checksNotDone: 'Lô chưa đánh dấu hoàn tất.',
@@ -796,6 +823,8 @@ const APP_I18N = {
     compareBadgeDiff: 'Lệch {n}',
     noBaseNote: 'Lô ngoài danh mục nên không có baseline 2026. Tool vẫn kiểm tra tổng hàng và xuất Excel bình thường.',
     baselineNote: 'Baseline: kiểm kê 0h 01/01/2026 · {id} · {total} cây. Nguồn: TỔNG HỢP KIỂM KÊ 2025-2026.xlsx.',
+    baselineNotePhucTra: 'Đối chiếu 2026 theo bảng chi tiết (phúc tra) · {id} · {total} cây.',
+    baselineNoteSummaryDiff: 'Bảng tổng hợp 2026 ghi {total} cây.',
     alertNoRows: '<b>Chưa nhập hàng nào.</b> Bấm <b>Nhập nhanh</b> để nhập 2 hàng mỗi tờ từ dòng cuối phiếu.',
     alertIssues: '<b>{n} hàng lệch tổng.</b><br>{first}',
     alertIssuesMore: '<br>… và {n} hàng khác.',
@@ -1149,6 +1178,7 @@ const APP_I18N = {
     baselineEqual: 'សរុបធៀប 2026: ត្រូវគ្នា <b>{n}</b> ដើម។',
     baselineDiff: 'សរុបធៀប 2026: 2027 <b>{a}</b> / 2026 <b>{b}</b> · ខុសគ្នា <b>{d}</b> ({p})។',
     baselineMismatch: 'ទិន្នន័យគោល 2026 ខុសគ្នាខ្លួនឯង <b>{n}</b> ដើម (សរុប 6 ជួរឈរ {sum})។',
+    detailMismatch: 'តារាងលម្អិត 2026 ខុសគ្នាខ្លួនឯង {n} ដើម (សរុប 6 ជួរឈរ {sum})។',
     checksNoBaseline: 'ដីឡូតិ៍ក្រៅបញ្ជី គ្មានទិន្នន័យគោល 2026។',
     checksDone: 'ដីឡូតិ៍បានសម្គាល់ថារួចរាល់។',
     checksNotDone: 'ដីឡូតិ៍មិនទាន់សម្គាល់ថារួចរាល់។',
@@ -1171,6 +1201,8 @@ const APP_I18N = {
     compareBadgeDiff: 'ខុសគ្នា {n}',
     noBaseNote: 'ដីឡូតិ៍ក្រៅបញ្ជី គ្មានទិន្នន័យគោល 2026។ កម្មវិធីនៅតែពិនិត្យសរុបជួរ និងនាំចេញ Excel ធម្មតា។',
     baselineNote: 'ទិន្នន័យគោល: ការរាប់ 0h 01/01/2026 · {id} · {total} ដើម។ ប្រភព: TỔNG HỢP KIỂM KÊ 2025-2026.xlsx។',
+    baselineNotePhucTra: 'ធៀបឆ្នាំ 2026 តាមតារាងលម្អិត (ផ្ទៀងផ្ទាត់) · {id} · {total} ដើម។',
+    baselineNoteSummaryDiff: 'តារាងសរុប 2026 កត់ {total} ដើម។',
     alertNoRows: '<b>មិនទាន់បញ្ចូលជួរណាមួយ។</b> ចុច <b>បញ្ចូលរហ័ស</b> ដើម្បីបញ្ចូល 2 ជួរក្នុងមួយសន្លឹកពីជួរចុងក្រោយ។',
     alertIssues: '<b>ជួរ {n} ខុសសរុប។</b><br>{first}',
     alertIssuesMore: '<br>… និងជួរ {n} ផ្សេងទៀត។',
@@ -1401,7 +1433,10 @@ function renderHome() {
     totalTrees += st.agg.dt;
   });
   const totalLots = keys.length;
-  const baseTotal = BASELINE.reduce((s, l) => s + (l.total || 0), 0);
+  const baseTotal = BASELINE.reduce((s, l) => {
+    const r = ref2026(l.lot);
+    return s + (r ? r.total : (l.total || 0));
+  }, 0);
 
   $('#stats').innerHTML = `
     <div class="stat-card">
@@ -1472,7 +1507,7 @@ function lotRowHtml(key) {
   }
   let deltaCls = 'muted';
   let deltaText = '—';
-  if (base && entered) {
+  if (st.ref && entered) {
     deltaText = signed(st.delta);
     if (st.delta === 0) deltaCls = 'delta-0';
     else deltaCls = st.meta.done ? 'delta-x' : 'delta-w';
@@ -1488,7 +1523,7 @@ function lotRowHtml(key) {
         </span>
       </span>
       <span class="lot-stats">
-        <span class="stat"><small>2026</small><b>${base ? fmt(base.total) : '—'}</b></span>
+        <span class="stat"><small>2026</small><b>${st.ref ? fmt(st.ref.total) : '—'}</b></span>
         <span class="stat"><small>2027</small><b>${entered ? fmt(st.agg.dt) : '—'}</b></span>
         <span class="stat"><small>${t('thDelta')}</small><b class="${deltaCls}">${deltaText}</b></span>
         <span class="stat"><small>${t('thRows')}</small><b>${st.entered.length}</b></span>
@@ -1582,7 +1617,7 @@ function mapPopupHtml(key) {
   const bits = [p.kv, base && base.id, base && base.clone, p.area_ha ? fmt2(p.area_ha) + ' ha' : ''].filter(Boolean);
   const entered = r ? r.entered : st.entered.length;
   const dt = r ? r.dt : (st.entered.length ? st.agg.dt : null);
-  const deltaNum = r ? r.delta : (base && st.entered.length ? st.delta : null);
+  const deltaNum = r ? r.delta : (st.ref && st.entered.length ? st.delta : null);
   const isDone = r ? r.done : st.meta.done;
   let delta = '—';
   let deltaCls = 'muted';
@@ -1596,7 +1631,7 @@ function mapPopupHtml(key) {
     <div class="map-pop-sub">${esc(bits.join(' · '))}</div>
     <span class="status-pill ${info.cls}"><span class="status-dot"></span>${esc(info.label)}</span>
     <table>
-      <tr><td>2026</td><td>${base ? fmt(base.total) : '—'}</td></tr>
+      <tr><td>2026</td><td>${st.ref ? fmt(st.ref.total) : '—'}</td></tr>
       <tr><td>2027</td><td>${dt != null ? fmt(dt) : '—'}</td></tr>
       <tr><td>${t('thDelta')}</td><td class="${deltaCls}">${delta}</td></tr>
       <tr><td>${t('thRows')}</td><td>${entered}</td></tr>
@@ -1751,7 +1786,7 @@ function renderLot() {
   const doneSuffix = meta.done && meta.doneAt ? t('doneSuffix', { time: dateTimeVN(meta.doneAt) }) : '';
   const pauseSuffix = !meta.done && meta.pausedAt ? t('pauseSuffix', { time: dateTimeVN(meta.pausedAt) }) : '';
   $('#lotSub').textContent = base
-    ? `${base.clone || '—'} · ${t('metaPlantYear', { year: base.year || '—' })} · ${fmt2(base.area)} ha · 2026: ${fmt(base.total)} ${t('treeUnit')}${doneSuffix}${pauseSuffix}`
+    ? `${base.clone || '—'} · ${t('metaPlantYear', { year: base.year || '—' })} · ${fmt2(base.area)} ha · 2026: ${fmt(st.ref ? st.ref.total : base.total)} ${t('treeUnit')}${doneSuffix}${pauseSuffix}`
     : t('noBaselineSub') + doneSuffix + pauseSuffix;
 
   $('#metaHuong').value = meta.huong || '';
@@ -1919,8 +1954,8 @@ function refreshLotDerived() {
   const ptIssues = mergedRefMap(key) ? mergedPhucTraIssues(key) : phucTraIssues(key, rows);
   const base = BASE_BY_LOT.get(key);
   const meta = lotMeta(key);
-  const delta = base && entered.length ? agg.dt - base.total : null;
   const st = lotState(key);
+  const delta = st.ref && entered.length ? agg.dt - st.ref.total : null;
 
   const sumLabel = $('#sumLabel');
   if (sumLabel) {
@@ -2035,13 +2070,13 @@ function refreshLotDerived() {
   updateQuickLotBtn();
 
   renderDirBar(key, st);
-  renderCompare({ base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta });
+  renderCompare({ base, ref: st.ref, agg: st.agg, entered: st.entered.length, delta: st.delta, meta });
   renderAlerts({
-    key, base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
+    key, base, ref: st.ref, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
     dirStates: st.dirStates, issues: st.issues, dups: st.dups, ptIssues: st.ptIssues,
   });
   renderChecks({
-    key, base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
+    key, base, ref: st.ref, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
     issues: st.issues, dups: st.dups, rows: st.rows, ptIssues: st.ptIssues, dirStates: st.dirStates,
   });
   renderHangMap(key);
@@ -2067,9 +2102,9 @@ function renderDirBar(key, st) {
   $('#lotDirBtns').innerHTML = html.join('');
   const summary = $('#lotDirSummary');
   if (summary) {
-    const hasBase = st.base && st.entered.length;
+    const hasBase = st.ref && st.entered.length;
     summary.textContent = hasBase
-      ? t('dirSummary', { dt: fmt(st.agg.dt), base: fmt(st.base.total), d: signed(st.delta) })
+      ? t('dirSummary', { dt: fmt(st.agg.dt), base: fmt(st.ref.total), d: signed(st.delta) })
       : t('dirSummaryNoBase', { dt: fmt(st.agg.dt) });
   }
   const note = $('#lotDirNote');
@@ -2089,16 +2124,17 @@ function compareRow(label, v26, v27, isTotal, deltaCls) {
   return `<tr class="${isTotal ? 'total-row' : ''}"><td>${label}</td><td>${show26}</td><td>${show27}</td><td class="${cls}">${d}</td></tr>`;
 }
 
-function renderCompare({ base, agg, entered, delta, meta }) {
+function renderCompare({ base, ref, agg, entered, delta, meta }) {
   const has = entered > 0;
+  const r = ref || base;
   const deltaCls = meta.done ? 'neg' : 'neg';
   const rows = [
-    compareRow(t('metricTotal'), base ? base.total : null, has ? agg.dt : null, true, deltaCls),
-    ...CATS.map(([k, key]) => compareRow(t(key), base ? base[k] : null, has ? agg[k] : null, false, '')),
+    compareRow(t('metricTotal'), r ? r.total : null, has ? agg.dt : null, true, deltaCls),
+    ...CATS.map(([k, key]) => compareRow(t(key), r ? r[k] : null, has ? agg[k] : null, false, '')),
   ];
   $('#compareBody').innerHTML = rows.join('');
   const badge = $('#compareBadge');
-  if (!base) {
+  if (!r) {
     badge.className = 'badge';
     badge.textContent = t('compareBadgeNoBase');
   } else if (!has) {
@@ -2109,15 +2145,26 @@ function renderCompare({ base, agg, entered, delta, meta }) {
     badge.textContent = t('compareBadgeMatch');
   } else {
     badge.className = 'badge ' + (meta.done ? 'bad' : 'warn');
-    badge.textContent = `${t('compareBadgeDiff', { n: signed(delta) })} · ${pct(delta, base.total)}`;
+    badge.textContent = `${t('compareBadgeDiff', { n: signed(delta) })} · ${pct(delta, r.total)}`;
   }
   const note = $('#baselineNote');
   if (!base) {
     note.textContent = t('noBaseNote');
   } else {
-    let text = t('baselineNote', { id: base.id || '—', total: fmt(base.total) });
-    if (base.mismatch) {
-      text += ' ' + t('baselineMismatch', { n: signed(base.mismatch), sum: fmt(base.sum) });
+    let text;
+    if (ref && ref.detail) {
+      text = t('baselineNotePhucTra', { id: base.id || '—', total: fmt(ref.total) });
+      if (Number(base.total) !== Number(ref.total)) {
+        text += ' ' + t('baselineNoteSummaryDiff', { total: fmt(base.total) });
+      }
+      if (ref.mismatch) {
+        text += ' ' + t('detailMismatch', { n: signed(ref.mismatch), sum: fmt(ref.sum) });
+      }
+    } else {
+      text = t('baselineNote', { id: base.id || '—', total: fmt(base.total) });
+      if (base.mismatch) {
+        text += ' ' + t('baselineMismatch', { n: signed(base.mismatch), sum: fmt(base.sum) });
+      }
     }
     note.textContent = text;
   }
@@ -2132,8 +2179,9 @@ function alertHtml(level, body, extraClass) {
   return `<div class="alert ${level}${extraClass ? ' ' + extraClass : ''}">${icon}<div class="alert-body">${body}</div></div>`;
 }
 
-function renderAlerts({ key, base, agg, entered, delta, meta, dirStates, issues, dups, ptIssues }) {
+function renderAlerts({ key, base, ref, agg, entered, delta, meta, dirStates, issues, dups, ptIssues }) {
   const alerts = [];
+  const r = ref || base;
   if (!entered) {
     alerts.push(alertHtml('info', t('alertNoRows')));
   }
@@ -2180,32 +2228,32 @@ function renderAlerts({ key, base, agg, entered, delta, meta, dirStates, issues,
       alerts.push(alertHtml('warn', t('alertPhucTra', { n: ptIssues.length, list: list + (ptIssues.length > 6 ? '…' : '') }), 'pt'));
     }
   }
-  if (entered && base) {
+  if (entered && r) {
     if (delta !== 0) {
-      const msg = t('alertMsgDiff', { dt: fmt(agg.dt), base: fmt(base.total), d: signed(delta), p: pct(delta, base.total) });
+      const msg = t('alertMsgDiff', { dt: fmt(agg.dt), base: fmt(r.total), d: signed(delta), p: pct(delta, r.total) });
       alerts.push(meta.done
         ? alertHtml('bad', t('alertDoneDiff', { msg }))
         : alertHtml('warn', t('alertTempDiff', { msg }), 'alert-cta'));
     } else {
-      alerts.push(alertHtml('ok', t('alertMatch', { n: fmt(base.total) })));
+      alerts.push(alertHtml('ok', t('alertMatch', { n: fmt(r.total) })));
     }
-    if (base.mismatch) {
+    if (base && base.mismatch && !(ref && ref.detail)) {
       alerts.push(alertHtml('warn', t('alertBaseMismatch', { n: signed(base.mismatch), total: fmt(base.total), sum: fmt(base.sum) })));
     }
   }
-  if (entered && !base) {
+  if (entered && !r) {
     alerts.push(alertHtml('info', t('alertNoBase')));
   }
   const allRowOk = dirStates
     ? dirStates.every(d => !d.issues.length && !d.dups.length)
     : !issues.length && !dups.length;
-  if (entered && !meta.done && allRowOk && (!base || delta === 0)) {
+  if (entered && !meta.done && allRowOk && (!r || delta === 0)) {
     alerts.push(alertHtml('info', t('alertAllOk')));
   }
   $('#lotAlerts').innerHTML = alerts.join('');
 }
 
-function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows, ptIssues, dirStates }) {
+function renderChecks({ key, base, ref, agg, entered, delta, meta, issues, dups, rows, ptIssues, dirStates }) {
   const items = [];
   const pushRowChecks = (opt) => {
     const tag = opt.tag ? opt.tag + ' — ' : '';
@@ -2275,14 +2323,18 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
     }
   }
   function renderOverallChecks() {
-    if (base) {
+    const r = ref || base;
+    if (r) {
       if (delta === 0) {
-        items.push(`<li class="check-item ok">${t('checksMatchTotal', { n: fmt(base.total) })}</li>`);
+        items.push(`<li class="check-item ok">${t('checksMatchTotal', { n: fmt(r.total) })}</li>`);
       } else {
-        items.push(`<li class="check-item ${meta.done ? 'bad' : 'warn'}">${t('baselineDiff', { a: fmt(agg.dt), b: fmt(base.total), d: signed(delta), p: pct(delta, base.total) })}</li>`);
+        items.push(`<li class="check-item ${meta.done ? 'bad' : 'warn'}">${t('baselineDiff', { a: fmt(agg.dt), b: fmt(r.total), d: signed(delta), p: pct(delta, r.total) })}</li>`);
       }
-      if (base.mismatch) {
+      if (base && base.mismatch && !(ref && ref.detail)) {
         items.push(`<li class="check-item warn">${t('baselineMismatch', { n: signed(base.mismatch), sum: fmt(base.sum) })}</li>`);
+      }
+      if (ref && ref.detail && ref.mismatch) {
+        items.push(`<li class="check-item warn">${t('detailMismatch', { n: signed(ref.mismatch), sum: fmt(ref.sum) })}</li>`);
       }
     } else {
       items.push(`<li class="check-item warn">${t('checksNoBaseline')}</li>`);
@@ -3174,7 +3226,7 @@ function refreshQuickSummary() {
   const dir = state.quickDir;
   const cards = $$('#quickPages .qcard').map(readQuickCard);
   const enteredCards = cards.filter(c => c.has);
-  const base = BASE_BY_LOT.get(key);
+  const ref = ref2026(key);
   const allRows = lotRows(key);
   const existing = aggregate(allRows);
   const replacedHangs = new Set(enteredCards.map(c => c.hang).filter(h => h != null));
@@ -3185,9 +3237,9 @@ function refreshQuickSummary() {
   const projected = existing.dt - replacedSum + addSum;
   let html = dir ? `<span>${esc(qt('dirLabel'))}: <b>${esc(dir)}</b></span>` : '';
   html += `<span>${esc(qt('sheetThis'))}: <b>${fmt(addSum)}</b> ${esc(qt('unitTree'))}</span><span>${esc(qt('lotAfter'))}: <b>${fmt(projected)}</b> ${esc(qt('unitTree'))}</span>`;
-  if (base) {
-    const d = projected - base.total;
-    html += `<span>2026: <b>${fmt(base.total)}</b></span><span>${esc(qt('diffLabel'))}: <b style="color:${d === 0 ? 'var(--green)' : 'var(--red)'}">${signed(d)}</b></span>`;
+  if (ref) {
+    const d = projected - ref.total;
+    html += `<span>2026: <b>${fmt(ref.total)}</b></span><span>${esc(qt('diffLabel'))}: <b style="color:${d === 0 ? 'var(--green)' : 'var(--red)'}">${signed(d)}</b></span>`;
   }
   html += `<span class="muted">${enteredCards.length}/2 ${esc(qt('rowsWithData'))}</span>`;
   $('#quickSummary').innerHTML = html;
@@ -3512,26 +3564,26 @@ function buildLotWorkbook(key) {
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName('Lô ' + key));
   }
 
+  const ref = ref2026(key) || base;
   const cmp = [
     ['ĐỐI CHIẾU VỚI KIỂM KÊ 0H NGÀY 01/01/2026'],
     [`Lô ${key}${dirs ? ` (cộng cả ${dirs.length} hướng)` : ''}`],
     [],
     ['Chỉ tiêu', '2026', '2027', 'Lệch'],
-    ['Tổng điểm trồng', base ? base.total : '', agg.dt, base ? agg.dt - base.total : ''],
-    ['Cây cạo (G)', base ? base.g : '', agg.g, base ? agg.g - base.g : ''],
-    ['Cây +', base ? base.plus : '', agg.plus, base ? agg.plus - base.plus : ''],
-    ['Cây C', base ? base.c : '', agg.c, base ? agg.c - base.c : ''],
-    ['Cây K1', base ? base.k1 : '', agg.k1, base ? agg.k1 - base.k1 : ''],
-    ['Cây K2', base ? base.k2 : '', agg.k2, base ? agg.k2 - base.k2 : ''],
-    ['Hố trống (O)', base ? base.o : '', agg.o, base ? agg.o - base.o : ''],
+    ['Tổng điểm trồng', ref ? ref.total : '', agg.dt, ref ? agg.dt - ref.total : ''],
+    ['Cây cạo (G)', ref ? ref.g : '', agg.g, ref ? agg.g - ref.g : ''],
+    ['Cây +', ref ? ref.plus : '', agg.plus, ref ? agg.plus - ref.plus : ''],
+    ['Cây C', ref ? ref.c : '', agg.c, ref ? agg.c - ref.c : ''],
+    ['Cây K1', ref ? ref.k1 : '', agg.k1, ref ? agg.k1 - ref.k1 : ''],
+    ['Cây K2', ref ? ref.k2 : '', agg.k2, ref ? agg.k2 - ref.k2 : ''],
+    ['Hố trống (O)', ref ? ref.o : '', agg.o, ref ? agg.o - ref.o : ''],
     [],
     ['CẢNH BÁO'],
   ];
   if (mergedRefMap(key)) {
-    const refMap = mergedRefMap(key);
-    const refTotal = Object.values(refMap).reduce((s, v) => s + (Number(v) || 0), 0);
-    cmp.splice(11, 0, ['Phúc tra hàng (file 2026 gốc)', refTotal, agg.dt, (Number(agg.dt) || 0) - refTotal]);
-    cmp.push(['Phúc tra', 'Theo tổng lô ở file 2026 gốc; hướng A/B chỉ tham khảo.']);
+    cmp.push(['Nguồn 2026', 'Theo tổng lô ở file 2026 gốc (phúc tra); hướng A/B chỉ tham khảo.']);
+  } else if (ref && ref.detail && base && Number(base.total) !== Number(ref.total)) {
+    cmp.push(['Nguồn 2026', `Theo bảng chi tiết (phúc tra); bảng tổng hợp ghi ${base.total} cây.`]);
   }
   const issues = st.issues;
   const dups = st.dups;
@@ -3547,11 +3599,12 @@ function buildLotWorkbook(key) {
       `2026: ${x.pt.ref} · 2027: ${x.row.dt} · lệch ${signed(x.pt.diff)} (≥2 cây — cần kiểm tra lại)`,
     ]));
   }
-  if (base && base.mismatch) cmp.push(['Baseline 2026', `File gốc tự lệch ${base.mismatch} cây giữa tổng và 6 cột.`]);
+  if (base && base.mismatch && !(ref && ref.detail)) cmp.push(['Baseline 2026', `File gốc tự lệch ${base.mismatch} cây giữa tổng và 6 cột.`]);
+  if (ref && ref.detail && ref.mismatch) cmp.push(['Bảng chi tiết 2026', `Tự lệch ${ref.mismatch} cây giữa tổng và 6 cột (6 cột cộng ${ref.sum}).`]);
   const ws2 = makeSheet(cmp, ['A1:D1'], [22, 16, 16, 16]);
   const gCalc = (Number(agg.dt) || 0) - ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (Number(agg[k]) || 0), 0);
   xlFormula(ws2, 5, 2, 'C5-SUM(C7:C11)', gCalc);
-  if (base) xlFormula(ws2, 5, 3, 'C6-B6', gCalc - (Number(base.g) || 0));
+  if (ref) xlFormula(ws2, 5, 3, 'C6-B6', gCalc - (Number(ref.g) || 0));
   XLSX.utils.book_append_sheet(wb, ws2, 'Đối chiếu 2026');
   return wb;
 }
@@ -3631,31 +3684,32 @@ function exportAll() {
   keys.forEach(key => {
     const st = lotState(key);
     if (!st.entered.length) return;
+    const r = st.ref || st.base;
     st.issues.forEach(x => {
       checkNo += 1;
       const dirTag = x.dir ? `Hướng ${x.dir} · ` : '';
-      check.push([checkNo, key, 'Lỗi', `${dirTag}Hàng ${x.row.hang ?? '?'}: ${issueTextVN(x.row)}`, st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
+      check.push([checkNo, key, 'Lỗi', `${dirTag}Hàng ${x.row.hang ?? '?'}: ${issueTextVN(x.row)}`, r ? r.total : '', st.agg.dt, r ? st.agg.dt - r.total : '']);
     });
     st.dups.forEach(h => {
       checkNo += 1;
-      check.push([checkNo, key, 'Lỗi', `Hàng trùng số ${dupsLabel([h])}`, st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
+      check.push([checkNo, key, 'Lỗi', `Hàng trùng số ${dupsLabel([h])}`, r ? r.total : '', st.agg.dt, r ? st.agg.dt - r.total : '']);
     });
     st.ptIssues.forEach(x => {
       checkNo += 1;
       const dirTag = x.dir ? `Hướng ${x.dir} · ` : '';
       check.push([checkNo, key, 'Phúc tra', `${dirTag}Hàng ${x.row.hang ?? '?'}: 2026 ${x.pt.ref} · 2027 ${x.row.dt} · lệch ${signed(x.pt.diff)} (≥2 cây — cần kiểm tra lại)`, x.pt.ref, x.row.dt, x.pt.diff]);
     });
-    if (st.base && st.delta !== 0) {
+    if (r && st.delta !== 0 && st.delta !== null) {
       checkNo += 1;
-      check.push([checkNo, key, st.meta.done ? 'Cảnh báo' : 'Tạm tính', `Tổng 2027 lệch 2026 ${signed(st.delta)} cây (${pct(st.delta, st.base.total)})`, st.base.total, st.agg.dt, st.delta]);
+      check.push([checkNo, key, st.meta.done ? 'Cảnh báo' : 'Tạm tính', `Tổng 2027 lệch 2026 ${signed(st.delta)} cây (${pct(st.delta, r.total)})`, r.total, st.agg.dt, st.delta]);
     }
-    if (st.base && st.base.mismatch) {
+    if (st.base && st.base.mismatch && !(st.ref && st.ref.detail)) {
       checkNo += 1;
       check.push([checkNo, key, 'Baseline', `File 2026 tự lệch ${signed(st.base.mismatch)} cây giữa tổng và 6 cột`, st.base.total, st.agg.dt, st.delta]);
     }
     if (!st.meta.done) {
       checkNo += 1;
-      check.push([checkNo, key, 'Thông tin', 'Chưa đánh dấu hoàn tất', st.base ? st.base.total : '', st.agg.dt, st.base ? st.agg.dt - st.base.total : '']);
+      check.push([checkNo, key, 'Thông tin', 'Chưa đánh dấu hoàn tất', r ? r.total : '', st.agg.dt, r ? st.agg.dt - r.total : '']);
     }
   });
   if (check.length === 1) check.push([1, '', '', 'Không có cảnh báo', '', '', '']);
@@ -3666,12 +3720,13 @@ function exportAll() {
   keys.forEach((key, idx) => {
     const st = lotState(key);
     const base = st.base;
+    const r = st.ref;
     const has = st.entered.length > 0;
-    const delta = base && has ? st.agg.dt - base.total : '';
-    const ratio = base && has && base.total ? (st.agg.dt - base.total) / base.total : '';
+    const delta = r && has ? st.agg.dt - r.total : '';
+    const ratio = r && has && r.total ? (st.agg.dt - r.total) / r.total : '';
     progress.push([
       idx + 1, key, base ? base.id : '', base ? base.doi : 2, base ? base.area : '',
-      st.entered.length, has ? st.agg.dt : '', base ? base.total : '',
+      st.entered.length, has ? st.agg.dt : '', r ? r.total : '',
       delta, ratio, st.meta.done ? 'Có' : 'Không',
       st.meta.done && st.meta.doneAt ? dateTimeVN(st.meta.doneAt) : '',
       statusInfo(st).label, st.issues.length + st.dups.length, st.ptIssues.length,
@@ -3780,8 +3835,8 @@ function buildSyncPayload(reason, lotKey) {
       statusLabel: statusLabelVN(st),
       entered: st.entered.length,
       dt: st.entered.length ? st.agg.dt : null,
-      baseTotal: st.base ? st.base.total : null,
-      delta: st.base && st.entered.length ? st.delta : null,
+      baseTotal: st.ref ? st.ref.total : (st.base ? st.base.total : null),
+      delta: st.ref && st.entered.length ? st.delta : null,
       done: !!st.meta.done,
       doneAt: st.meta.doneAt || null,
       doneBy: st.meta.doneBy || '',
