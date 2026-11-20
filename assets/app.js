@@ -529,7 +529,7 @@ const QUICK_I18N = {
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
     gAuto: 'G tự tính', gManual: 'Đủ 7 số', autoPh: 'tự tính',
     gNote: 'G = Tổng ĐT − (+, C, K1, K2, O)', gManualNote: 'Nhập đủ 7 số — tool dò khớp/lệch.',
-    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: '<kbd>Enter</kbd> qua ô, qua hàng <span class="qh-sep">·</span> <kbd>Space</kbd> lưu &amp; sang tờ tiếp',
+    rowsWithData: 'hàng có số liệu', saveNext: 'Lưu & tờ tiếp', save: 'Tạm lưu', hint: '<kbd>Enter</kbd> qua ô, qua hàng <span class="qh-sep">·</span> <kbd>↑</kbd>/<kbd>↓</kbd> lùi/tới ô <span class="qh-sep">·</span> <kbd>Space</kbd> lưu &amp; sang tờ tiếp',
     pausedSaved: 'Đã tạm lưu lô {lot} · lần sau nhập tiếp từ hàng {h}.',
     draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
@@ -558,7 +558,7 @@ const QUICK_I18N = {
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
     gAuto: 'G គណនាស្វ័យប្រវត្តិ', gManual: '7 លេខ', autoPh: 'ស្វ័យប្រវត្តិ',
     gNote: 'G = សរុប − (+, C, K1, K2, O)', gManualNote: 'បញ្ចូល 7 លេខ — ពិនិត្យត្រូវ/ខុស។',
-    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: '<kbd>Enter</kbd> ទៅប្រអប់ ឬជួរបន្ទាប់ <span class="qh-sep">·</span> <kbd>Space</kbd> រក្សាទុក &amp; សន្លឹកបន្ទាប់',
+    rowsWithData: 'ជួរមានទិន្នន័យ', saveNext: 'រក្សាទុក & សន្លឹកបន្ទាប់', save: 'រក្សាទុកបណ្ដោះអាសន្ន', hint: '<kbd>Enter</kbd> ទៅប្រអប់ ឬជួរបន្ទាប់ <span class="qh-sep">·</span> <kbd>↑</kbd>/<kbd>↓</kbd> ថយ/ទៅមុខ <span class="qh-sep">·</span> <kbd>Space</kbd> រក្សាទុក &amp; សន្លឹកបន្ទាប់',
     pausedSaved: 'បានរក្សាទុកបណ្ដោះអាសន្ន ដីឡូតិ៍ {lot} · បន្តពីជួរ {h}។',
     draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
@@ -2567,11 +2567,26 @@ function onRowInput(e) {
 }
 
 function onRowKeydown(e) {
-  if (e.key !== 'Enter' || !e.target.matches('input')) return;
-  e.preventDefault();
-  const inputs = $$('#rowsBody input');
-  const idx = inputs.indexOf(e.target);
-  if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
+  if (!e.target.matches('input')) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const inputs = $$('#rowsBody input');
+    const idx = inputs.indexOf(e.target);
+    if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
+    return;
+  }
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    focusInputStep($$('#rowsBody input'), e.target, e.key === 'ArrowUp' ? -1 : 1);
+  }
+}
+
+function focusInputStep(list, current, step) {
+  const idx = list.indexOf(current);
+  const next = idx < 0 ? null : list[idx + step];
+  if (!next) return false;
+  next.focus();
+  return true;
 }
 
 function onRowClick(e) {
@@ -4445,6 +4460,13 @@ function setupDialogs() {
     if (e.key === 'Enter' && e.target.matches('input')) {
       e.preventDefault();
       focusNextQuickInput(e.target);
+      return;
+    }
+    if (e.target.closest('#quickPages') && e.target.matches('input')
+      && (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+      && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      focusInputStep(quickInputsInOrder(), e.target, e.key === 'ArrowUp' ? -1 : 1);
       return;
     }
     if ((e.key === ' ' || e.code === 'Space') && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
