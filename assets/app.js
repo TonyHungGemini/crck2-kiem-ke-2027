@@ -27,14 +27,25 @@ const BASE_ORDER = new Map(BASELINE.map((l, i) => [l.lot, i]));
 const PHUC_TRA = (window.KK_PHUCTRA && window.KK_PHUCTRA.lots) || {};
 const PHUC_TRA_MIN = (window.KK_PHUCTRA && window.KK_PHUCTRA.minDiff) || 2;
 /* Lô chia hướng: nhập và kiểm tra riêng từng hướng, tổng chung so với 2026. */
-const LOT_DIRECTIONS = { '117': ['A', 'B', 'C'], '351': ['A', 'B', 'C'] };
+const LOT_DIRECTIONS = {
+  '46-13': ['A', 'B'],
+  '47-13': ['A', 'B'],
+  '13-13': ['A', 'B'],
+  '12-13': ['A', 'B'],
+  '117': ['A', 'B'],
+  '351': ['A', 'B', 'C'],
+};
+/* Hướng C của 117 là cách gọi cũ của hướng B trong file phân hướng mới. */
+const LEGACY_DIRS = { '117': { C: 'B' } };
 function lotDirs(key) {
   return LOT_DIRECTIONS[String(key)] || null;
 }
 function rowDir(key, row) {
   const dirs = lotDirs(key);
   if (!dirs) return '';
-  return dirs.includes(row.dir) ? row.dir : dirs[0];
+  if (dirs.includes(row.dir)) return row.dir;
+  const legacy = LEGACY_DIRS[key] && LEGACY_DIRS[key][row.dir];
+  return legacy && dirs.includes(legacy) ? legacy : dirs[0];
 }
 const GEO = (window.KK_GEO && window.KK_GEO.features) || [];
 const GEO_BY_LOT = new Map(GEO.map(f => [f.properties.ma_lo, f]));
@@ -262,9 +273,44 @@ function findDuplicates(rows) {
   });
   return [...dup].sort((a, b) => a - b);
 }
-function missingHangs(rows) {
+function entryMap(key, dir) {
+  const lot = PHUC_TRA[key];
+  if (!lot) return null;
+  if (lot.dirs) return dir ? (lot.dirs[dir] || null) : (lot.ref || null);
+  return lot;
+}
+function expectedHangs(key, dir) {
+  const map = entryMap(key, dir);
+  if (!map) return null;
+  return Object.keys(map).map(Number).filter(Number.isInteger).sort((a, b) => a - b);
+}
+function coverageInfo(key, dir, rows) {
+  const scoped = rows || (dir ? rowsInDir(key, dir) : lotRows(key));
+  const filled = [...new Set(scoped.filter(rowHasData).map(r => r.hang).filter(Number.isInteger))]
+    .sort((a, b) => a - b);
+  const filledSet = new Set(filled);
+  const expected = expectedHangs(key, dir);
+  const known = !!(expected && expected.length);
+  const all = known ? [...new Set([...expected, ...filled])].sort((a, b) => a - b) : filled.slice();
+  const first = all.length ? all[0] : 1;
+  // Một số lô/hướng đánh số tiếp từ hàng 5, 50, 53… thay vì 1, 2, 3.
+  const start = first >= 4 ? first : 1;
+  const max = all.length ? Math.max(...all) : start - 1;
+  const rowsToShow = known
+    ? all.filter(h => h >= start)
+    : Array.from({ length: Math.max(0, max - start + 1) }, (_, i) => start + i);
+  const gaps = known
+    ? expected.filter(h => h >= start && !filledSet.has(h))
+    : (filled.length ? rowsToShow.filter(h => !filledSet.has(h)) : []);
+  const continuous = !!filled.length && !gaps.length
+    && Array.from({ length: Math.max(0, max - start + 1) }, (_, i) => start + i).every(h => filledSet.has(h));
+  return { filled, gaps, start, max, expected, rows: rowsToShow, known, continuous };
+}
+function missingHangs(rows, key, dir) {
   const has = new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger));
   if (!has.size) return [];
+  const expected = key ? expectedHangs(key, dir) : null;
+  if (expected && expected.length) return expected.filter(h => !has.has(h));
   const max = Math.max(...has);
   const missing = [];
   for (let h = 1; h <= max; h++) if (!has.has(h)) missing.push(h);
@@ -274,20 +320,19 @@ function rowsInDir(key, dir) {
   return lotRows(key).filter(r => rowDir(key, r) === dir);
 }
 function quickRowsInfo(key, dir) {
-  const rows = dir ? rowsInDir(key, dir) : lotRows(key);
-  const filled = [...new Set(rows.filter(rowHasData).map(r => r.hang).filter(Number.isInteger))]
-    .sort((a, b) => a - b);
-  const map = phucTraMap(key, dir);
-  const baseline = map ? Object.keys(map).map(Number).filter(Number.isInteger) : [];
-  const all = filled.concat(baseline);
-  const first = all.length ? Math.min(...all) : 1;
-  // Một số lô/hướng đánh số tiếp từ hàng 5, 50, 53… thay vì 1, 2, 3.
-  const start = first >= 4 ? first : 1;
-  const max = filled.length ? Math.max(...filled) : start - 1;
-  const has = new Set(filled);
-  const gaps = [];
-  for (let h = start; h <= max; h++) if (!has.has(h)) gaps.push(h);
-  return { filled, gaps, start, max };
+  return coverageInfo(key, dir);
+}
+function hangRangeText(list) {
+  if (!list || !list.length) return '';
+  const parts = [];
+  let a = list[0], b = a;
+  const push = () => parts.push(a === b ? String(a) : `${a}–${b}`);
+  for (let i = 1; i < list.length; i++) {
+    if (list[i] === b + 1) b = list[i];
+    else { push(); a = b = list[i]; }
+  }
+  push();
+  return parts.join(', ');
 }
 function resumeHang(key, dir) {
   return quickHangPair(key, null, dir)[0];
@@ -309,15 +354,23 @@ function rowIssuesOf(rows) {
     .map(row => ({ row, issue: rowIssue(row) }))
     .filter(x => x.issue);
 }
-function phucTraMap(key, dir) {
+function mergedRefMap(key) {
+  const lot = PHUC_TRA[key];
+  return lot && lot.ref ? lot.ref : null;
+}
+function phucTraRef(key, hang, dir, merged) {
+  if (!Number.isInteger(hang)) return null;
   const lot = PHUC_TRA[key];
   if (!lot) return null;
-  if (!lot.dirs) return lot;
-  return lot.dirs[dir] || null;
-}
-function phucTraRef(key, hang, dir) {
-  if (!Number.isInteger(hang)) return null;
-  const map = phucTraMap(key, dir);
+  let map;
+  if (lot.ref) {
+    if (!merged) return null;
+    map = lot.ref;
+  } else if (lot.dirs) {
+    map = lot.dirs[dir] || null;
+  } else {
+    map = lot;
+  }
   if (!map) return null;
   const ref = map[String(hang)];
   return Number.isFinite(ref) ? ref : null;
@@ -327,7 +380,7 @@ function hasPhucTra(key) {
 }
 function phucTraOf(key, row) {
   if (!rowHasData(row) || row.dt == null) return null;
-  const ref = phucTraRef(key, row.hang, rowDir(key, row));
+  const ref = phucTraRef(key, row.hang, rowDir(key, row), !!row._merged);
   if (ref == null) return null;
   const diff = (Number(row.dt) || 0) - ref;
   return { ref, diff, warn: Math.abs(diff) >= PHUC_TRA_MIN };
@@ -338,9 +391,16 @@ function phucTraIssues(key, rows) {
     .map(row => ({ row, pt: phucTraOf(key, row) }))
     .filter(x => x.pt && x.pt.warn);
 }
+function mergedPhucTraIssues(key) {
+  if (!mergedRefMap(key)) return [];
+  return mergeDirRows(lotRows(key))
+    .map(row => ({ row, pt: phucTraOf(key, row), merged: true }))
+    .filter(x => x.pt && x.pt.warn);
+}
 function lotDirStates(key) {
   const dirs = lotDirs(key);
   if (!dirs) return null;
+  const mergedRef = !!mergedRefMap(key);
   return dirs.map(dir => {
     const rows = rowsInDir(key, dir);
     const entered = rows.filter(rowHasData);
@@ -349,7 +409,7 @@ function lotDirStates(key) {
       agg: aggregate(rows),
       issues: rowIssuesOf(rows),
       dups: findDuplicates(rows),
-      ptIssues: phucTraIssues(key, rows),
+      ptIssues: mergedRef ? [] : phucTraIssues(key, rows),
     };
   });
 }
@@ -367,7 +427,8 @@ function lotState(key) {
     ? dirStates.flatMap(d => d.dups.map(h => ({ dir: d.dir, hang: h })))
     : findDuplicates(rows);
   const ptIssues = dirStates
-    ? dirStates.flatMap(d => d.ptIssues.map(x => ({ ...x, dir: d.dir })))
+    ? (mergedRefMap(key) ? mergedPhucTraIssues(key)
+      : dirStates.flatMap(d => d.ptIssues.map(x => ({ ...x, dir: d.dir }))))
     : phucTraIssues(key);
   const delta = base && entered.length ? agg.dt - base.total : null;
   const hasError = issues.length > 0 || dups.length > 0;
@@ -462,7 +523,7 @@ const QUICK_I18N = {
     eyebrow: 'Nhập nhanh theo tờ', title: 'Nhập nhanh', zone: 'Khu vực', zoneAll: 'Tất cả khu vực', zoneItem: 'Khu vực {z}',
     lot: 'Lô', lotOther: 'lô khác', lotDone: 'hoàn tất',
     date: 'Ngày KK', person: 'Người KK', personPh: 'Tên người kiểm kê',
-    dirLabel: 'Hướng nhập', dirSwitch: 'Đang nhập hướng {dir} — lưu riêng từng hướng.',
+    dirLabel: 'Hướng nhập', dirSwitch: 'Đang nhập hướng {dir} — lưu riêng từng hướng.', dirRange: 'Hàng cần kiểm: {range}.',
     hangNo: 'Hàng số', totalDT: 'Tổng ĐT',
     checkIdle: 'Chưa nhập', checkMissing: 'Thiếu Tổng ĐT', checkDiff: 'Lệch', checkSum6: 'tổng 6 cột',
     checkOk: 'Khớp', unitTree: 'cây', sheetThis: 'Tờ này', lotAfter: 'Lô sau lưu', diffLabel: 'Lệch',
@@ -473,7 +534,7 @@ const QUICK_I18N = {
     draftRestored: 'Đã khôi phục bản nháp đang nhập lúc {time}.',
     progressNone: 'Lô chưa có hàng nào', progressStart: 'Bắt đầu từ hàng {h}',
     progressEntered: 'Đã nhập {n} hàng', progressMissing: 'Còn thiếu hàng {list}',
-    progressContinuous: 'Đã nhập liên tục {a}–{b}', progressEntering: 'Đang vào hàng {list}',
+    progressContinuous: 'Đã nhập liên tục {a}–{b}', progressComplete: 'Đã nhập đủ {n} hàng cần kiểm', progressEntering: 'Đang vào hàng {list}',
     errEmptySheet: 'Chưa nhập số liệu cho tờ này.', errNoHang: 'Tờ {n}: chưa nhập số hàng.',
     warnMissing: 'Hàng {h}: thiếu Tổng ĐT (tổng 6 cột {sum})',
     warnDiff: 'Hàng {h}: Tổng ĐT {dt} lệch {diff} so với tổng 6 cột',
@@ -491,7 +552,7 @@ const QUICK_I18N = {
     eyebrow: 'បញ្ចូលរហ័សតាមសន្លឹក', title: 'បញ្ចូលរហ័ស', zone: 'តំបន់', zoneAll: 'គ្រប់តំបន់', zoneItem: 'តំបន់ {z}',
     lot: 'ដីឡូតិ៍', lotOther: 'ដីឡូតិ៍ផ្សេង', lotDone: 'រួចរាល់',
     date: 'កាលបរិច្ឆេទពិនិត្យ', person: 'អ្នកពិនិត្យ', personPh: 'ឈ្មោះអ្នកពិនិត្យ',
-    dirLabel: 'ទិសបញ្ចូល', dirSwitch: 'កំពុងបញ្ចូលទិស {dir} — រក្សាទុកដោយឡែកតាមទិស។',
+    dirLabel: 'ទិសបញ្ចូល', dirSwitch: 'កំពុងបញ្ចូលទិស {dir} — រក្សាទុកដោយឡែកតាមទិស។', dirRange: 'ជួរត្រូវពិនិត្យ: {range}។',
     hangNo: 'លេខជួរ', totalDT: 'សរុប',
     checkIdle: 'មិនទាន់បញ្ចូល', checkMissing: 'ខ្វះសរុប', checkDiff: 'ខុសគ្នា', checkSum6: 'សរុប 6 ជួរឈរ',
     checkOk: 'ត្រូវគ្នា', unitTree: 'ដើម', sheetThis: 'សន្លឹកនេះ', lotAfter: 'ដីឡូតិ៍ក្រោយរក្សាទុក', diffLabel: 'ខុសគ្នា',
@@ -502,7 +563,7 @@ const QUICK_I18N = {
     draftRestored: 'បានស្ដារសេចក្ដីព្រាងដែលកំពុងបញ្ចូល ម៉ោង {time}។',
     progressNone: 'ដីឡូតិ៍មិនទាន់មានជួរ', progressStart: 'ចាប់ពីជួរ {h}',
     progressEntered: 'បានបញ្ចូល {n} ជួរ', progressMissing: 'នៅខ្វះជួរ {list}',
-    progressContinuous: 'បញ្ចូលជាប់គ្នា {a}–{b}', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
+    progressContinuous: 'បញ្ចូលជាប់គ្នា {a}–{b}', progressComplete: 'បានបញ្ចូលគ្រប់ {n} ជួរត្រូវពិនិត្យ', progressEntering: 'កំពុងបញ្ចូលជួរ {list}',
     errEmptySheet: 'មិនទាន់បញ្ចូលទិន្នន័យសម្រាប់សន្លឹកនេះទេ។', errNoHang: 'សន្លឹក {n}: មិនទាន់បញ្ចូលលេខជួរ។',
     warnMissing: 'ជួរ {h}: ខ្វះសរុប (សរុប 6 ជួរឈរ {sum})',
     warnDiff: 'ជួរ {h}: សរុប {dt} ខុសគ្នា {diff} ពីសរុប 6 ជួរឈរ',
@@ -627,7 +688,8 @@ const APP_I18N = {
     dirAll: 'Tất cả',
     dirTitle: 'Hướng lô',
     dirChipTitle: 'Xem và nhập hướng {dir}',
-    dirNote: 'Lô này chia 3 hướng A/B/C. Nhập lần lượt từng hướng — kết quả chung cộng cả 3 hướng để so với kiểm kê 2026; kiểm tra và phúc tra tính riêng từng hướng.',
+    dirNote: 'Lô này chia {n} hướng {list}. Nhập lần lượt từng hướng — kiểm tra và phúc tra tính riêng từng hướng; khi xuất Excel app ghép và cộng các hướng thành 1 lô hoàn chỉnh.',
+    dirNoteMerged: 'Lô này chia {n} hướng {list}. Nhập lần lượt từng hướng; phúc tra tính trên tổng ghép theo file 2026 gốc, từng hướng chỉ tham khảo. Khi xuất Excel app ghép và cộng các hướng thành 1 lô hoàn chỉnh.',
     dirSummary: 'Cả lô: {dt} cây · 2026: {base} · lệch {d}',
     dirSummaryNoBase: 'Cả lô: {dt} cây',
     dirTotal: 'Tổng hướng {dir}',
@@ -652,13 +714,19 @@ const APP_I18N = {
     thPhucTraTip: 'So sánh Tổng ĐT từng hàng với bảng chi tiết kiểm kê 2026 · lệch từ 2 cây được tô sáng',
     phucTraTip: 'Kiểm kê 2026: {ref} cây · 2027 lệch {d}',
     phucTraNoRef: 'Không có số 2026 cho hàng này',
+    phucTraDirRef: 'Hướng A/B chỉ tham khảo — phúc tra tính trên tổng ghép',
     rowsPtNote: 'Phúc tra theo bảng chi tiết 2026. Hàng lệch từ 2 cây được tô sáng để Giám sát kiểm tra lại.',
+    rowsPtMergedNote: 'Phúc tra tính trên tổng ghép A/B theo bảng lô 2026 gốc; từng hướng chỉ để tham khảo.',
     rowsPtNoData: 'Lô này chưa có bảng chi tiết 2026 theo từng hàng (lô chia nhiều hướng A/B/C hoặc lô mới) nên chưa phúc tra từng hàng.',
     ptSumWarn: '{n} hàng lệch',
     ptSumWarnTip: '{n} hàng lệch từ 2 cây so với 2026 — cần kiểm tra lại',
+    ptSumMergedTip: 'Tính trên tổng ghép A/B theo file 2026 gốc',
     ptSumOk: 'Khớp 2026',
+    dirMergedTag: 'Ghép A/B',
+    hangMapMerged: 'Sơ đồ hàng · Ghép A/B',
     checksPhucTra: '<b>Phúc tra 2026:</b> {n} hàng lệch từ 2 cây: {list}. Đề nghị Giám sát kiểm tra lại.',
     checksPhucTraOk: 'Phúc tra 2026: các hàng đã nhập khớp bảng chi tiết (lệch dưới 2 cây).',
+    checksPhucTraMergedRef: 'A/B chỉ tham khảo; phúc tra tính trên tổng ghép theo file 2026 gốc.',
     checksPhucTraNoData: 'Lô chia nhiều hướng (A/B/C): chưa có bảng chi tiết 2026 để phúc tra từng hàng.',
     alertPhucTra: '<b>Phúc tra 2026:</b> {n} hàng lệch từ 2 cây trở lên so với bảng chi tiết 2026: {list}. Đề nghị Giám sát kiểm tra lại các hàng này.',
     hangChipPt: 'phúc tra lệch {d}',
@@ -687,6 +755,7 @@ const APP_I18N = {
     hangBadgeIssues: ' · {n} lệch',
     hangMissing: 'Còn thiếu <b>{n}</b> hàng: <b>{list}</b>.',
     hangContinuous: 'Đã nhập liên tục hàng 1–{max}.',
+    hangCompleteList: 'Đã nhập đủ {n} hàng cần kiểm.',
     hangHint: ' Ô xanh bấm để sửa hàng; ô viền đứt bấm để nhập hàng thiếu.',
     hangBtnFill: 'Nhập hàng {h}',
     hangBtnResume: 'Nhập tiếp hàng {h}',
@@ -738,7 +807,7 @@ const APP_I18N = {
     alertTempDiff: '<b>Lệch tạm tính.</b> {msg}<br>Nếu lô chưa nhập đủ hàng thì bỏ qua cảnh báo này. Khi nhập xong, <b>đánh dấu hoàn tất</b> để chốt lô — hệ thống sẽ tự động gửi file báo cáo cho Trợ lý tổng hợp.',
     alertMatch: '<b>Tổng 2027 khớp 2026:</b> {n}',
     alertBaseMismatch: '<b>Baseline 2026 có nội bộ lệch {n}.</b> Tổng số cây KK là {total}, nhưng cộng 6 cột chỉ {sum}. Nên kiểm tra lại file 2026 gốc.',
-    checksMissingRow: 'Còn thiếu <b>{n}</b> hàng trong dãy 1–{max}: {list}.',
+    checksMissingRow: 'Còn thiếu <b>{n}</b> hàng so với danh sách phúc tra: {list}.',
     checksMatchTotal: 'Tổng so 2026: khớp <b>{n}</b> cây.',
     lotEyebrow: 'Đội {doi} · {id}',
     lotNoId: 'chưa có ID',
@@ -994,7 +1063,8 @@ const APP_I18N = {
     dirAll: 'ទាំងអស់',
     dirTitle: 'ទិសដីឡូតិ៍',
     dirChipTitle: 'មើល និងបញ្ចូលទិស {dir}',
-    dirNote: 'ដីឡូតិ៍នេះបែងចែកជា 3 ទិស A/B/C។ សូមបញ្ចូលម្តងមួយទិស — សរុបរួមបូកទាំង 3 ទិស ដើម្បីប្រៀបធៀបនឹងការរាប់ឆ្នាំ 2026; ការត្រួតពិនិត្យ និងផ្ទៀងផ្ទាត់គិតដោយឡែកតាមទិស។',
+    dirNote: 'ដីឡូតិ៍នេះបែងចែកជា {n} ទិស {list}។ សូមបញ្ចូលម្តងមួយទិស — ការត្រួតពិនិត្យ និងផ្ទៀងផ្ទាត់គិតដោយឡែកតាមទិស; ពេលនាំចេញ Excel កម្មវិធីនឹងបញ្ជូល និងបូកទិសទាំងអស់ជាដីឡូតិ៍ពេញលេញមួយ។',
+    dirNoteMerged: 'ដីឡូតិ៍នេះបែងចែកជា {n} ទិស {list}។ សូមបញ្ចូលម្តងមួយទិស; ការផ្ទៀងផ្ទាត់គិតលើផលបូកបញ្ជូលតាមឯកសារ 2026 ដើម ហើយទិសនីមួយៗគ្រាន់តែជាឯកសារយោង។ ពេលនាំចេញ Excel កម្មវិធីនឹងបញ្ជូល និងបូកទិសទាំងអស់ជាដីឡូតិ៍ពេញលេញមួយ។',
     dirSummary: 'ទាំងដីឡូតិ៍: {dt} ដើម · 2026: {base} · ខុសគ្នា {d}',
     dirSummaryNoBase: 'ទាំងដីឡូតិ៍: {dt} ដើម',
     dirTotal: 'សរុបទិស {dir}',
@@ -1019,13 +1089,19 @@ const APP_I18N = {
     thPhucTraTip: 'ប្រៀបធៀបសរុបដាំជួរនីមួយៗជាមួយតារាងលម្អិត 2026 · ខុសគ្នាចាប់ពី 2 ដើម នឹងត្រូវបន្លិច',
     phucTraTip: 'រាប់ 2026: {ref} ដើម · 2027 ខុស {d}',
     phucTraNoRef: 'គ្មានលេខ 2026 សម្រាប់ជួរនេះ',
+    phucTraDirRef: 'ទិស A/B គ្រាន់តែជាឯកសារយោង — ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូល',
     rowsPtNote: 'ផ្ទៀងផ្ទាត់តាមតារាងលម្អិត 2026។ ជួរខុសចាប់ពី 2 ដើម ត្រូវបន្លិច ដើម្បីឱ្យអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញ។',
+    rowsPtMergedNote: 'ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូល A/B តាមតារាងឡូឆ្នាំ 2026 ដើម; តាមទិសគ្រាន់តែជាឯកសារយោង។',
     rowsPtNoData: 'ដីឡូតិ៍នេះមិនទាន់មានតារាងលម្អិត 2026 តាមជួរ (ដីឡូតិ៍បែងចែកច្រើនទិស A/B/C ឬដីឡូតិ៍ថ្មី) ដូច្នេះមិនអាចផ្ទៀងផ្ទាត់តាមជួរបានទេ។',
     ptSumWarn: '{n} ជួរខុស',
     ptSumWarnTip: '{n} ជួរខុសចាប់ពី 2 ដើមធៀប 2026 — ត្រូវពិនិត្យឡើងវិញ',
+    ptSumMergedTip: 'គណនាលើផលបូកបញ្ជូល A/B តាមឯកសារ 2026 ដើម',
     ptSumOk: 'ត្រូវ 2026',
+    dirMergedTag: 'បញ្ជូល A/B',
+    hangMapMerged: 'ជួរដេក · បញ្ជូល A/B',
     checksPhucTra: '<b>ផ្ទៀងផ្ទាត់ 2026:</b> {n} ជួរខុសចាប់ពី 2 ដើម: {list}។ សូមអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញ។',
     checksPhucTraOk: 'ផ្ទៀងផ្ទាត់ 2026: ជួរដែលបានបញ្ចូលត្រូវតារាងលម្អិត (ខុសក្រោម 2 ដើម)។',
+    checksPhucTraMergedRef: 'A/B គ្រាន់តែជាឯកសារយោង; ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូលតាមឯកសារ 2026 ដើម។',
     checksPhucTraNoData: 'ដីឡូតិ៍បែងចែកច្រើនទិស (A/B/C): មិនទាន់មានតារាងលម្អិត 2026 សម្រាប់ផ្ទៀងផ្ទាត់តាមជួរ។',
     alertPhucTra: '<b>ផ្ទៀងផ្ទាត់ 2026:</b> {n} ជួរខុសចាប់ពី 2 ដើមធៀបតារាងលម្អិត 2026: {list}។ សូមអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញជួរទាំងនេះ។',
     hangChipPt: 'ផ្ទៀងផ្ទាត់ខុស {d}',
@@ -1054,6 +1130,7 @@ const APP_I18N = {
     hangBadgeIssues: ' · {n} ខុសគ្នា',
     hangMissing: 'នៅខ្វះ <b>{n}</b> ជួរ: <b>{list}</b>.',
     hangContinuous: 'បានបញ្ចូលជាប់គ្នា ជួរ 1–{max}.',
+    hangCompleteList: 'បានបញ្ចូលគ្រប់ {n} ជួរត្រូវពិនិត្យ។',
     hangHint: ' ប្រអប់ពណ៌បៃតងចុចដើម្បីកែជួរ; ប្រអប់ជួរដេកដាច់ៗចុចដើម្បីបញ្ចូលជួរខ្វះ។',
     hangBtnFill: 'បញ្ចូលជួរ {h}',
     hangBtnResume: 'បន្តបញ្ចូលជួរ {h}',
@@ -1105,7 +1182,7 @@ const APP_I18N = {
     alertTempDiff: '<b>ខុសគ្នាបណ្ដោះអាសន្ន។</b> {msg}<br>បើដីឡូតិ៍មិនទាន់បញ្ចូលគ្រប់ជួរ សូមមិនខ្វល់ការព្រមាននេះ។ ពេលបញ្ចូលរួចហើយ <b>សម្គាល់ថារួចរាល់</b> ដើម្បីបិទដីឡូតិ៍ — ប្រព័ន្ធនឹងផ្ញើឯកសាររាយការណ៍ដោយស្វ័យប្រវត្តិទៅជំនួយការសម្របសម្រួល។',
     alertMatch: '<b>សរុប 2027 ត្រូវនឹង 2026:</b> {n}',
     alertBaseMismatch: '<b>ទិន្នន័យគោល 2026 ខុសគ្នាខាងក្នុង {n}។</b> សរុបដើមគឺ {total} តែផលបូក 6 ជួរឈរគ្រាន់តែ {sum}។ គួរពិនិត្យឯកសារ 2026 ដើមឡើងវិញ។',
-    checksMissingRow: 'នៅខ្វះ <b>{n}</b> ជួរក្នុងជួរលេខ 1–{max}: {list}។',
+    checksMissingRow: 'នៅខ្វះ <b>{n}</b> ជួរបើធៀបនឹងបញ្ជីផ្ទៀងផ្ទាត់: {list}។',
     checksMatchTotal: 'សរុបធៀប 2026: ត្រូវគ្នា <b>{n}</b> ដើម។',
     lotEyebrow: 'ក្រុម {doi} · {id}',
     lotNoId: 'គ្មាន ID',
@@ -1742,9 +1819,9 @@ function outlierMapFor(key, rows) {
   return merged;
 }
 
-function ptCellHtml(pt) {
+function ptCellHtml(pt, refOnly) {
   if (!pt) {
-    return `<span class="pt-empty" title="${esc(t('phucTraNoRef'))}">—</span>`;
+    return `<span class="pt-empty" title="${esc(t(refOnly ? 'phucTraDirRef' : 'phucTraNoRef'))}">—</span>`;
   }
   const cls = pt.warn ? 'alert' : 'ok';
   return `<span class="pt-cell ${cls}" title="${esc(t('phucTraTip', { ref: fmt(pt.ref), d: signed(pt.diff) }))}">
@@ -1793,7 +1870,7 @@ function rowHtml(row, odd) {
       <td>${input('k1')}</td>
       <td>${input('k2')}</td>
       <td>${input('o')}</td>
-      <td class="col-pt">${ptCellHtml(pt)}</td>
+      <td class="col-pt">${ptCellHtml(pt, !!mergedRefMap(key))}</td>
       <td class="col-check"><span class="row-check ${checkCls}">${checkText}</span></td>
       <td>
         <div class="row-tools">
@@ -1839,7 +1916,7 @@ function refreshLotDerived() {
   const dupsSet = new Set(dirs && dir === 'ALL'
     ? (lotDirStates(key) || []).flatMap(d => d.dups)
     : dups);
-  const ptIssues = phucTraIssues(key, rows);
+  const ptIssues = mergedRefMap(key) ? mergedPhucTraIssues(key) : phucTraIssues(key, rows);
   const base = BASE_BY_LOT.get(key);
   const meta = lotMeta(key);
   const delta = base && entered.length ? agg.dt - base.total : null;
@@ -1900,7 +1977,7 @@ function refreshLotDerived() {
     const pt = phucTraOf(key, row);
     tr.classList.toggle('pt-warn', !!(pt && pt.warn));
     const ptCell = tr.querySelector('.col-pt');
-    if (ptCell) ptCell.innerHTML = ptCellHtml(pt);
+    if (ptCell) ptCell.innerHTML = ptCellHtml(pt, !!mergedRefMap(key));
   });
 
   const sumPt = $('#sumPt');
@@ -1912,11 +1989,13 @@ function refreshLotDerived() {
     } else if (ptIssues.length) {
       sumPt.textContent = t('ptSumWarn', { n: ptIssues.length });
       sumPt.className = 'pt-sum alert';
-      sumPt.title = t('ptSumWarnTip', { n: ptIssues.length });
+      sumPt.title = t('ptSumWarnTip', { n: ptIssues.length })
+        + (mergedRefMap(key) ? ' · ' + t('ptSumMergedTip') : '');
     } else {
       sumPt.textContent = t('ptSumOk');
       sumPt.className = 'pt-sum ok';
-      sumPt.removeAttribute('title');
+      if (mergedRefMap(key)) sumPt.title = t('ptSumMergedTip');
+      else sumPt.removeAttribute('title');
     }
   }
   const ptNoteEl = $('#rowsPtNote');
@@ -1926,7 +2005,7 @@ function refreshLotDerived() {
       ptNoteEl.className = 'rows-pt-note muted';
       ptNoteEl.hidden = false;
     } else {
-      ptNoteEl.textContent = t('rowsPtNote');
+      ptNoteEl.textContent = mergedRefMap(key) ? t('rowsPtMergedNote') : t('rowsPtNote');
       ptNoteEl.className = 'rows-pt-note';
       ptNoteEl.hidden = false;
     }
@@ -1958,7 +2037,7 @@ function refreshLotDerived() {
   renderDirBar(key, st);
   renderCompare({ base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta });
   renderAlerts({
-    base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
+    key, base, agg: st.agg, entered: st.entered.length, delta: st.delta, meta,
     dirStates: st.dirStates, issues: st.issues, dups: st.dups, ptIssues: st.ptIssues,
   });
   renderChecks({
@@ -1993,6 +2072,8 @@ function renderDirBar(key, st) {
       ? t('dirSummary', { dt: fmt(st.agg.dt), base: fmt(st.base.total), d: signed(st.delta) })
       : t('dirSummaryNoBase', { dt: fmt(st.agg.dt) });
   }
+  const note = $('#lotDirNote');
+  if (note) note.textContent = t(mergedRefMap(key) ? 'dirNoteMerged' : 'dirNote', { n: dirs.length, list: dirs.join('/') });
 }
 
 function compareRow(label, v26, v27, isTotal, deltaCls) {
@@ -2051,7 +2132,7 @@ function alertHtml(level, body, extraClass) {
   return `<div class="alert ${level}${extraClass ? ' ' + extraClass : ''}">${icon}<div class="alert-body">${body}</div></div>`;
 }
 
-function renderAlerts({ base, agg, entered, delta, meta, dirStates, issues, dups, ptIssues }) {
+function renderAlerts({ key, base, agg, entered, delta, meta, dirStates, issues, dups, ptIssues }) {
   const alerts = [];
   if (!entered) {
     alerts.push(alertHtml('info', t('alertNoRows')));
@@ -2074,6 +2155,13 @@ function renderAlerts({ base, agg, entered, delta, meta, dirStates, issues, dups
       }
     });
     const emptyDirs = dirStates.filter(d => !d.entered.length).map(d => d.dir);
+    if (mergedRefMap(key) && ptIssues.length) {
+      const tag = t('dirMergedTag');
+      const list = ptIssues.slice(0, 6)
+        .map(x => `${t('checksRow', { h: esc(x.row.hang ?? '?') })} (${signed(x.pt.diff)})`)
+        .join(', ');
+      alerts.push(alertHtml('warn', `<b>${esc(tag)}</b> — ${t('alertPhucTra', { n: ptIssues.length, list: list + (ptIssues.length > 6 ? '…' : '') })}`, 'pt'));
+    }
     if (emptyDirs.length && entered && !meta.done) {
       alerts.push(alertHtml('info', t('dirMissing', { list: emptyDirs.join(', ') })));
     }
@@ -2131,7 +2219,7 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
     items.push(opt.dups.length
       ? `<li class="check-item bad">${tag}${t('checksDup', { list: opt.dups.map(h => esc(h)).join(', ') })}</li>`
       : `<li class="check-item ok">${tag}${t('checksNoDup')}</li>`);
-    if (hasPhucTra(key)) {
+    if (hasPhucTra(key) && !mergedRefMap(key)) {
       if (opt.ptIssues.length) {
         const list = opt.ptIssues.slice(0, 8)
           .map(x => `${esc(x.row.hang ?? '?')} (${signed(x.pt.diff)})`)
@@ -2140,13 +2228,13 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
       } else {
         items.push(`<li class="check-item ok">${tag}${t('checksPhucTraOk')}</li>`);
       }
-    } else {
+    } else if (!hasPhucTra(key)) {
       items.push(`<li class="check-item info">${tag}${t('checksPhucTraNoData')}</li>`);
     }
-    const missing = missingHangs(opt.rows);
+    const missing = missingHangs(opt.rows, key, opt.dir || '');
     if (missing.length) {
       const show = missing.slice(0, 12).map(h => esc(h)).join(', ');
-      items.push(`<li class="check-item warn">${tag}${t('checksMissingRow', { n: missing.length, max: Math.max(...opt.rows.filter(rowHasData).map(r => r.hang)), list: show + (missing.length > 12 ? '…' : '') })}</li>`);
+      items.push(`<li class="check-item warn">${tag}${t('checksMissingRow', { n: missing.length, list: show + (missing.length > 12 ? '…' : '') })}</li>`);
     }
   };
 
@@ -2162,8 +2250,19 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
           return;
         }
         items.push(`<li class="check-item info">${t('dirChecksTotal', { dir: d.dir, n: d.entered.length, dt: fmt(d.agg.dt) })}</li>`);
-        pushRowChecks({ tag, entered: d.entered.length, issues: d.issues, dups: d.dups, ptIssues: d.ptIssues, rows: d.rows });
+        pushRowChecks({ tag, dir: d.dir, entered: d.entered.length, issues: d.issues, dups: d.dups, ptIssues: d.ptIssues, rows: d.rows });
       });
+      if (mergedRefMap(key) && entered) {
+        items.push(`<li class="check-item info"><b>${t('dirMergedTag')}</b> — ${t('checksPhucTraMergedRef')}</li>`);
+        if (ptIssues.length) {
+          const list = ptIssues.slice(0, 8)
+            .map(x => `${esc(x.row.hang ?? '?')} (${signed(x.pt.diff)})`)
+            .join(', ');
+          items.push(`<li class="check-item pt"><b>${t('dirMergedTag')}</b> — ${t('checksPhucTra', { n: ptIssues.length, list: list + (ptIssues.length > 8 ? '…' : '') })}</li>`);
+        } else {
+          items.push(`<li class="check-item ok">${t('dirMergedTag')} — ${t('checksPhucTraOk')}</li>`);
+        }
+      }
       renderOverallChecks();
     }
   } else {
@@ -2171,7 +2270,7 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
     if (!entered) {
       items.push(`<li class="check-item">${t('checksNoData')}</li>`);
     } else {
-      pushRowChecks({ tag: '', entered, issues, dups, ptIssues, rows });
+      pushRowChecks({ tag: '', dir: '', entered, issues, dups, ptIssues, rows });
       renderOverallChecks();
     }
   }
@@ -2195,20 +2294,20 @@ function renderChecks({ key, base, agg, entered, delta, meta, issues, dups, rows
   $('#lotChecks').innerHTML = `<h3>${t('checksTitle')}</h3><ul class="check-list">${items.join('')}</ul>`;
 }
 
-function hangMapBlock(key, rows, dir) {
+function hangMapBlock(key, rows, dir, label) {
   const entered = rows.filter(r => rowHasData(r) && Number.isInteger(r.hang));
   if (!entered.length) return '';
-  const max = Math.max(...entered.map(r => r.hang));
+  const cov = coverageInfo(key, dir, rows);
+  const max = Math.max(...entered.map(r => r.hang), cov.max || 0);
   const byHang = new Map(entered.map(r => [r.hang, r]));
-  const gaps = missingHangs(rows);
+  const gaps = missingHangs(rows, key, dir);
   const issues = rowIssuesOf(rows).length;
   const odd = rowOutliers(rows);
   const resume = gaps.length ? gaps[0] : max + 1;
   const dirAttr = dir ? ` data-dir="${esc(dir)}"` : '';
-  const title = dir ? `${t('hangMapTitle')} · ${t('dirAlertPrefix', { dir })}` : t('hangMapTitle');
+  const title = label || (dir ? `${t('hangMapTitle')} · ${t('dirAlertPrefix', { dir })}` : t('hangMapTitle'));
   const chips = [];
-  const cap = Math.min(max, 200);
-  for (let h = 1; h <= cap; h++) {
+  cov.rows.slice(0, 200).forEach(h => {
     const row = byHang.get(h);
     if (row) {
       const bad = !!rowIssue(row);
@@ -2220,13 +2319,15 @@ function hangMapBlock(key, rows, dir) {
     } else {
       chips.push(`<button class="hang-chip gap${h === resume ? ' is-next' : ''}" type="button" data-hang="${h}" data-mode="fill"${dirAttr} title="${t('hangChipFill', { h })}">${h}</button>`);
     }
-  }
+  });
   if (!gaps.length) {
     chips.push(`<button class="hang-chip add is-next" type="button" data-hang="${resume}" data-mode="fill"${dirAttr} title="${t('hangBtnResume', { h: resume })}">+${resume}</button>`);
   }
   const missingText = gaps.length
     ? t('hangMissing', { n: gaps.length, list: gaps.slice(0, 14).join(', ') + (gaps.length > 14 ? '…' : '') })
-    : t('hangContinuous', { max });
+    : cov.known && !cov.continuous
+      ? t('hangCompleteList', { n: cov.expected.length })
+      : t('hangContinuous', { max });
   const badgeCls = gaps.length || issues ? 'warn' : 'good';
   const badgeText = t('hangBadge', { n: entered.length })
     + (gaps.length ? t('hangBadgeMissing', { n: gaps.length }) : '')
@@ -2249,12 +2350,19 @@ function renderHangMap(key) {
   const host = $('#lotHangMap');
   if (!host) return;
   const dirs = lotDirs(key);
-  const blocks = dirs
-    ? dirs.map(d => hangMapBlock(key, rowsInDir(key, d), d)).filter(Boolean)
-    : [hangMapBlock(key, lotRows(key), '')].filter(Boolean);
-  if (!blocks.length) { host.hidden = true; host.innerHTML = ''; return; }
+  const blocks = [];
+  if (mergedRefMap(key)) {
+    blocks.push(hangMapBlock(key, mergeDirRows(lotRows(key)), '', t('hangMapMerged')));
+  }
+  if (dirs) {
+    dirs.forEach(d => blocks.push(hangMapBlock(key, rowsInDir(key, d), d)));
+  } else if (!mergedRefMap(key)) {
+    blocks.push(hangMapBlock(key, lotRows(key), ''));
+  }
+  const shown = blocks.filter(Boolean);
+  if (!shown.length) { host.hidden = true; host.innerHTML = ''; return; }
   host.hidden = false;
-  host.innerHTML = blocks.join('');
+  host.innerHTML = shown.join('');
 }
 
 function focusLotRow(uid) {
@@ -2785,7 +2893,10 @@ function refreshQuickDirBar() {
     return `<button class="dir-chip${state.quickDir === d ? ' is-active' : ''}" type="button" data-qdir="${d}" title="${esc(t('dirChipTitle', { dir: d }))}"><b>${d}</b><span>${n}</span></button>`;
   }).join('');
   const note = $('#quickDirNote');
-  if (note) note.textContent = qtf('dirSwitch', { dir: state.quickDir });
+  if (note) {
+    const range = hangRangeText(expectedHangs(key, state.quickDir));
+    note.textContent = qtf('dirSwitch', { dir: state.quickDir }) + (range ? ' ' + qtf('dirRange', { range }) : '');
+  }
 }
 
 function applyQuickMode() {
@@ -3024,7 +3135,7 @@ function renderQuickProgress() {
   if (!host) return;
   const key = state.quickLot;
   if (!key) { host.innerHTML = ''; return; }
-  const { filled, gaps, start } = quickRowsInfo(key, state.quickDir);
+  const { filled, gaps, start, known, continuous, expected } = quickRowsInfo(key, state.quickDir);
   const pair = $$('#quickPages .qcard').map(c => readQuickCard(c).hang).filter(Number.isInteger);
   const bits = [];
   if (!filled.length) {
@@ -3034,7 +3145,9 @@ function renderQuickProgress() {
     bits.push(`<span>${esc(qtf('progressEntered', { n: filled.length }))}</span>`);
     bits.push(gaps.length
       ? `<span class="qp-gap">${esc(qtf('progressMissing', { list: gaps.slice(0, 10).join(', ') + (gaps.length > 10 ? '…' : '') }))}</span>`
-      : `<span class="qp-ok">${esc(qtf('progressContinuous', { a: start, b: Math.max(...filled) }))}</span>`);
+      : known && !continuous
+        ? `<span class="qp-ok">${esc(qtf('progressComplete', { n: expected.length }))}</span>`
+        : `<span class="qp-ok">${esc(qtf('progressContinuous', { a: start, b: Math.max(...filled) }))}</span>`);
     if (pair.length) bits.push(`<span class="qp-next">${esc(qtf(state.quickReview ? 'reviewing' : 'progressEntering', { list: pair.join(', ') }))}</span>`);
   }
   host.innerHTML = bits.join('');
@@ -3229,7 +3342,7 @@ function xlFormula(ws, r, c, f, v) {
   cell.z = cell.z || '#,##0';
   ws[addr] = cell;
 }
-function styleLotSheet(ws, maxHang) {
+function styleLotSheet(ws, maxHang, lastCol = 7) {
   const center = { horizontal: 'center', vertical: 'center' };
   const headerRow = 4;
   const firstData = 5;
@@ -3246,19 +3359,19 @@ function styleLotSheet(ws, maxHang) {
     font: { name: 'Times New Roman', sz: 10, italic: true, color: { rgb: '404040' } },
     alignment: center,
   };
-  xlStyleRow(ws, headerRow, 0, 7, {
+  xlStyleRow(ws, headerRow, 0, lastCol, {
     font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '000000' } },
     alignment: center,
     border: XL_BORDER,
   });
   for (let r = firstData; r < totalRow; r++) {
-    xlStyleRow(ws, r, 0, 7, {
+    xlStyleRow(ws, r, 0, lastCol, {
       font: { name: 'Calibri', sz: 11, color: { rgb: '000000' } },
       alignment: center,
       border: XL_BORDER,
     });
   }
-  xlStyleRow(ws, totalRow, 0, 7, {
+  xlStyleRow(ws, totalRow, 0, lastCol, {
     font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '000000' } },
     alignment: center,
     border: XL_BORDER,
@@ -3278,26 +3391,42 @@ function downloadWorkbook(wb, filename) {
   }
 }
 
-function buildLotSheet(key, meta, rows, agg, dirLabel) {
+function buildLotSheet(key, meta, rows, agg, dirLabel, refMap) {
   const sorted = rows.filter(rowHasData).slice().sort((a, b) => (a.hang || 0) - (b.hang || 0));
   const map = new Map(sorted.map(r => [r.hang, r]));
   const maxHang = Math.max(84, ...sorted.map(r => r.hang || 0));
+  const lastCol = refMap ? 9 : 7;
   const aoa = [];
   aoa.push([]);
   aoa.push(['BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ']);
   aoa.push([`LÔ : ${key}    ${dirLabel || `Hướng lô: ${meta.huong || '…'}`}    Ngày KK: ${dateVN(meta.ngay)}    Người KK: ${meta.nguoi || '…'}`]);
-  aoa.push([`Trạng thái: ${meta.done ? 'Hoàn tất' : 'Đang nhập'} · ${sorted.length} hàng · ${fmt(agg.dt)} cây`]);
-  aoa.push(['Hàng', 'Tổng điểm trồng', 'Cây cạo', 'Cây +', 'Cây C', 'Cây K1', 'Cây K2', 'Hố trống']);
+  aoa.push([`Trạng thái: ${meta.done ? 'Hoàn tất' : 'Đang nhập'} · ${sorted.length} hàng · ${fmt(agg.dt)} cây${refMap ? ' · phúc tra theo file 2026 gốc' : ''}`]);
+  aoa.push(['Hàng', 'Tổng điểm trồng', 'Cây cạo', 'Cây +', 'Cây C', 'Cây K1', 'Cây K2', 'Hố trống']
+    .concat(refMap ? ['Phúc tra 2026', 'Lệch'] : []));
   for (let h = 1; h <= maxHang; h++) {
     const r = map.get(h);
-    aoa.push(r
+    const vals = r
       ? [h, r.dt != null ? r.dt : 0, r.g != null ? r.g : 0, r.plus != null ? r.plus : 0, r.c != null ? r.c : 0, r.k1 != null ? r.k1 : 0, r.k2 != null ? r.k2 : 0, r.o != null ? r.o : 0]
-      : [h, null, 0, null, null, null, null, null]);
+      : [h, null, 0, null, null, null, null, null];
+    if (refMap) {
+      const ref = refMap[String(h)];
+      const known = Number.isFinite(ref);
+      vals.push(known ? ref : null,
+        known && r && r.dt != null ? (Number(r.dt) || 0) - ref : null);
+    }
+    aoa.push(vals);
   }
-  aoa.push(['Tổng', agg.dt, agg.g, agg.plus, agg.c, agg.k1, agg.k2, agg.o]);
+  const totalRow = ['Tổng', agg.dt, agg.g, agg.plus, agg.c, agg.k1, agg.k2, agg.o];
+  if (refMap) {
+    const refSum = Object.values(refMap).reduce((s, v) => s + (Number(v) || 0), 0);
+    totalRow.push(refSum, (Number(agg.dt) || 0) - refSum);
+  }
+  aoa.push(totalRow);
 
-  const ws = makeSheet(aoa, ['A2:H2', 'A3:H3', 'A4:H4'], [8.5, 14.73, 13, 10, 10, 10, 10, 12]);
-  styleLotSheet(ws, maxHang);
+  const span = XLSX.utils.encode_col(lastCol);
+  const ws = makeSheet(aoa, [`A2:${span}2`, `A3:${span}3`, `A4:${span}4`],
+    [8.5, 14.73, 13, 10, 10, 10, 10, 12].concat(refMap ? [13, 10] : []));
+  styleLotSheet(ws, maxHang, lastCol);
   for (let h = 1; h <= maxHang; h++) {
     const r = map.get(h);
     const rowNo = h + 5;
@@ -3305,6 +3434,11 @@ function buildLotSheet(key, meta, rows, agg, dirLabel) {
       ? (Number(r.dt) || 0) - ['plus', 'c', 'k1', 'k2', 'o'].reduce((s, k) => s + (Number(r[k]) || 0), 0)
       : '';
     xlFormula(ws, h + 4, 2, `IF(B${rowNo}="","",B${rowNo}-SUM(D${rowNo}:H${rowNo}))`, g);
+    if (refMap) {
+      const ref = refMap[String(h)];
+      const diff = r && r.dt != null && Number.isFinite(ref) ? (Number(r.dt) || 0) - ref : '';
+      xlFormula(ws, h + 4, 9, `IF(OR(B${rowNo}="",I${rowNo}=""),"",B${rowNo}-I${rowNo})`, diff);
+    }
   }
   const sumNo = maxHang + 6;
   xlFormula(ws, maxHang + 5, 2, `B${sumNo}-SUM(D${sumNo}:H${sumNo})`,
@@ -3321,6 +3455,21 @@ function exportLot(key) {
   downloadWorkbook(wb, `KK2027_Lo_${key.replace(/[^\w\-]+/g, '_')}.xlsx`);
 }
 
+function mergeDirRows(rows) {
+  const map = new Map();
+  rows.filter(r => Number.isInteger(r.hang)).forEach(r => {
+    let m = map.get(r.hang);
+    if (!m) {
+      m = { hang: r.hang, uid: `ghep-${r.hang}`, _merged: true };
+      map.set(r.hang, m);
+    }
+    FIELDS.forEach(k => {
+      if (r[k] != null) m[k] = (m[k] || 0) + (Number(r[k]) || 0);
+    });
+  });
+  return [...map.values()].sort((a, b) => a.hang - b.hang);
+}
+
 function buildLotWorkbook(key) {
   const st = lotState(key);
   if (!st.entered.length) return null;
@@ -3335,6 +3484,14 @@ function buildLotWorkbook(key) {
       const ws = buildLotSheet(key, meta, dr, dAgg, `Hướng: ${dir}`);
       XLSX.utils.book_append_sheet(wb, ws, safeSheetName(`Lô ${key} ${dir}`));
     });
+    const merged = mergeDirRows(rows);
+    if (merged.length) {
+      const refMap = mergedRefMap(key);
+      const wsGhep = buildLotSheet(key, meta, merged, agg,
+        `Đã ghép ${dirs.length} hướng ${dirs.join('+')} · cộng lại thành 1 lô${refMap ? ' · phúc tra theo file 2026 gốc' : ''}`,
+        refMap);
+      XLSX.utils.book_append_sheet(wb, wsGhep, safeSheetName(`Lô ${key} ghép`));
+    }
   } else {
     const ws = buildLotSheet(key, meta, rows, agg, '');
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName('Lô ' + key));
@@ -3342,7 +3499,7 @@ function buildLotWorkbook(key) {
 
   const cmp = [
     ['ĐỐI CHIẾU VỚI KIỂM KÊ 0H NGÀY 01/01/2026'],
-    [`Lô ${key}${dirs ? ' (cộng cả 3 hướng)' : ''}`],
+    [`Lô ${key}${dirs ? ` (cộng cả ${dirs.length} hướng)` : ''}`],
     [],
     ['Chỉ tiêu', '2026', '2027', 'Lệch'],
     ['Tổng điểm trồng', base ? base.total : '', agg.dt, base ? agg.dt - base.total : ''],
@@ -3355,10 +3512,16 @@ function buildLotWorkbook(key) {
     [],
     ['CẢNH BÁO'],
   ];
+  if (mergedRefMap(key)) {
+    const refMap = mergedRefMap(key);
+    const refTotal = Object.values(refMap).reduce((s, v) => s + (Number(v) || 0), 0);
+    cmp.splice(11, 0, ['Phúc tra hàng (file 2026 gốc)', refTotal, agg.dt, (Number(agg.dt) || 0) - refTotal]);
+    cmp.push(['Phúc tra', 'Theo tổng lô ở file 2026 gốc; hướng A/B chỉ tham khảo.']);
+  }
   const issues = st.issues;
   const dups = st.dups;
   const ptIssues = st.ptIssues;
-  const tag = x => (x.dir ? `Hướng ${x.dir} · ` : '');
+  const tag = x => (x.dir ? `Hướng ${x.dir} · ` : x.merged ? 'Ghép A/B · ' : '');
   if (!issues.length && !dups.length && !ptIssues.length) {
     cmp.push(['Không có lỗi tổng hàng hoặc hàng trùng.']);
   } else {

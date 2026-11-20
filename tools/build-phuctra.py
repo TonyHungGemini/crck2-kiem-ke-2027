@@ -16,6 +16,7 @@ import openpyxl
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(ROOT, 'assets', 'baseline.js')
 OUT = os.path.join(ROOT, 'assets', 'phuctra.js')
+DIR_FILE = os.path.join(ROOT, 'tools', 'data', 'khu-vuc-8-directions.xlsx')
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Desktop/Kiểm kê chi tiết 2026')
 
 
@@ -77,10 +78,26 @@ def parse_sheet(ws, block=0):
 
 
 # Lô chia hướng: file chi tiết tách sheet / khối bảng theo hướng.
-# 117AB chứa 3 khối: AB (gộp), A, B; 117C là hướng C (tiêu đề trong file ghi nhầm 117B).
+# 351 nằm trong bộ Tổ 1–8; các lô khu vực 8 lấy từ file phân hướng riêng.
 DIR_DETAIL = {
-    '117': [('117AB', 1, 'A'), ('117AB', 2, 'B'), ('117C', 0, 'C')],
     '351': [('351A', 0, 'A'), ('351B', 0, 'B'), ('351C', 0, 'C')],
+}
+DIR_FILE_DETAIL = {
+    '46-13': [(' lô46', 0, 'A'), (' lô46', 1, 'B')],
+    '47-13': [('LÔ47', 0, 'A'), ('LÔ47', 1, 'B')],
+    '13-13': [('lô13', 0, 'A'), ('lô13', 1, 'B')],
+    '12-13': [('LO12', 0, 'A'), ('LO12', 1, 'B')],
+    '117': [('117A', 0, 'A'), ('117B', 0, 'B')],
+}
+
+# Phúc tra ưu tiên tổng lô theo bảng gộp của file chi tiết 2026 cũ.
+# Hướng A/B (file phân hướng mới) chỉ dùng để chia hàng khi nhập.
+MERGE_REF_DETAIL = {
+    '46-13': [('46', 0)],
+    '47-13': [('47', 0)],
+    '13-13': [('13', 0)],
+    '12-13': [('12', 0)],
+    '117': [('117AB', 0), ('117C', 0)],
 }
 
 sheets = []
@@ -100,12 +117,23 @@ for path in sorted(glob.glob(os.path.join(SRC, '*.xlsx'))):
         if header_count:
             blocks_by_sheet[norm(ws.title)] = [parse_sheet(ws, i) for i in range(header_count)]
 
+dir_blocks_by_sheet = {}
+if os.path.exists(DIR_FILE):
+    wb = openpyxl.load_workbook(DIR_FILE, data_only=True)
+    for ws in wb.worksheets:
+        header_count = len(find_headers(ws))
+        if header_count:
+            dir_blocks_by_sheet[norm(ws.title)] = [parse_sheet(ws, i) for i in range(header_count)]
+
 lots, missing, notes = {}, [], {}
 for lot in base_total:
-    if lot in DIR_DETAIL:
+    use_dir_file = lot in DIR_FILE_DETAIL
+    detail = DIR_FILE_DETAIL.get(lot) or DIR_DETAIL.get(lot)
+    if detail:
+        blocks_source = dir_blocks_by_sheet if use_dir_file else blocks_by_sheet
         dirs, absent = {}, []
-        for sheet_name, block, dir_name in DIR_DETAIL[lot]:
-            blocks = blocks_by_sheet.get(norm(sheet_name), [])
+        for sheet_name, block, dir_name in detail:
+            blocks = blocks_source.get(norm(sheet_name), [])
             parsed = blocks[block] if len(blocks) > block else None
             if not parsed:
                 absent.append(dir_name)
@@ -117,8 +145,29 @@ for lot in base_total:
             continue
         lots[lot] = {'dirs': dirs}
         dir_sum = sum(sum(d.values()) for d in dirs.values())
+        ref_detail = MERGE_REF_DETAIL.get(lot)
+        if ref_detail:
+            ref, absent_ref = {}, []
+            for sheet_name, block in ref_detail:
+                blocks = blocks_by_sheet.get(norm(sheet_name), [])
+                parsed = blocks[block] if len(blocks) > block else None
+                if not parsed:
+                    absent_ref.append(sheet_name)
+                    continue
+                for hang, value in parsed['rows'].items():
+                    ref[hang] = ref.get(hang, 0) + value
+            if absent_ref:
+                notes[lot] = 'missing merge ref: ' + ', '.join(absent_ref)
+            elif ref:
+                lots[lot]['ref'] = {str(h): int(v) if float(v).is_integer() else v
+                                    for h, v in sorted(ref.items())}
+                ref_sum = sum(ref.values())
+                notes[lot] = f"ref sum {ref_sum}"
+                if dir_sum != ref_sum:
+                    notes[lot] += f", dirs sum {dir_sum}"
         if dir_sum != base_total[lot]:
-            notes[lot] = f"dirs sum {dir_sum} vs baseline {base_total[lot]}"
+            note = f"dirs sum {dir_sum} vs baseline {base_total[lot]}"
+            notes[lot] = (notes[lot] + '; ' + note) if notes.get(lot) else note
         continue
     lot_n = norm(lot)
     candidates = []
@@ -157,7 +206,7 @@ for lot in base_total:
 payload = {
     'year': 2026,
     'label': 'Phúc tra chi tiết kiểm kê 2026',
-    'source': 'Kiểm kê chi tiết 2026 (Tổ 1–8).xlsx',
+    'source': 'Kiểm kê chi tiết 2026 (Tổ 1–8) + phân hướng khu vực 8 · phúc tra theo tổng lô gốc',
     'minDiff': 2,
     'missing': sorted(missing),
     'lots': lots,
