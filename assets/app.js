@@ -5,6 +5,7 @@
    Hằng số & tiện ích
    ============================================================ */
 const STORE_KEY = 'crck2.kk2027.v1';
+const WHATS_NEW_KEY = 'crck2.kk2027.whatsnew.v1';
 const SYNC_KEY = 'crck2.kk2027.sync.v1';
 const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbw4IYI3JHEnmt3GdwFp_sdr4obTpT6HCOxoLS4a3SQI_9DWWWKd_2cuWYygu6rgQcYR/exec';
 const QUICK_LANG_KEY = 'crck2.kk2027.quicklang.v1';
@@ -642,6 +643,9 @@ const APP_I18N = {
     quickBySheet: 'Nhập nhanh theo tờ',
     exportAll: 'Xuất Excel tổng hợp',
     exportSummary: 'Xuất biểu tổng hợp',
+    whatsNewTitle: 'Cập nhật ứng dụng',
+    whatsNewNew: 'Mới',
+    whatsNewOpen: 'Xem chi tiết',
     statEnteredLots: 'Lô đã nhập',
     statEnteredSub: '{n} lô đã đánh dấu hoàn tất',
     statTrees: 'Tổng điểm trồng 2027',
@@ -1062,6 +1066,9 @@ const APP_I18N = {
     quickBySheet: 'បញ្ចូលរហ័សតាមសន្លឹក',
     exportAll: 'នាំចេញ Excel សរុប',
     exportSummary: 'នាំចេញតារាងសង្ខេប',
+    whatsNewTitle: 'ការធ្វើបច្ចុប្បន្នភាពកម្មវិធី',
+    whatsNewNew: 'ថ្មី',
+    whatsNewOpen: 'មើលលម្អិត',
     statEnteredLots: 'ដីឡូតិ៍បានបញ្ចូល',
     statEnteredSub: 'ដីឡូតិ៍ {n} បានសម្គាល់រួចរាល់',
     statTrees: 'សរុបចំណុចដាំ 2027',
@@ -1511,6 +1518,86 @@ function routeFromHash() {
 /* ============================================================
    Trang chủ
    ============================================================ */
+const CHANGELOG = [
+  {
+    v: 59,
+    date: '21/11/2026',
+    vi: { title: 'Hộp Cập nhật ứng dụng', items: ['Các tính năng mới hiện ngay trên màn hình chính; chưa xem sẽ có nhãn “Mới”.'] },
+    km: { title: 'ប្រអប់ការធ្វើបច្ចុប្បន្នភាពកម្មវិធី', items: ['លក្ខណៈពិសេសថ្មីបង្ហាញនៅផ្ទាំងដើម; បើមិនទាន់មើល នឹងមានស្លាក “ថ្មី”។'] },
+  },
+  {
+    v: 58,
+    date: '21/11/2026',
+    vi: { title: 'Biểu tổng hợp in khổ A4 ngang', items: ['Chữ ký “LẬP BIỂU / ĐỘI TRƯỞNG” không còn bị cắt.'] },
+    km: { title: 'នាំចេញតារាងសង្ខេបជាទម្រង់ផ្តេក A4', items: ['ហត្ថលេខា “អ្នករៀបចំតារាង / ប្រធានក្រុម” មិនត្រូវបានកាត់ទៀតទេ។'] },
+  },
+  {
+    v: 57,
+    date: '21/11/2026',
+    vi: { title: 'Nút Xuất biểu tổng hợp ở màn hình chính', items: ['Các lô đã đánh dấu hoàn tất được điền vào mẫu Biểu tổng hợp.'] },
+    km: { title: 'ប៊ូតុងនាំចេញតារាងសង្ខេបនៅផ្ទាំងដើម', items: ['ដីឡូតិ៍ដែលបានសម្គាល់ថាបានបញ្ចប់ ត្រូវបំពេញចូលតារាងតាមទម្រង់គំរូ។'] },
+  },
+  {
+    v: 56,
+    date: '21/11/2026',
+    vi: { title: 'Phúc tra ghép A+B trên từng hàng', items: ['Lô ghép A/B hiện số phúc tra tổng và mức lệch ngay trên hàng.'] },
+    km: { title: 'ផ្ទៀងផ្ទាត់រួម A+B លើជួរនីមួយៗ', items: ['ដីឡូតិ៍រួម A/B បង្ហាញចំនួនផ្ទៀងផ្ទាត់រួម និងចំនួនខុសគ្នានៅជួរនីមួយៗ។'] },
+  },
+  {
+    v: 55,
+    date: '21/11/2026',
+    vi: { title: 'Bỏ nháp để tải bản Google', items: ['Nút “Bỏ nháp, tải bản Google” khi lô bị chặn bởi bản nháp.'] },
+    km: { title: 'បោះបង់សេចក្តីព្រាង ដើម្បីទាញយកច្បាប់ Google', items: ['ប៊ូតុង “បោះបង់សេចក្តីព្រាង ទាញយកច្បាប់ Google” ពេលដីឡូតិ៍ជាប់សេចក្តីព្រាង។'] },
+  },
+  {
+    v: 54,
+    date: '21/11/2026',
+    vi: { title: 'Mở lô tự tải bản mới nhất từ Google', items: ['Cảnh báo khi máy khác vừa sửa; giữ bản trên máy nếu đang nhập dở.'] },
+    km: { title: 'បើកដីឡូតិ៍ ទាញយកច្បាប់ថ្មីបំផុតពី Google', items: ['ព្រមានពេលម៉ាស៊ីនផ្សេងបានកែ និងរក្សាច្បាប់ក្នុងម៉ាស៊ីន ប្រសិនបើកំពុងបញ្ចូលមិនទាន់រួច។'] },
+  },
+];
+
+function readWhatsNewSeen() {
+  try { return localStorage.getItem(WHATS_NEW_KEY) || ''; } catch (err) { return ''; }
+}
+function renderWhatsNew() {
+  const host = $('#whatsNew');
+  if (!host) return;
+  host.hidden = false;
+  const version = String(CHANGELOG[0].v);
+  const isNew = readWhatsNewSeen() !== version;
+  const lang = state.lang === 'km' ? 'km' : 'vi';
+  host.classList.toggle('has-new', isNew);
+  host.innerHTML = `
+    <details id="whatsNewDetails">
+      <summary class="wn-summary">
+        <span class="wn-label">${t('whatsNewTitle')}</span>
+        <span class="wn-ver">v${version}</span>
+        ${isNew ? `<span class="badge warn wn-new">${t('whatsNewNew')}</span>` : ''}
+        <span class="wn-latest">${esc(CHANGELOG[0][lang].title)}</span>
+        <span class="wn-hint">${t('whatsNewOpen')}</span>
+      </summary>
+      <ol class="wn-list">
+        ${CHANGELOG.map(e => {
+          const c = e[lang];
+          return `<li>
+            <div class="wn-meta"><span class="wn-ver">v${e.v}</span><span class="wn-date">${e.date}</span></div>
+            <div class="wn-title">${esc(c.title)}</div>
+            <ul class="wn-items">${c.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+          </li>`;
+        }).join('')}
+      </ol>
+    </details>`;
+  const details = $('#whatsNewDetails');
+  details.addEventListener('toggle', () => {
+    if (!details.open) return;
+    try { localStorage.setItem(WHATS_NEW_KEY, version); } catch (err) {}
+    host.classList.remove('has-new');
+    const badge = details.querySelector('.wn-new');
+    if (badge) badge.remove();
+  });
+}
+
 function renderHome() {
   const keys = lotsKeys();
   let enteredLots = 0, doneLots = 0, warnLots = 0, totalRows = 0, totalTrees = 0;
@@ -1551,6 +1638,7 @@ function renderHome() {
       <div class="s">${t('statWarnSub', { done: doneLots, warn: warnLots })}</div>
     </div>`;
 
+  renderWhatsNew();
   renderLotList();
   if (mapCtx) {
     refreshMap();
