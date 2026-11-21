@@ -971,6 +971,8 @@ const APP_I18N = {
     lotRemoteDraft: 'Còn bản nháp đang nhập trên máy — không tự tải bản Google. Lưu xong rồi mở lại lô.',
     lotRemoteEditing: 'Đang nhập trên máy — không tự tải bản Google để tránh ghi đè.',
     lotRemoteError: 'Không tải được bản mới nhất từ Google: {err}',
+    lotRemoteDiscard: 'Bỏ nháp, tải bản Google',
+    lotRemoteDiscardConfirm: 'Bỏ bản nháp chưa lưu của lô này trên máy và tải bản mới nhất từ Google Sheet?',
     detailRowsCount: '{n} hàng',
     detailLocalOnly: 'Chưa thấy trên Google (chỉ có trên máy này): {list} · bấm Đồng bộ ngay để gửi.',
     detailLocalOnlyItem: '{lot} ({n} hàng)',
@@ -1385,6 +1387,8 @@ const APP_I18N = {
     lotRemoteDraft: 'នៅមានសេចក្ដីព្រាងកំពុងបញ្ចូលលើឧបករណ៍ — មិនទាញកំណែ Google ដោយស្វ័យប្រវត្តិទេ។ រក្សាទុករួចបើកឡូតិ៍វិញ។',
     lotRemoteEditing: 'កំពុងបញ្ចូលលើឧបករណ៍ — មិនទាញកំណែ Google ដើម្បីកុំឱ្យសរសេរជាន់ទេ។',
     lotRemoteError: 'មិនអាចទាញកំណែថ្មីបំផុតពី Google៖ {err}',
+    lotRemoteDiscard: 'បោះបង់សេចក្ដីព្រាង ទាញកំណែ Google',
+    lotRemoteDiscardConfirm: 'បោះបង់សេចក្ដីព្រាងដែលមិនទាន់រក្សាទុករបស់ដីឡូតិ៍នេះ ហើយទាញកំណែថ្មីបំផុតពី Google Sheet?',
     detailRowsCount: '{n} ជួរ',
     detailLocalOnly: 'មិនឃើញនៅ Google (មានតែនៅឧបករណ៍នេះ): {list} · ចុច ធ្វើសមកាលឥឡូវ ដើម្បីផ្ញើ។',
     detailLocalOnlyItem: '{lot} ({n} ជួរ)',
@@ -4740,9 +4744,51 @@ async function openDetailDialog(lotKey) {
 /* ============================================================
    Mở lô: tải bản mới nhất từ Google Sheet
    ============================================================ */
-function lotHasDraft(key) {
+function draftHasChanges(key, dk, d) {
+  if (!d) return false;
+  if (d.review) return true;
+  const lot = DB.lots[key];
+  if (!lot) return false;
+  const dir = dk.indexOf(key + '#') === 0 ? dk.slice(key.length + 1) : '';
+  const rows = dir ? rowsInDir(key, dir) : lot.rows;
+  if (String(d.ngay ?? '') !== String(lot.meta.ngay ?? '')) return true;
+  if (String(d.nguoi ?? '').trim() !== String(lot.meta.nguoi ?? '').trim()) return true;
+  return (d.cards || []).some(c => {
+    const vals = c.vals || {};
+    const hasAny = FIELDS.some(f => String(vals[f] ?? '').trim()) || String(c.hang ?? '').trim();
+    if (!hasAny) return false;
+    const hang = parseHang(c.hang);
+    if (!Number.isInteger(hang)) return true;
+    const row = rows.find(r => r.hang === hang);
+    if (!row) return true;
+    return FIELDS.some(f => String(vals[f] ?? '') !== String(row[f] ?? ''));
+  });
+}
+
+function lotDrafts(key) {
   const drafts = readDrafts();
-  return Object.keys(drafts).some(k => k === key || k.startsWith(key + '#'));
+  return Object.keys(drafts)
+    .filter(k => k === key || k.startsWith(key + '#'))
+    .map(k => [k, drafts[k]]);
+}
+
+function pruneUnchangedDrafts(key) {
+  const entries = lotDrafts(key);
+  const keep = entries.filter(([k, d]) => draftHasChanges(key, k, d));
+  if (keep.length === entries.length) return;
+  const drafts = readDrafts();
+  entries.filter(([k, d]) => !draftHasChanges(key, k, d)).forEach(([k]) => delete drafts[k]);
+  writeDrafts(drafts);
+}
+
+function lotHasDraft(key) {
+  return lotDrafts(key).some(([k, d]) => draftHasChanges(key, k, d));
+}
+
+function discardLotDrafts(key) {
+  const drafts = readDrafts();
+  lotDrafts(key).forEach(([k]) => delete drafts[k]);
+  writeDrafts(drafts);
 }
 
 function lotInputFocused() {
@@ -4752,7 +4798,7 @@ function lotInputFocused() {
 }
 
 function lotRemoteSet(key, level, text, retry) {
-  state.lotRemoteNote = text ? { key, level: level || 'info', text, retry: !!retry } : null;
+  state.lotRemoteNote = text ? { key, level: level || 'info', text, retry: retry || '' } : null;
   renderLotRemoteNote();
 }
 
@@ -4766,12 +4812,23 @@ function renderLotRemoteNote() {
     return;
   }
   host.hidden = false;
+  const btnLabel = n.retry === 'discard' ? t('lotRemoteDiscard') : t('detailRefresh');
+  const btnId = n.retry === 'discard' ? 'btnLotRemoteDiscard' : 'btnLotRemoteRetry';
   host.innerHTML = `<div class="alert ${n.level}">
     <div class="alert-body">${esc(n.text)}</div>
-    ${n.retry ? `<button type="button" class="btn btn-sm" id="btnLotRemoteRetry">${esc(t('detailRefresh'))}</button>` : ''}
+    ${n.retry ? `<button type="button" class="btn btn-sm" id="${btnId}">${esc(btnLabel)}</button>` : ''}
   </div>`;
-  const btn = $('#btnLotRemoteRetry');
-  if (btn) btn.addEventListener('click', () => pullRemoteLot(n.key));
+  const btn = document.getElementById(btnId);
+  if (btn && n.retry === 'discard') {
+    btn.addEventListener('click', () => {
+      if (!confirm(t('lotRemoteDiscardConfirm'))) return;
+      discardLotDrafts(n.key);
+      state.lotRemoteNote = null;
+      pullRemoteLot(n.key);
+    });
+  } else if (btn) {
+    btn.addEventListener('click', () => pullRemoteLot(n.key));
+  }
 }
 
 function remoteRowKey(row) {
@@ -4833,9 +4890,11 @@ async function pullRemoteLot(key) {
   if (!key || !syncCfg.url || navigator.onLine === false) return;
   const token = ++state.lotRemoteSeq;
   const lotAtStart = (DB.lots[key] && DB.lots[key].updatedAt) || '';
+  pruneUnchangedDrafts(key);
   const quickDlg = $('#quickDialog');
   if (lotHasDraft(key) || (quickDlg && quickDlg.open && state.quickLot === key)) {
-    lotRemoteSet(key, 'warn', t(lotHasDraft(key) ? 'lotRemoteDraft' : 'lotRemoteEditing'));
+    const draft = lotHasDraft(key);
+    lotRemoteSet(key, 'warn', t(draft ? 'lotRemoteDraft' : 'lotRemoteEditing'), draft ? 'discard' : '');
     return;
   }
   lotRemoteSet(key, 'info', t('lotRemoteLoading'));
@@ -4870,7 +4929,7 @@ async function pullRemoteLot(key) {
       return;
     }
     if (lotHasDraft(key)) {
-      lotRemoteSet(key, 'warn', t('lotRemoteDraft'));
+      lotRemoteSet(key, 'warn', t('lotRemoteDraft'), 'discard');
       return;
     }
     if ((quickDlg && quickDlg.open && state.quickLot === key) || lotInputFocused()) {
@@ -4882,7 +4941,8 @@ async function pullRemoteLot(key) {
     if (token !== state.lotRemoteSeq || state.view !== 'lot' || state.lot !== key) return;
     if (((DB.lots[key] && DB.lots[key].updatedAt) || '') !== lotAtStart) return;
     if (lotHasDraft(key) || (quickDlg && quickDlg.open && state.quickLot === key) || lotInputFocused()) {
-      lotRemoteSet(key, 'warn', t('lotRemoteEditing'));
+      const draft = lotHasDraft(key);
+      lotRemoteSet(key, 'warn', t(draft ? 'lotRemoteDraft' : 'lotRemoteEditing'), draft ? 'discard' : '');
       return;
     }
     applyRemoteLot(key, remote, meta, remoteAt, remote.device);
