@@ -150,11 +150,18 @@ function doGet(e) {
         for (let i = 0; i < days; i++) {
           allowed.add(Utilities.formatDate(new Date(base - i * 86400000), TIMEZONE, 'yyyy-MM-dd'));
         }
+        // Google Sheets có thể tự đổi ô ngày giờ thành kiểu Date, nên phải đọc được cả hai kiểu.
+        const atText = v => (v instanceof Date
+          ? Utilities.formatDate(v, TIMEZONE, 'dd/MM/yyyy HH:mm')
+          : String(v || ''));
+        const dayText = v => (v instanceof Date
+          ? Utilities.formatDate(v, TIMEZONE, 'yyyy-MM-dd')
+          : vnDayKey_(String(v || '')));
         const start = Math.max(2, sh.getLastRow() - 2499);
         const vals = sh.getRange(start, 1, sh.getLastRow() - start + 1, lastCol).getValues();
         vals.forEach(r => {
-          const at = String(r[c.at] || '');
-          const day = c.day >= 0 && String(r[c.day] || '') ? String(r[c.day]) : vnDayKey_(at);
+          const at = atText(r[c.at]);
+          const day = c.day >= 0 && String(r[c.day] || '') ? String(r[c.day]) : dayText(r[c.at]);
           if (!day || !allowed.has(day)) return;
           const cell = i => (i >= 0 && i < r.length ? r[i] : '');
           entries.push({
