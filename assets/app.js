@@ -742,10 +742,12 @@ const APP_I18N = {
     thPhucTra: 'Phúc tra',
     thPhucTraTip: 'So sánh Tổng ĐT từng hàng với bảng chi tiết kiểm kê 2026 · lệch từ 2 cây được tô sáng',
     phucTraTip: 'Kiểm kê 2026: {ref} cây · 2027 lệch {d}',
+    phucTraTipMerged: 'Ghép A+B · 2026 gốc {ref} cây · hiện tại {dt} cây · lệch {d}',
+    phucTraRefMerged: 'Ghép 2026 · {ref}',
     phucTraNoRef: 'Không có số 2026 cho hàng này',
     phucTraDirRef: 'Hướng A/B chỉ tham khảo — phúc tra tính trên tổng ghép',
     rowsPtNote: 'Phúc tra theo bảng chi tiết 2026. Hàng lệch từ 2 cây được tô sáng để Giám sát kiểm tra lại.',
-    rowsPtMergedNote: 'Phúc tra tính trên tổng ghép A/B theo bảng lô 2026 gốc; từng hướng chỉ để tham khảo.',
+    rowsPtMergedNote: 'Phúc tra tính trên tổng ghép A/B theo bảng lô 2026 gốc; số trên mỗi hàng là tổng A+B của hàng đó.',
     rowsPtNoData: 'Lô này chưa có bảng chi tiết 2026 theo từng hàng (lô chia nhiều hướng A/B/C hoặc lô mới) nên chưa phúc tra từng hàng.',
     ptSumWarn: '{n} hàng lệch',
     ptSumWarnTip: '{n} hàng lệch từ 2 cây so với 2026 — cần kiểm tra lại',
@@ -1158,10 +1160,12 @@ const APP_I18N = {
     thPhucTra: 'ផ្ទៀងផ្ទាត់',
     thPhucTraTip: 'ប្រៀបធៀបសរុបដាំជួរនីមួយៗជាមួយតារាងលម្អិត 2026 · ខុសគ្នាចាប់ពី 2 ដើម នឹងត្រូវបន្លិច',
     phucTraTip: 'រាប់ 2026: {ref} ដើម · 2027 ខុស {d}',
+    phucTraTipMerged: 'បញ្ជូល A+B · 2026 ដើម {ref} ដើម · បច្ចុប្បន្ន {dt} ដើម · ខុស {d}',
+    phucTraRefMerged: 'បញ្ជូល 2026 · {ref}',
     phucTraNoRef: 'គ្មានលេខ 2026 សម្រាប់ជួរនេះ',
     phucTraDirRef: 'ទិស A/B គ្រាន់តែជាឯកសារយោង — ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូល',
     rowsPtNote: 'ផ្ទៀងផ្ទាត់តាមតារាងលម្អិត 2026។ ជួរខុសចាប់ពី 2 ដើម ត្រូវបន្លិច ដើម្បីឱ្យអ្នកត្រួតពិនិត្យពិនិត្យឡើងវិញ។',
-    rowsPtMergedNote: 'ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូល A/B តាមតារាងឡូឆ្នាំ 2026 ដើម; តាមទិសគ្រាន់តែជាឯកសារយោង។',
+    rowsPtMergedNote: 'ផ្ទៀងផ្ទាត់លើផលបូកបញ្ជូល A/B តាមតារាងឡូឆ្នាំ 2026 ដើម; លេខលើជួរនីមួយៗ ជាផលបូក A+B នៃជួរនោះ។',
     rowsPtNoData: 'ដីឡូតិ៍នេះមិនទាន់មានតារាងលម្អិត 2026 តាមជួរ (ដីឡូតិ៍បែងចែកច្រើនទិស A/B/C ឬដីឡូតិ៍ថ្មី) ដូច្នេះមិនអាចផ្ទៀងផ្ទាត់តាមជួរបានទេ។',
     ptSumWarn: '{n} ជួរខុស',
     ptSumWarnTip: '{n} ជួរខុសចាប់ពី 2 ដើមធៀប 2026 — ត្រូវពិនិត្យឡើងវិញ',
@@ -1940,18 +1944,36 @@ function outlierMapFor(key, rows) {
   return merged;
 }
 
+function mergedPtMapFor(key) {
+  const refMap = mergedRefMap(key);
+  if (!refMap) return null;
+  const map = new Map();
+  mergeDirRows(lotRows(key)).forEach(m => {
+    const ref = refMap[String(m.hang)];
+    if (!Number.isFinite(ref)) return;
+    const dt = Number(m.dt) || 0;
+    const diff = dt - ref;
+    map.set(m.hang, { ref, diff, dt, warn: Math.abs(diff) >= PHUC_TRA_MIN, merged: true });
+  });
+  return map;
+}
+
 function ptCellHtml(pt, refOnly) {
   if (!pt) {
     return `<span class="pt-empty" title="${esc(t(refOnly ? 'phucTraDirRef' : 'phucTraNoRef'))}">—</span>`;
   }
   const cls = pt.warn ? 'alert' : 'ok';
-  return `<span class="pt-cell ${cls}" title="${esc(t('phucTraTip', { ref: fmt(pt.ref), d: signed(pt.diff) }))}">
-    <span class="pt-ref">2026 · ${fmt(pt.ref)}</span>
+  const refText = pt.merged ? t('phucTraRefMerged', { ref: fmt(pt.ref) }) : `2026 · ${fmt(pt.ref)}`;
+  const tip = pt.merged
+    ? t('phucTraTipMerged', { ref: fmt(pt.ref), dt: fmt(pt.dt), d: signed(pt.diff) })
+    : t('phucTraTip', { ref: fmt(pt.ref), d: signed(pt.diff) });
+  return `<span class="pt-cell ${cls}" title="${esc(tip)}">
+    <span class="pt-ref">${esc(refText)}</span>
     <span class="pt-diff ${cls}">${signed(pt.diff)}</span>
   </span>`;
 }
 
-function rowHtml(row, odd) {
+function rowHtml(row, odd, mergedPt) {
   const key = state.lot;
   const dirs = lotDirs(key);
   const rowDirVal = rowDir(key, row);
@@ -1959,7 +1981,9 @@ function rowHtml(row, odd) {
   const has = rowHasData(row);
   const sum = rowSum(row);
   const oddInfo = odd ? odd.get(row.uid) : null;
-  const pt = phucTraOf(key, row);
+  const pt = phucTraOf(key, row)
+    || (mergedPt && Number.isInteger(row.hang) ? mergedPt.get(row.hang) : null)
+    || null;
   const ptWarn = !!(pt && pt.warn);
   let checkCls = 'empty', checkText = '—';
   if (has) {
@@ -2021,7 +2045,8 @@ function rebuildRowsTable() {
     return;
   }
   const odd = outlierMapFor(key, rows);
-  body.innerHTML = rows.map(row => rowHtml(row, odd)).join('');
+  const mergedPt = mergedPtMapFor(key);
+  body.innerHTML = rows.map(row => rowHtml(row, odd, mergedPt)).join('');
 }
 
 function refreshLotDerived() {
@@ -2073,6 +2098,7 @@ function refreshLotDerived() {
 
   // cập nhật từng dòng
   const odd = outlierMapFor(key, rows);
+  const mergedPt = mergedPtMapFor(key);
   rows.forEach(row => {
     const tr = $(`#rowsBody tr[data-uid="${CSS.escape(row.uid)}"]`);
     if (!tr) return;
@@ -2095,7 +2121,9 @@ function refreshLotDerived() {
       else if (issue) { cell.className = 'row-check bad'; cell.textContent = row.dt == null ? t('rowMissing') : t('rowDiff', { n: signed(Number(row.dt) - sum) }); }
       else { cell.className = 'row-check ok'; cell.textContent = t('rowOk'); }
     }
-    const pt = phucTraOf(key, row);
+    const pt = phucTraOf(key, row)
+      || (mergedPt && Number.isInteger(row.hang) ? mergedPt.get(row.hang) : null)
+      || null;
     tr.classList.toggle('pt-warn', !!(pt && pt.warn));
     const ptCell = tr.querySelector('.col-pt');
     if (ptCell) ptCell.innerHTML = ptCellHtml(pt, !!mergedRefMap(key));
