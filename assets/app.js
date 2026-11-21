@@ -1002,7 +1002,12 @@ const APP_I18N = {
     historyError: 'Chưa tải được lịch sử: {err}',
     historyNoDevice: 'Không rõ máy',
     historyChanged: 'Lô: {list}',
-    historySync: 'Gửi {n} lô · {rows} hàng',
+    historySync: 'Đổi {n} lô · {rows} hàng',
+    historyLot: 'Lô {lot}',
+    historyDelta: 'Lệch',
+    historyEdits: 'Sửa {n} hàng',
+    historyFromImport: 'theo Nhật ký nhập',
+    historySparse: 'Bản ghi cũ, không có chi tiết',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1401,7 +1406,12 @@ const APP_I18N = {
     historyError: 'មិនទាន់ទាញបានប្រវត្តិ៖ {err}',
     historyNoDevice: 'មិនដឹងឧបករណ៍',
     historyChanged: 'ដីឡូតិ៍៖ {list}',
-    historySync: 'ផ្ញើ {n} ដីឡូតិ៍ · {rows} ជួរ',
+    historySync: 'ប្តូរ {n} ដីឡូតិ៍ · {rows} ជួរ',
+    historyLot: 'ដីឡូតិ៍ {lot}',
+    historyDelta: 'លំអៀង',
+    historyEdits: 'កែ {n} ជួរ',
+    historyFromImport: 'តាមកំណត់ហេតុបញ្ចូល',
+    historySparse: 'កំណត់ត្រាចាស់ គ្មានព័ត៌មានលម្អិត',
   },
 };
 function t(key, vars) {
@@ -4315,23 +4325,49 @@ function historyDayLabel(day) {
 function historyDevices() {
   const set = new Set();
   (historyData.entries || []).forEach(e => {
-    const d = e.device || e.nguoi;
-    if (d) set.add(d);
+    if (e.device) set.add(e.device);
+    if (e.nguoi) set.add(e.nguoi);
+    (e.editDevices || []).forEach(d => { if (d) set.add(d); });
   });
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 function historyItemHtml(e) {
-  const dev = e.device || e.nguoi || t('historyNoDevice');
+  const devs = [];
+  if (e.device) devs.push(e.device);
+  (e.editDevices || []).forEach(d => { if (d && !devs.includes(d)) devs.push(d); });
+  if (!devs.length && e.nguoi) devs.push(e.nguoi);
+  const dev = devs.length ? devs.join(', ') : t('historyNoDevice');
   const bits = [];
-  if (Number(e.lots) > 0) bits.push(t('historySync', { n: fmt(e.lots), rows: fmt(e.rows || 0) }));
-  else if (Number(e.rows) > 0) bits.push(t('notiRows', { n: fmt(e.rows) }));
-  const changed = e.changed || e.lot;
-  if (changed) bits.push(t('historyChanged', { list: `<span class="noti-hist-changed">${esc(changed)}</span>` }));
+  if (e.lot) {
+    bits.push(t('historyLot', { lot: e.lot }));
+    if (e.kv) bits.push(e.kv);
+    if (e.status) bits.push(e.status);
+    if (e.dt != null) {
+      bits.push('2027 ' + fmt(e.dt) + (e.base != null ? ' · 2026 ' + fmt(e.base) : ''));
+    }
+    if (e.delta != null && !e.status) bits.push(t('historyDelta') + ' ' + (e.delta > 0 ? '+' : '') + fmt(e.delta));
+  } else if (Number(e.lots) > 0) {
+    bits.push(t('historySync', { n: fmt(e.lots), rows: fmt(e.rows || 0) }));
+  } else if (Number(e.rows) > 0) {
+    bits.push(t('notiRows', { n: fmt(e.rows) }));
+  }
+  if (e.changed) bits.push(t('historyChanged', { list: `<span class="noti-hist-changed">${esc(e.changed)}</span>` }));
+  if (Number(e.edits) > 0) {
+    let line = t('historyEdits', { n: fmt(e.edits) });
+    const lots = (e.editLots || [])
+      .filter(x => !e.lot || String(x.lot) !== String(e.lot))
+      .map(x => (Number(x.n) > 1 ? `${x.lot} (${x.n})` : x.lot))
+      .join(', ');
+    if (lots) line += ' · ' + t('historyChanged', { list: `<span class="noti-hist-changed">${esc(lots)}</span>` });
+    line += ' · ' + t('historyFromImport');
+    bits.push(line);
+  }
+  if (!bits.length) bits.push(t('historySparse'));
   return `<div class="noti-item noti-hist">
     <span class="noti-item-main">
       <span class="noti-lot">${esc(historyTime(e.at))}<span class="noti-kv">${esc(dev)}</span></span>
-      <span class="noti-sub">${esc(historyReasonLabel(e.reason))}${bits.length ? ' · ' + bits.join(' · ') : ''}</span>
+      <span class="noti-sub">${esc(historyReasonLabel(e.reason))} · ${bits.join(' · ')}</span>
     </span>
   </div>`;
 }

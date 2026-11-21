@@ -25,7 +25,7 @@ const DAILY_HEADERS = [
 const LOG_HEADERS = [
   'Thời điểm', 'Lý do', 'Lô', 'KV', 'Trạng thái',
   'Tổng 2027', 'Tổng 2026', 'Lệch', 'Người KK',
-  'Máy / người nhập', 'Ngày', 'Số lô gửi', 'Số hàng gửi', 'Lô thay đổi',
+  'Máy / người nhập', 'Ngày', 'Số lô đổi', 'Số hàng đổi', 'Lô thay đổi',
 ];
 const DETAIL_HEADERS = [
   'Lô', 'KV', 'ID lô', 'Đội', 'Hàng', 'Tổng ĐT',
@@ -141,9 +141,9 @@ function doGet(e) {
         const ix = name => head.indexOf(name);
         const c = {
           at: ix('Thời điểm'), reason: ix('Lý do'), lot: ix('Lô'), kv: ix('KV'),
-          status: ix('Trạng thái'), dt: ix('Tổng 2027'), delta: ix('Lệch'),
+          status: ix('Trạng thái'), dt: ix('Tổng 2027'), base: ix('Tổng 2026'), delta: ix('Lệch'),
           nguoi: ix('Người KK'), device: ix('Máy / người nhập'), day: ix('Ngày'),
-          count: ix('Số lô gửi'), rows: ix('Số hàng gửi'), changed: ix('Lô thay đổi'),
+          count: ix('Số lô đổi'), rows: ix('Số hàng đổi'), changed: ix('Lô thay đổi'),
         };
         const allowed = new Set();
         const base = new Date().getTime();
@@ -151,21 +151,27 @@ function doGet(e) {
           allowed.add(Utilities.formatDate(new Date(base - i * 86400000), TIMEZONE, 'yyyy-MM-dd'));
         }
         // Google Sheets có thể tự đổi ô ngày giờ thành kiểu Date, nên phải đọc được cả hai kiểu.
-        const atText = v => (v instanceof Date
-          ? Utilities.formatDate(v, TIMEZONE, 'dd/MM/yyyy HH:mm')
-          : String(v || ''));
-        const dayText = v => (v instanceof Date
-          ? Utilities.formatDate(v, TIMEZONE, 'yyyy-MM-dd')
-          : vnDayKey_(String(v || '')));
+        const atText = v => {
+          const d = cellDate_(v);
+          return d ? Utilities.formatDate(d, TIMEZONE, 'dd/MM/yyyy HH:mm') : String(v || '');
+        };
+        const dayText = v => {
+          const d = cellDate_(v);
+          return d ? Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd') : '';
+        };
         const start = Math.max(2, sh.getLastRow() - 2499);
         const vals = sh.getRange(start, 1, sh.getLastRow() - start + 1, lastCol).getValues();
         vals.forEach(r => {
           const at = atText(r[c.at]);
-          const day = c.day >= 0 && String(r[c.day] || '') ? String(r[c.day]) : dayText(r[c.at]);
+          const dayCell = c.day >= 0 ? r[c.day] : '';
+          const day = (dayCell !== '' && dayCell != null)
+            ? (dayText(dayCell) || String(dayCell))
+            : dayText(r[c.at]);
           if (!day || !allowed.has(day)) return;
           const cell = i => (i >= 0 && i < r.length ? r[i] : '');
           entries.push({
             at: at,
+            t: cellDate_(r[c.at]) ? cellDate_(r[c.at]).getTime() : 0,
             day: day,
             device: String(cell(c.device) || ''),
             nguoi: String(cell(c.nguoi) || ''),
@@ -177,9 +183,11 @@ function doGet(e) {
             rows: Number(cell(c.rows)) || 0,
             changed: String(cell(c.changed) || ''),
             dt: cell(c.dt) === '' ? null : Number(cell(c.dt)),
+            base: cell(c.base) === '' ? null : Number(cell(c.base)),
             delta: cell(c.delta) === '' ? null : Number(cell(c.delta)),
           });
         });
+        attachImportEdits_(ss, entries);
         entries.reverse();
       }
       return json_({ ok: true, app: APP_ID, at: now_(), days: days, count: entries.length, entries: entries });
@@ -674,9 +682,9 @@ function ensureLogSheet_(ss) {
   const lastCol = sh.getLastColumn();
   if (lastCol >= width) {
     const head = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
-    if (head[width - 1] === LOG_HEADERS[width - 1]) return sh;
+    if (LOG_HEADERS.every((h, i) => head[i] === h)) return sh;
   }
-  // Sheet cũ chỉ có 9 cột: nối thêm cột mới, giữ nguyên các dòng đã ghi.
+  // Sheet cũ chỉ có 9 cột (hoặc tên cột cũ): cập nhật tiêu đề, giữ nguyên các dòng đã ghi.
   sh.getRange(1, 1, 1, width).setValues([LOG_HEADERS]);
   styleHeader_(sh, width);
   return sh;
@@ -720,11 +728,90 @@ function vnDayKey_(text) {
   return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
 }
 
+function cellDate_(v) {
+  if (v instanceof Date) return v;
+  const s = String(v || '');
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0));
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+// Dòng Nhật ký cũ chỉ có giờ + lý do; dựng lại số hàng/lô đã sửa từ tab Nhật ký nhập
+// trong khoảng giữa lần đồng bộ trước và lần này.
+function attachImportEdits_(ss, entries) {
+  if (!entries.length) return;
+  const nl = ss.getSheetByName('Nhật ký nhập');
+  if (!nl || nl.getLastRow() < 2) return;
+  const nc = nl.getLastColumn();
+  const nh = nl.getRange(1, 1, 1, nc).getValues()[0].map(String);
+  const ix = name => nh.indexOf(name);
+  const ci = { at: ix('Thời điểm'), device: ix('Máy / người nhập'), nguoi: ix('Người KK'), lot: ix('Lô') };
+  if (ci.at < 0) return;
+  const startRow = Math.max(2, nl.getLastRow() - 2499);
+  const rows = nl.getRange(startRow, 1, nl.getLastRow() - startRow + 1, nc).getValues();
+  const seq = [];
+  rows.forEach(r => {
+    const d = cellDate_(r[ci.at]);
+    if (!d) return;
+    seq.push({
+      t: d.getTime(),
+      day: Utilities.formatDate(d, TIMEZONE, 'yyyy-MM-dd'),
+      device: ci.device >= 0 ? String(r[ci.device] || '') : '',
+      nguoi: ci.nguoi >= 0 ? String(r[ci.nguoi] || '') : '',
+      lot: ci.lot >= 0 ? String(r[ci.lot] || '') : '',
+    });
+  });
+  seq.sort((a, b) => a.t - b.t);
+  entries.sort((a, b) => a.t - b.t);
+  const lots = new Map();
+  const devs = new Map();
+  const add = x => {
+    if (x.lot) lots.set(x.lot, (lots.get(x.lot) || 0) + 1);
+    const dv = x.device || x.nguoi;
+    if (dv && !/không rõ/i.test(dv)) devs.set(dv, (devs.get(dv) || 0) + 1);
+  };
+  const remove = x => {
+    if (x.lot) {
+      const n = (lots.get(x.lot) || 0) - 1;
+      if (n > 0) lots.set(x.lot, n); else lots.delete(x.lot);
+    }
+    const dv = x.device || x.nguoi;
+    if (dv && !/không rõ/i.test(dv)) {
+      const n = (devs.get(dv) || 0) - 1;
+      if (n > 0) devs.set(dv, n); else devs.delete(dv);
+    }
+  };
+  let lo = 0, hi = 0, prev = 0;
+  entries.forEach(e => {
+    if (!e.t) return;
+    const from = prev || e.t - 6 * 3600 * 1000;
+    while (hi < seq.length && seq[hi].t <= e.t) { add(seq[hi]); hi++; }
+    while (lo < hi && seq[lo].t <= from) { remove(seq[lo]); lo++; }
+    const n = hi - lo;
+    if (n > 0) {
+      e.edits = n;
+      e.editLots = [...lots.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(pair => ({ lot: pair[0], n: pair[1] }));
+      e.editDevices = [...devs.keys()].slice(0, 4);
+    }
+    prev = e.t;
+  });
+}
+
 function appendLog_(sh, payload, info) {
   const event = payload.event || {};
   const lots = (payload.lots || []).filter(l => Number(l.entered) > 0 || l.done);
   const evLot = lots.find(l => String(l.lot) === String(event.lot)) || null;
-  const rowsTotal = lots.reduce((s, l) => s + (Number(l.entered) || 0), 0);
+  // Chỉ đếm các lô có thay đổi thật, tránh dòng "Gửi 95 lô" vô nghĩa mỗi lần đồng bộ.
+  const changedSet = new Set((info && info.changedLots) || []);
+  const counted = changedSet.size ? lots.filter(l => changedSet.has(String(l.lot))) : [];
+  const rowsTotal = counted.reduce((s, l) => s + (Number(l.entered) || 0), 0);
   const at = formatDateTime_(payload.sentAt);
   sh.appendRow([
     at,
@@ -738,7 +825,7 @@ function appendLog_(sh, payload, info) {
     event.nguoi || (evLot && evLot.nguoi) || '',
     payload.device || '',
     vnDayKey_(at),
-    lots.length,
+    counted.length,
     rowsTotal,
     info && info.changedLots ? info.changedLots.join(', ') : '',
   ]);
