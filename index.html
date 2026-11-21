@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=60">
+<link rel="stylesheet" href="./assets/styles.css?v=61">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -176,6 +176,12 @@
       </div>
 
       <div id="lotAlerts" class="alerts"></div>
+      <div id="lotUpdateSummary" class="lot-update-summary" hidden>
+        <div class="alert info">
+          <span class="alert-body"><b data-i18n="updSumTitle">Lô đã sửa sau khi hoàn tất</b> — <span data-i18n="updSumHint">Bấm cập nhật để gửi lại số liệu mới cho Trợ lý tổng hợp; không bấm thì bản đã gửi giữ nguyên.</span></span>
+          <button class="btn btn-sm btn-primary" id="btnUpdateSummary" type="button" data-i18n="updSumBtn">Cập nhật biểu tổng hợp</button>
+        </div>
+      </div>
       <div id="lotRemoteNote" class="lot-remote-note" hidden></div>
 
       <div class="lot-grid">
@@ -569,10 +575,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=60"></script>
+<script src="./assets/phuctra.js?v=61"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=60"></script>
+<script src="./assets/app.js?v=61"></script>
 </body>
 </html>

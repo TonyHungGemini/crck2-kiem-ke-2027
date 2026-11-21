@@ -343,6 +343,10 @@ details[open] .wn-hint{display:none}
 .lot-remote-note .alert.info{border-left:4px solid var(--blue)}
 .lot-remote-note .alert-body{flex:1}
 .lot-remote-note .btn{flex:none;margin-left:auto}
+.lot-update-summary{margin:0 0 12px}
+.lot-update-summary .alert{align-items:center;border-left:4px solid var(--accent);box-shadow:0 1px 2px rgba(120,84,30,.06)}
+.lot-update-summary .alert-body{flex:1}
+.lot-update-summary .btn{flex:none;margin-left:auto}
 
 .lot-grid{display:grid;grid-template-columns:1.25fr .9fr;gap:12px;margin-bottom:12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
@@ -797,6 +801,8 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
   .hang-map-foot .btn{width:100%}
   .filters{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
   .chip{flex:none}
+  .lot-update-summary .alert{flex-wrap:wrap}
+  .lot-update-summary .btn{width:100%;margin-left:0}
 }
 @media print{
   .topbar,.hero-actions,.toolbar,.list-head,.guide,.lot-head-actions,.back,.alerts,.dialog,.toast{display:none!important}

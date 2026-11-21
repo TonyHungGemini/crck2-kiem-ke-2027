@@ -193,7 +193,7 @@ function lotsKeys() {
 }
 function lotMeta(key) {
   return (DB.lots[key] && DB.lots[key].meta) || {
-    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', custom: !BASE_BY_LOT.has(key),
+    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key),
   };
 }
 function lotRows(key) {
@@ -202,7 +202,7 @@ function lotRows(key) {
 function ensureLot(key) {
   if (!DB.lots[key]) {
     DB.lots[key] = {
-      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', custom: !BASE_BY_LOT.has(key) },
+      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key) },
       rows: [],
     };
   }
@@ -904,6 +904,9 @@ const APP_I18N = {
     toastAddedLot: 'Đã thêm lô ngoài danh mục: {lot}',
     toastLotExists: 'Lô này đã có trong danh sách.',
     toastReopened: 'Đã mở lại lô {lot}',
+    updSumTitle: 'Lô đã sửa sau khi hoàn tất',
+    updSumHint: 'Bấm cập nhật để gửi lại số liệu mới cho Trợ lý tổng hợp; không bấm thì bản đã gửi giữ nguyên.',
+    updSumBtn: 'Cập nhật biểu tổng hợp',
     toastExportOk: 'Đã xuất: {file}',
     toastExportFail: 'Không xuất được file Excel: {err}',
     toastNoExportData: 'Lô chưa có dữ liệu để xuất.',
@@ -1332,6 +1335,9 @@ const APP_I18N = {
     toastAddedLot: 'បានបន្ថែមដីឡូតិ៍ក្រៅបញ្ជី: {lot}',
     toastLotExists: 'ដីឡូតិ៍នេះមានក្នុងបញ្ជីរួចហើយ។',
     toastReopened: 'បានបើកដីឡូតិ៍ {lot} ឡើងវិញ',
+    updSumTitle: 'ដីឡូតិ៍បានកែបន្ទាប់ពីរួចរាល់',
+    updSumHint: 'ចុចធ្វើបច្ចុប្បន្នភាព ដើម្បីផ្ញើទិន្នន័យថ្មីឡើងវិញទៅជំនួយការសរុប។ បើមិនចុច ឯកសារដែលផ្ញើរួចនឹងរក្សាដើម។',
+    updSumBtn: 'ធ្វើបច្ចុប្បន្នភាពតារាងសរុប',
     toastExportOk: 'បាននាំចេញ: {file}',
     toastExportFail: 'មិនអាចនាំចេញ Excel: {err}',
     toastNoExportData: 'ដីឡូតិ៍មិនទាន់មានទិន្នន័យសម្រាប់នាំចេញ។',
@@ -1529,6 +1535,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 61,
+    date: '21/11/2026',
+    vi: { title: 'Cập nhật biểu tổng hợp sau khi sửa lô', items: ['Lô đã hoàn tất mà sửa sau đó sẽ hiện nút “Cập nhật biểu tổng hợp” để gửi lại số liệu mới; không bấm thì bản đã gửi giữ nguyên.'] },
+    km: { title: 'ធ្វើបច្ចុប្បន្នភាពតារាងសរុបឡើងវិញបន្ទាប់ពីកែដីឡូតិ៍', items: ['ដីឡូតិ៍ដែលរួចរាល់តែកែក្រោយមក នឹងបង្ហាញប៊ូតុង “ធ្វើបច្ចុប្បន្នភាពតារាងសរុប” ដើម្បីផ្ញើទិន្នន័យថ្មីឡើងវិញ។ បើមិនចុច ឯកសារដែលផ្ញើរួចរក្សាដើម។'] },
+  },
   {
     v: 60,
     date: '21/11/2026',
@@ -2385,6 +2397,7 @@ function refreshLotDerived() {
     issues: st.issues, dups: st.dups, rows: st.rows, ptIssues: st.ptIssues, dirStates: st.dirStates,
   });
   renderHangMap(key);
+  updateSummaryBanner(key);
 }
 
 function dupsLabel(dups) {
@@ -2808,6 +2821,7 @@ function setupHomeEvents() {
   $('#btnExportAll').addEventListener('click', exportAll);
   $('#btnExportSummary').addEventListener('click', exportSummaryForm);
   $('#btnToggleDone').addEventListener('click', toggleDone);
+  $('#btnUpdateSummary').addEventListener('click', updateSummary);
 
   ['huong', 'ngay', 'nguoi', 'ghiChu'].forEach(field => {
     const id = '#meta' + field.charAt(0).toUpperCase() + field.slice(1);
@@ -2870,10 +2884,12 @@ function toggleDone() {
   lot.meta.done = willDone;
   if (lot.meta.done) {
     lot.meta.doneAt = new Date().toISOString();
+    lot.meta.reportAt = lot.meta.doneAt;
     lot.meta.doneBy = lot.meta.nguoi || '';
     lot.meta.pausedAt = null;
   } else {
     lot.meta.doneAt = null;
+    lot.meta.reportAt = null;
     lot.meta.doneBy = '';
   }
   touchLot(state.lot);
@@ -2886,6 +2902,38 @@ function toggleDone() {
   } else {
     toast(t('toastReopened', { lot: state.lot }), 'ok');
     scheduleSync();
+  }
+}
+
+function summaryNeedsUpdate(key) {
+  const lot = DB.lots && DB.lots[key];
+  if (!lot || !lot.meta || !lot.meta.done) return false;
+  const reported = Date.parse(lot.meta.reportAt || lot.meta.doneAt || '') || 0;
+  const edited = Date.parse(lot.updatedAt || '') || 0;
+  return edited > reported + 1000;
+}
+function updateSummaryBanner(key) {
+  const el = $('#lotUpdateSummary');
+  if (!el) return;
+  el.hidden = !summaryNeedsUpdate(key);
+}
+async function updateSummary() {
+  const key = state.lot;
+  if (!key) return;
+  const lot = ensureLot(key);
+  if (!lot.meta.done) return;
+  const btn = $('#btnUpdateSummary');
+  if (btn) btn.disabled = true;
+  const sentAt = new Date().toISOString();
+  try {
+    const ok = await syncNow('lot_done', key);
+    if (ok) {
+      lot.meta.reportAt = sentAt;
+      persist();
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (state.view === 'lot' && state.lot === key) renderLot();
   }
 }
 
@@ -4514,15 +4562,15 @@ async function syncNow(reason = 'manual', lotKey = null) {
     if (reason !== 'auto') {
       toast(t('syncNoUrl'), 'bad');
     }
-    return;
+    return false;
   }
-  if (reason === 'auto' && !syncCfg.enabled) return;
+  if (reason === 'auto' && !syncCfg.enabled) return false;
   if (syncBusy) {
     if (reason !== 'auto') {
       clearTimeout(syncTimer);
       syncTimer = setTimeout(() => syncNow(reason, lotKey), 1500);
     }
-    return;
+    return false;
   }
   clearTimeout(syncTimer);
   syncBusy = true;
@@ -4538,7 +4586,7 @@ async function syncNow(reason = 'manual', lotKey = null) {
     });
     if (res && res.uncertain) {
       toast(t('syncNoResponseToast'), '');
-      return;
+      return true;
     }
     if (reason === 'test') {
       toast(res && res.mail ? t('syncTestOkMail') : t('syncTestOkSheet'), 'ok');
@@ -4547,10 +4595,12 @@ async function syncNow(reason = 'manual', lotKey = null) {
     } else if (reason === 'manual') {
       toast(res && res.sheetUrl ? t('syncOkUrl') : t('syncOk'), 'ok');
     }
+    return true;
   } catch (err) {
     saveSyncCfg({ lastResult: 'Lỗi: ' + err.message });
     if (reason !== 'auto') toast(t('syncErrorToast', { err: err.message }), 'bad');
     else if (/bận|busy/i.test(err.message || '')) setTimeout(() => syncNow('auto'), 10000);
+    return false;
   } finally {
     syncBusy = false;
     updateSyncUi();
