@@ -641,6 +641,7 @@ const APP_I18N = {
     heroLead: 'Mỗi tờ phiếu có 2 hàng. Chỉ cần nhập 7 số ở dòng cuối. Tool tự kiểm tra <span class="nowrap">Tổng ĐT = G + (+) + C + K1 + K2 + O</span>, chặn trùng hàng và đối chiếu với kiểm kê 2026.',
     quickBySheet: 'Nhập nhanh theo tờ',
     exportAll: 'Xuất Excel tổng hợp',
+    exportSummary: 'Xuất biểu tổng hợp',
     statEnteredLots: 'Lô đã nhập',
     statEnteredSub: '{n} lô đã đánh dấu hoàn tất',
     statTrees: 'Tổng điểm trồng 2027',
@@ -898,6 +899,7 @@ const APP_I18N = {
     toastExportFail: 'Không xuất được file Excel: {err}',
     toastNoExportData: 'Lô chưa có dữ liệu để xuất.',
     toastNoExportAll: 'Chưa có lô nào được nhập dữ liệu.',
+    toastNoDoneLots: 'Chưa có lô nào được đánh dấu hoàn tất.',
     exportConfirm: 'Lô chưa được đánh dấu hoàn tất. Vẫn xuất file?',
     addLotPrompt: 'Nhập số lô / tên lô mới (ví dụ: 950):',
     backupOk: 'Đã tải file sao lưu JSON.',
@@ -1059,6 +1061,7 @@ const APP_I18N = {
     heroLead: 'សន្លឹកមួយមាន 2 ជួរ។ បញ្ចូលតែ 7 លេខនៅជួរចុងក្រោយ។ កម្មវិធីពិនិត្យស្វ័យប្រវត្តិ <span class="nowrap">សរុប = G + (+) + C + K1 + K2 + O</span> ហាមជួរស្ទួន និងប្រៀបធៀបនឹងការរាប់ឆ្នាំ 2026។',
     quickBySheet: 'បញ្ចូលរហ័សតាមសន្លឹក',
     exportAll: 'នាំចេញ Excel សរុប',
+    exportSummary: 'នាំចេញតារាងសង្ខេប',
     statEnteredLots: 'ដីឡូតិ៍បានបញ្ចូល',
     statEnteredSub: 'ដីឡូតិ៍ {n} បានសម្គាល់រួចរាល់',
     statTrees: 'សរុបចំណុចដាំ 2027',
@@ -1316,6 +1319,7 @@ const APP_I18N = {
     toastExportFail: 'មិនអាចនាំចេញ Excel: {err}',
     toastNoExportData: 'ដីឡូតិ៍មិនទាន់មានទិន្នន័យសម្រាប់នាំចេញ។',
     toastNoExportAll: 'មិនទាន់មានដីឡូតិ៍ណាមួយបញ្ចូលទិន្នន័យ។',
+    toastNoDoneLots: 'មិនទាន់មានដីឡូតិ៍ណាបានសម្គាល់ថាបានបញ្ចប់ទេ។',
     exportConfirm: 'ដីឡូតិ៍មិនទាន់សម្គាល់ថារួចរាល់។ នៅតែនាំចេញ?',
     addLotPrompt: 'បញ្ចូលលេខ / ឈ្មោះដីឡូតិ៍ថ្មី (ឧ. 950):',
     backupOk: 'បានទាញឯកសារបម្រុងទុក JSON។',
@@ -2615,6 +2619,7 @@ function setupHomeEvents() {
   });
   $('#btnExportLot').addEventListener('click', () => exportLot(state.lot));
   $('#btnExportAll').addEventListener('click', exportAll);
+  $('#btnExportSummary').addEventListener('click', exportSummaryForm);
   $('#btnToggleDone').addEventListener('click', toggleDone);
 
   ['huong', 'ngay', 'nguoi', 'ghiChu'].forEach(field => {
@@ -3856,6 +3861,103 @@ function exportAll() {
   XLSX.utils.book_append_sheet(wb, wsProgress, 'Tiến độ');
 
   downloadWorkbook(wb, `KK2027_TongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
+}
+
+/* Biểu tổng hợp theo mẫu "2. BIỂU MẪU DÃ NGOẠI VÀ TỔNG HỢP KIỂM KÊ" */
+function exportSummaryForm() {
+  const keys = lotsKeys().filter(key => lotMeta(key).done)
+    .sort((a, b) => ((BASE_BY_LOT.get(a) || {}).stt || 9999) - ((BASE_BY_LOT.get(b) || {}).stt || 9999));
+  if (!keys.length) { toast(t('toastNoDoneLots'), 'bad'); return; }
+  const now = new Date();
+  const dateLine = `Kampong Thom, ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}`;
+  const headers = [
+    'STT', 'ID lô', 'Đội', 'Lô', 'Năm trồng', 'Tuổi cạo', 'Giống', 'Diện tích (ha)', 'Tổng số cây KK',
+    'Cây cạo 1.1.2027\n(cây G)', 'Cây cạo 1.5.2027\n(cây +)', 'Cây chưa cạo 2027\n(cây C)',
+    'Cây KMC 2027\n(cây K1)', 'Cây không phát triển 2027\n(cây K2)', 'Hố trống 2027\n(O)',
+  ];
+  const aoa = [];
+  aoa[0] = [null, null, null, null, null, null, null, null, 'VƯƠNG QUỐC CAMPUCHIA'];
+  aoa[1] = [null, null, 'CRCK2 APHIVATH', null, null, null, null, null, 'Dân tộc - Tôn giáo - Quốc vương'];
+  aoa[2] = [null, null, 'CAOUTCHOUC CO.,LTD', null, null, null, null, null, dateLine];
+  aoa[3] = [null, null, 'Đội sản xuất số 2'];
+  aoa[5] = [null, 'BẢNG TỔNG HỢP KẾT QUẢ KIỂM KÊ VƯỜN CÂY 0H NGÀY 01/01/2027'];
+  aoa[6] = [null, '(Đính kèm thông báo số: …/TB-CRCK ngày …/…/2026)'];
+  aoa[8] = headers;
+  const total = { area: 0, dt: 0, g: 0, plus: 0, c: 0, k1: 0, k2: 0, o: 0 };
+  const n = keys.length;
+  keys.forEach((key, idx) => {
+    const base = BASE_BY_LOT.get(key);
+    const agg = lotState(key).agg;
+    const age = base && base.age != null ? base.age + 1 : '';
+    aoa.push([
+      idx + 1,
+      base ? base.id : '',
+      base ? base.doi : 2,
+      key,
+      base ? base.year : '',
+      age,
+      base ? base.clone : '',
+      base ? base.area : '',
+      agg.dt, agg.g, agg.plus, agg.c, agg.k1, agg.k2, agg.o,
+    ]);
+    if (base) total.area += Number(base.area) || 0;
+    total.dt += agg.dt; total.g += agg.g; total.plus += agg.plus;
+    total.c += agg.c; total.k1 += agg.k1; total.k2 += agg.k2; total.o += agg.o;
+  });
+  const totalExcel = 10 + n;
+  aoa.push(['Tổng cộng', '', '', '', '', '', '', total.area, total.dt, total.g, total.plus, total.c, total.k1, total.k2, total.o]);
+  aoa.push([]);
+  aoa.push([]);
+  aoa.push(['', '', 'LẬP BIỂU', '', '', '', '', '', '', '', '', 'ĐỘI TRƯỞNG']);
+
+  const ws = makeSheet(
+    aoa,
+    ['I1:N1', 'I2:N2', 'I3:N3', 'B6:O6', 'B7:O7', `A${totalExcel}:G${totalExcel}`],
+    [4.16, 16.5, 6, 4.5, 6, 6.16, 7.83, 9],
+    { 7: '#,##0.00' }
+  );
+  const cols = ['H', 'I', 'J', 'K', 'L', 'M', 'N', 'O'];
+  const totals = [total.area, total.dt, total.g, total.plus, total.c, total.k1, total.k2, total.o];
+  cols.forEach((col, i) => {
+    xlFormula(ws, 9 + n, 7 + i, `SUM(${col}10:${col}${totalExcel - 1})`, totals[i]);
+  });
+  ws[XLSX.utils.encode_cell({ r: 9 + n, c: 7 })].z = '#,##0.00';
+  keys.forEach((key, i) => {
+    const agg = lotState(key).agg;
+    xlFormula(ws, 9 + i, 8, `SUM(J${10 + i}:O${10 + i})`, agg.dt);
+    for (let c = 9; c <= 14; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 9 + i, c })];
+      if (cell && cell.t === 'n') cell.z = '#,##0';
+    }
+  });
+
+  const TNR = (sz, bold, italic) => ({ name: 'Times New Roman', sz: sz || 11, bold: !!bold, italic: !!italic, color: { rgb: '000000' } });
+  const center = { horizontal: 'center', vertical: 'center' };
+  xlCell(ws, 5, 1).s = { font: TNR(12, true), alignment: center };
+  xlCell(ws, 6, 1).s = { font: TNR(11, false, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 0, 8).s = { font: TNR(11, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 1, 8).s = { font: TNR(11, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 2, 8).s = { font: TNR(11, false, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 1, 2).s = { font: TNR(11, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 2, 2).s = { font: TNR(11, true), alignment: { horizontal: 'center' } };
+  xlCell(ws, 3, 2).s = { font: TNR(11), alignment: { horizontal: 'center' } };
+  xlStyleRow(ws, 8, 0, 14, { font: TNR(11, true), alignment: { ...center, wrapText: true }, border: XL_BORDER });
+  for (let i = 0; i <= n; i++) {
+    xlStyleRow(ws, 9 + i, 0, 14, { font: TNR(11, i === n), alignment: center, border: XL_BORDER });
+  }
+  xlStyleRow(ws, 9 + n, 8, 14, { font: TNR(11, true), alignment: center, border: XL_BORDER });
+  xlCell(ws, 12 + n, 2).s = { font: TNR(11, true) };
+  xlCell(ws, 12 + n, 11).s = { font: TNR(11, true) };
+  ws['!rows'] = [];
+  ws['!rows'][5] = { hpt: 19.5 };
+  ws['!rows'][6] = { hpt: 14.25 };
+  ws['!rows'][8] = { hpt: 90 };
+  ws['!rows'][9 + n] = { hpt: 18 };
+  ws['!margins'] = { left: 0.7, right: 0.7, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Biểu tổng hợp');
+  downloadWorkbook(wb, `KK2027_BieuTongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
 }
 
 /* ============================================================
