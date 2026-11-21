@@ -1544,7 +1544,9 @@ function renderLotList() {
     if (key === recent) return false;
     const lv = progressLevel(lotState(key));
     if (state.filter === 'empty' && lv !== 'empty') return false;
-    if (state.filter === 'doing' && lv !== 'doing') return false;
+    // Lô đang nhập có lệch hàng vẫn phải hiện ở bộ lọc "Đang nhập",
+    // đồng thời vẫn nằm trong "Cảnh báo" — hai bộ lọc không loại trừ nhau.
+    if (state.filter === 'doing' && lv !== 'doing' && lv !== 'warn') return false;
     if (state.filter === 'done' && lv !== 'done') return false;
     if (state.filter === 'warn' && lv !== 'warn') return false;
     if (!q) return true;
