@@ -228,6 +228,51 @@ details[open] .wn-hint{display:none}
 .zone-miss b{color:var(--amber);font-weight:700}
 .zone-miss.all-done{color:var(--green);font-weight:600}
 .zone-head-actions{display:flex;align-items:center;gap:8px}
+
+/* ---------- PROGRESS CHART ---------- */
+.progress-chart-card{grid-column:1/-1;min-width:0}
+.pchart{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:center}
+.pchart-overall{display:flex;flex-direction:column;align-items:center;gap:12px}
+.pchart-ring{position:relative;width:168px;height:168px}
+.pchart-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.pchart-ring circle{fill:none;stroke-width:13;stroke-linecap:butt}
+.ring-track{stroke:var(--surface-2)}
+.ring-done{stroke:var(--green);transition:stroke-dasharray 1.1s cubic-bezier(.2,.8,.2,1)}
+.ring-doing{stroke:var(--accent);transition:stroke-dasharray 1.1s cubic-bezier(.2,.8,.2,1)}
+.pchart-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;pointer-events:none}
+.pchart-center b{font-family:var(--font-display);font-size:34px;line-height:1;letter-spacing:-.02em;color:var(--green)}
+.pchart-center span{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.pchart-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px}
+.pl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.pl i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.pl.done i{background:var(--green)}
+.pl.doing i{background:var(--accent)}
+.pl b{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.pchart-zones{display:grid;gap:9px;min-width:0}
+.pchart-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding-bottom:2px;border-bottom:1px solid var(--line)}
+.pchart-head-nums{display:flex;gap:10px}
+.pchart-head-nums b{font-weight:700;letter-spacing:0;text-transform:none;font-size:11px}
+.pz-row{display:grid;grid-template-columns:40px minmax(0,1fr) 92px;align-items:center;gap:10px}
+.pz-name{font-family:var(--font-display);font-size:13.5px;font-weight:600}
+.pz-bar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--surface-2);gap:1px}
+.pz-bar i{display:block;height:100%;width:var(--w,0%);animation:barGrow .85s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.pz-bar i.done{background:var(--green)}
+.pz-bar i.doing{background:var(--accent)}
+.pz-nums{display:flex;gap:6px;justify-content:flex-end;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.pz-nums b{min-width:34px;text-align:right}
+.pz-nums .done,.pchart-head-nums .done{color:var(--green)}
+.pz-nums .doing,.pchart-head-nums .doing{color:var(--accent-strong)}
+@keyframes barGrow{from{width:0}}
+@media (prefers-reduced-motion: reduce){
+  .pz-bar i{animation:none}
+  .ring-done,.ring-doing{transition:none}
+}
+@media (max-width:760px){
+  .pchart{grid-template-columns:1fr;gap:16px}
+  .pchart-overall{flex-direction:row;justify-content:center;gap:20px}
+  .pchart-legend{flex-direction:column;gap:6px}
+  .pz-row{grid-template-columns:36px minmax(0,1fr) 84px}
+}
 .map-card{min-width:0}
 .map-head{flex-wrap:wrap}
 .map-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}

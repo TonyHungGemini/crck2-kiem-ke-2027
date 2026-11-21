@@ -646,6 +646,11 @@ const APP_I18N = {
     whatsNewTitle: 'Cập nhật ứng dụng',
     whatsNewNew: 'Mới',
     whatsNewOpen: 'Xem chi tiết',
+    chartTitle: 'Tiến độ % toàn Đội',
+    chartDone: 'Hoàn tất',
+    chartDoing: 'Đang nhập',
+    chartEmpty: 'Chưa nhập',
+    chartLots: '{a}/{b} lô',
     statEnteredLots: 'Lô đã nhập',
     statEnteredSub: '{n} lô đã đánh dấu hoàn tất',
     statTrees: 'Tổng điểm trồng 2027',
@@ -1069,6 +1074,11 @@ const APP_I18N = {
     whatsNewTitle: 'ការធ្វើបច្ចុប្បន្នភាពកម្មវិធី',
     whatsNewNew: 'ថ្មី',
     whatsNewOpen: 'មើលលម្អិត',
+    chartTitle: 'វឌ្ឍនភាព % ទូទាំងក្រុម',
+    chartDone: 'រួចរាល់',
+    chartDoing: 'កំពុងបញ្ចូល',
+    chartEmpty: 'មិនទាន់បញ្ចូល',
+    chartLots: '{a}/{b} ដីឡូតិ៍',
     statEnteredLots: 'ដីឡូតិ៍បានបញ្ចូល',
     statEnteredSub: 'ដីឡូតិ៍ {n} បានសម្គាល់រួចរាល់',
     statTrees: 'សរុបចំណុចដាំ 2027',
@@ -1520,6 +1530,12 @@ function routeFromHash() {
    ============================================================ */
 const CHANGELOG = [
   {
+    v: 60,
+    date: '21/11/2026',
+    vi: { title: 'Biểu đồ tiến độ % toàn Đội', items: ['Biểu đồ tròn % hoàn tất/đang nhập và thanh % từng khu vực, ngay dưới bản đồ.'] },
+    km: { title: 'គំនូសតាងវឌ្ឍនភាព % ទូទាំងក្រុម', items: ['រង្វង់ % រួចរាល់/កំពុងបញ្ចូល និងរបារ % តាមតំបន់នីមួយៗ នៅក្រោមផែនទី។'] },
+  },
+  {
     v: 59,
     date: '21/11/2026',
     vi: { title: 'Hộp Cập nhật ứng dụng', items: ['Các tính năng mới hiện ngay trên màn hình chính; chưa xem sẽ có nhãn “Mới”.'] },
@@ -1785,6 +1801,89 @@ function renderZones() {
   if (badge) badge.textContent = t('mapBadge', { done: doneCount, total: GEO.length });
   const allBtn = $('#btnZoneAll');
   if (allBtn) allBtn.hidden = !state.zone;
+  renderProgressChart();
+}
+
+function animateChartPct(el, target, suffix) {
+  if (!el) return;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { el.textContent = Math.round(target) + suffix; return; }
+  const t0 = performance.now();
+  const tick = now => {
+    const k = Math.min(1, (now - t0) / 900);
+    el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))) + suffix;
+    if (k < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function renderProgressChart() {
+  const host = $('#progressChart');
+  if (!host || !GEO.length) return;
+  const total = GEO.length;
+  let done = 0, doing = 0, empty = 0;
+  GEO_BY_LOT.forEach((f, key) => {
+    const lv = viewLevel(key).level;
+    if (lv === 'done') done += 1;
+    else if (lv === 'empty') empty += 1;
+    else doing += 1;
+  });
+  const zones = ZONE_ORDER.map(z => zoneStats(z)).filter(s => s.total);
+  const sig = [state.lang, total, done, doing, empty,
+    zones.map(s => `${s.zone}:${s.done.length}/${s.doing.length + s.warn.length}/${s.total}`).join(',')].join('|');
+  if (host.dataset.sig === sig) return;
+  host.dataset.sig = sig;
+
+  const CIRC = 2 * Math.PI * 52;
+  const donePct = Math.round(done / total * 100);
+  const doingPct = Math.round(doing / total * 100);
+  const emptyPct = Math.max(0, 100 - donePct - doingPct);
+  const doneLen = CIRC * done / total;
+  const doingLen = CIRC * doing / total;
+  const zoneRows = zones.map((s, i) => {
+    const zDone = s.done.length;
+    const zDoing = s.doing.length + s.warn.length;
+    return `<div class="pz-row">
+      <span class="pz-name">${esc(s.zone)}</span>
+      <span class="pz-bar">
+        <i class="done" style="--w:${(zDone / s.total * 100).toFixed(2)}%;--d:${i * 70}ms"></i>
+        <i class="doing" style="--w:${(zDoing / s.total * 100).toFixed(2)}%;--d:${i * 70 + 40}ms"></i>
+      </span>
+      <span class="pz-nums"><b class="done">${Math.round(zDone / s.total * 100)}%</b><b class="doing">${Math.round(zDoing / s.total * 100)}%</b></span>
+    </div>`;
+  }).join('');
+  host.innerHTML = `
+    <div class="pchart-overall">
+      <div class="pchart-ring">
+        <svg viewBox="0 0 120 120" role="img" aria-label="${esc(t('chartTitle'))}">
+          <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+          <circle class="ring-done" cx="60" cy="60" r="52" stroke-dasharray="0 ${CIRC.toFixed(2)}" stroke-dashoffset="0"></circle>
+          <circle class="ring-doing" cx="60" cy="60" r="52" stroke-dasharray="0 ${CIRC.toFixed(2)}" stroke-dashoffset="${(-doneLen).toFixed(2)}"></circle>
+        </svg>
+        <div class="pchart-center"><b id="chartDonePct">0%</b><span>${t('chartDone')}</span></div>
+      </div>
+      <div class="pchart-legend">
+        <div class="pl done"><i></i><span>${t('chartDone')}</span><b>${donePct}%</b></div>
+        <div class="pl doing"><i></i><span>${t('chartDoing')}</span><b>${doingPct}%</b></div>
+        <div class="pl empty"><i></i><span>${t('chartEmpty')}</span><b>${emptyPct}%</b></div>
+      </div>
+    </div>
+    <div class="pchart-zones">
+      <div class="pchart-head">
+        <span>${t('mapZonesTitle')}</span>
+        <span class="pchart-head-nums"><b class="done">${t('chartDone')}</b><b class="doing">${t('chartDoing')}</b></span>
+      </div>
+      ${zoneRows}
+    </div>`;
+  const badge = $('#chartBadge');
+  if (badge) badge.textContent = t('chartLots', { a: done, b: total });
+  animateChartPct($('#chartDonePct'), donePct, '%');
+  const ringDone = host.querySelector('.ring-done');
+  const ringDoing = host.querySelector('.ring-doing');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ringDone.style.strokeDasharray = `${doneLen.toFixed(2)} ${(CIRC - doneLen).toFixed(2)}`;
+    ringDoing.style.strokeDasharray = `${doingLen.toFixed(2)} ${(CIRC - doingLen).toFixed(2)}`;
+  }));
 }
 
 function mapPopupHtml(key) {
