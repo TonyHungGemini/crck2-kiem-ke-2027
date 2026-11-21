@@ -58,7 +58,8 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
     dòng: thời điểm, lý do, lô/KV/trạng thái, tổng 2027–2026, lệch, người KK, máy
     nhập, ngày, số lô/số hàng **đã đổi**, danh sách lô vừa thay đổi. Tab này giữ
     lâu dài để xem lại; app đọc qua `?action=history&days=N` cho mục **Thông báo →
-    Lịch sử** (lọc 7/30/90/365 ngày và theo máy nhập). Với các dòng cũ chỉ có giờ,
+    Lịch sử** (lọc 7/30/90/365 ngày và theo máy nhập). Các lần tự đồng bộ liên tiếp
+    trong 15 phút của cùng một máy được gộp thành một dòng kèm số lần. Với các dòng cũ chỉ có giờ,
     script dựng lại số hàng/lô đã sửa và máy nhập từ tab **Nhật ký nhập** trong
     khoảng giữa hai lần đồng bộ, ghi rõ “theo Nhật ký nhập”.
 - Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet. Mỗi lần gửi,

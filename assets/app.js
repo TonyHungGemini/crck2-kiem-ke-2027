@@ -1002,12 +1002,14 @@ const APP_I18N = {
     historyError: 'Chưa tải được lịch sử: {err}',
     historyNoDevice: 'Không rõ máy',
     historyChanged: 'Lô: {list}',
-    historySync: 'Đổi {n} lô · {rows} hàng',
+    historySync: 'Đổi {n} lô',
+    historyRuns: '{n} lần',
     historyLot: 'Lô {lot}',
     historyDelta: 'Lệch',
     historyEdits: 'Sửa {n} hàng',
     historyFromImport: 'theo Nhật ký nhập',
     historySparse: 'Bản ghi cũ, không có chi tiết',
+    historyNoChanges: 'Không có thay đổi',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1406,12 +1408,14 @@ const APP_I18N = {
     historyError: 'មិនទាន់ទាញបានប្រវត្តិ៖ {err}',
     historyNoDevice: 'មិនដឹងឧបករណ៍',
     historyChanged: 'ដីឡូតិ៍៖ {list}',
-    historySync: 'ប្តូរ {n} ដីឡូតិ៍ · {rows} ជួរ',
+    historySync: 'ប្តូរ {n} ដីឡូតិ៍',
+    historyRuns: '{n} ដង',
     historyLot: 'ដីឡូតិ៍ {lot}',
     historyDelta: 'លំអៀង',
     historyEdits: 'កែ {n} ជួរ',
     historyFromImport: 'តាមកំណត់ហេតុបញ្ចូល',
     historySparse: 'កំណត់ត្រាចាស់ គ្មានព័ត៌មានលម្អិត',
+    historyNoChanges: 'គ្មានការផ្លាស់ប្តូរ',
   },
 };
 function t(key, vars) {
@@ -4304,6 +4308,63 @@ function historyTime(at) {
   return m ? m[1] + ':' + m[2] : String(at || '—');
 }
 
+function historyMinutes(at) {
+  const m = String(at || '').match(/(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+}
+
+function historyStamp(at) {
+  const m = String(at || '').match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (!m) return 0;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] || 0), Number(m[5] || 0)).getTime();
+}
+
+function historyMergeRun(prev, e) {
+  prev.runs += 1;
+  prev.fromAt = e.at;
+  prev.edits = (Number(prev.edits) || 0) + (Number(e.edits) || 0);
+  const lots = new Map();
+  (prev.editLots || []).concat(e.editLots || []).forEach(x => {
+    const k = String(x.lot);
+    const old = lots.get(k);
+    lots.set(k, { lot: x.lot, n: (old ? old.n : 0) + (Number(x.n) || 0) });
+  });
+  prev.editLots = [...lots.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+  const devs = prev.editDevices || [];
+  (e.editDevices || []).forEach(d => { if (d && !devs.includes(d)) devs.push(d); });
+  prev.editDevices = devs.slice(0, 4);
+  const changed = new Map();
+  (String(prev.changed || '') + ', ' + String(e.changed || '')).split(',')
+    .map(s => s.trim()).filter(Boolean).forEach(s => changed.set(s, s));
+  prev.changed = [...changed.keys()].join(', ');
+}
+
+// Gộp các lần tự đồng bộ trong 15 phút của cùng máy để lịch sử không bị hàng trăm dòng/ngày.
+function historyGroupAuto(entries) {
+  const byDevice = new Map();
+  entries.forEach(e => {
+    const key = (e.day || '') + '|' + (e.device || '');
+    if (!byDevice.has(key)) byDevice.set(key, []);
+    byDevice.get(key).push(e);
+  });
+  const out = [];
+  byDevice.forEach(list => {
+    let cur = null;
+    list.forEach(e => {
+      const gap = cur ? historyMinutes(cur.at) - historyMinutes(e.at) : NaN;
+      if (cur && cur.reason === 'Tự động' && e.reason === 'Tự động'
+        && cur.device && gap >= 0 && gap <= 15) {
+        historyMergeRun(cur, e);
+        return;
+      }
+      cur = Object.assign({}, e, { runs: 1, fromAt: '' });
+      out.push(cur);
+    });
+  });
+  out.sort((a, b) => historyStamp(b.at) - historyStamp(a.at));
+  return out;
+}
+
 const WEEKDAY_KM = ['ថ្ងៃអាទិត្យ', 'ថ្ងៃចន្ទ', 'ថ្ងៃអង្គារ', 'ថ្ងៃពុធ', 'ថ្ងៃព្រហស្បតិ៍', 'ថ្ងៃសុក្រ', 'ថ្ងៃសៅរ៍'];
 
 function historyDayLabel(day) {
@@ -4335,7 +4396,7 @@ function historyDevices() {
 function historyItemHtml(e) {
   const devs = [];
   if (e.device) devs.push(e.device);
-  (e.editDevices || []).forEach(d => { if (d && !devs.includes(d)) devs.push(d); });
+  if (!(Number(e.runs) > 1)) (e.editDevices || []).forEach(d => { if (d && !devs.includes(d)) devs.push(d); });
   if (!devs.length && e.nguoi) devs.push(e.nguoi);
   const dev = devs.length ? devs.join(', ') : t('historyNoDevice');
   const bits = [];
@@ -4347,12 +4408,11 @@ function historyItemHtml(e) {
       bits.push('2027 ' + fmt(e.dt) + (e.base != null ? ' · 2026 ' + fmt(e.base) : ''));
     }
     if (e.delta != null && !e.status) bits.push(t('historyDelta') + ' ' + (e.delta > 0 ? '+' : '') + fmt(e.delta));
-  } else if (Number(e.lots) > 0) {
-    bits.push(t('historySync', { n: fmt(e.lots), rows: fmt(e.rows || 0) }));
-  } else if (Number(e.rows) > 0) {
-    bits.push(t('notiRows', { n: fmt(e.rows) }));
+  } else if (e.changed) {
+    const n = String(e.changed).split(',').filter(s => s.trim()).length;
+    if (n) bits.push(t('historySync', { n: fmt(n) }));
   }
-  if (e.changed) bits.push(t('historyChanged', { list: `<span class="noti-hist-changed">${esc(e.changed)}</span>` }));
+  if (e.changed && !e.lot) bits.push(t('historyChanged', { list: `<span class="noti-hist-changed">${esc(e.changed)}</span>` }));
   if (Number(e.edits) > 0) {
     let line = t('historyEdits', { n: fmt(e.edits) });
     const lots = (e.editLots || [])
@@ -4363,11 +4423,13 @@ function historyItemHtml(e) {
     line += ' · ' + t('historyFromImport');
     bits.push(line);
   }
-  if (!bits.length) bits.push(t('historySparse'));
+  if (!bits.length) bits.push(t(e.device ? 'historyNoChanges' : 'historySparse'));
+  const timeLabel = e.fromAt ? historyTime(e.fromAt) + '–' + historyTime(e.at) : historyTime(e.at);
+  const reason = historyReasonLabel(e.reason) + (Number(e.runs) > 1 ? ' · ' + t('historyRuns', { n: fmt(e.runs) }) : '');
   return `<div class="noti-item noti-hist">
     <span class="noti-item-main">
-      <span class="noti-lot">${esc(historyTime(e.at))}<span class="noti-kv">${esc(dev)}</span></span>
-      <span class="noti-sub">${esc(historyReasonLabel(e.reason))} · ${bits.join(' · ')}</span>
+      <span class="noti-lot">${esc(timeLabel)}<span class="noti-kv">${esc(dev)}</span></span>
+      <span class="noti-sub">${esc(reason)} · ${bits.join(' · ')}</span>
     </span>
   </div>`;
 }
@@ -4391,7 +4453,7 @@ function renderHistory() {
     host.innerHTML = `<p class="noti-empty">${esc(t('historyLoading'))}</p>`;
     return;
   }
-  const entries = historyData.entries.filter(e => !historyDevice || (e.device || e.nguoi || '') === historyDevice);
+  const entries = historyGroupAuto(historyData.entries.filter(e => !historyDevice || (e.device || e.nguoi || '') === historyDevice));
   if (!entries.length) {
     host.innerHTML = `<p class="noti-empty">${esc(t('historyEmpty'))}</p>`;
     return;
