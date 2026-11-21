@@ -139,6 +139,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  let lock = null;
   try {
     if (!e || !e.postData || !e.postData.contents) {
       throw new Error('Không nhận được dữ liệu.');
@@ -146,6 +147,13 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     if (payload.app !== APP_ID) {
       throw new Error('Dữ liệu không phải từ app KK2027.');
+    }
+
+    // Nhiều máy có thể đồng bộ cùng lúc; các sheet được ghi lại toàn bộ
+    // nên phải xếp hàng, nếu không bản ghi sau sẽ đè mất lô của máy khác.
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(45000)) {
+      throw new Error('Máy chủ đang bận đồng bộ, thử lại sau vài giây.');
     }
 
     const ss = getSpreadsheet_();
@@ -178,6 +186,10 @@ function doPost(e) {
     });
   } catch (err) {
     return json_({ ok: false, error: String((err && err.message) || err) });
+  } finally {
+    if (lock) {
+      try { lock.releaseLock(); } catch (err) {}
+    }
   }
 }
 
@@ -244,12 +256,11 @@ function writeProgress_(sh, payload) {
     const entered = Number(l.entered) || 0;
     const old = byLot.get(l.lot);
     if (!entered && !l.done) {
-      // Lô đã xoá nháp: chỉ gỡ dòng khi bản gửi kèm mốc thờigian mới hơn
-      // (không dùng sentAt để tránh máy khác xoá nhầm dữ liệu lô đang nhập).
+      // Chỉ gỡ khi máy gửi chủ động xoá dữ liệu (clearedAt mới hơn bản trên
+      // sheet). Máy chưa từng nhập lô này không được xoá dữ liệu máy khác.
       if (old) {
-        const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
-        const oldTs = isoTime_(old[19]);
-        if (inTs && inTs > oldTs) byLot.delete(l.lot);
+        const cl = isoTime_(l.clearedAt);
+        if (cl && cl > isoTime_(old[19])) byLot.delete(l.lot);
       }
       return;
     }
@@ -338,11 +349,11 @@ function writeDetails_(ss, payload) {
     const lot = String(l.lot);
     const old = state.get(lot);
     if (!(Number(l.entered) > 0)) {
-      // Lô đã xoá nháp: bản có updatedAt mới hơn sẽ gỡ các dòng chi tiết cũ
-      // (chỉ tin updatedAt/doneAt của máy đã xoá, không dùng sentAt).
+      // Chỉ gỡ khi máy gửi chủ động xoá dữ liệu (clearedAt mới hơn bản trên
+      // sheet). Máy chỉ mở lô hoặc sửa thông tin phiếu không được xoá hàng.
       if (old && old.maxTs) {
-        const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || 0;
-        if (inTs && inTs > old.maxTs) state.set(lot, { rows: [], maxTs: inTs });
+        const cl = isoTime_(l.clearedAt);
+        if (cl && cl > old.maxTs) state.set(lot, { rows: [], maxTs: cl });
       }
       return;
     }

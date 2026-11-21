@@ -961,6 +961,8 @@ const APP_I18N = {
     detailFoot: 'Dòng tô vàng: phúc tra lệch từ 2 cây. Dòng tô hồng: thiếu/lệch tổng, thiếu hoặc trùng số hàng. Dữ liệu này chỉ để xem, mọi chỉnh sửa phải thực hiện trên máy đã nhập lô.',
     detailUpdated: 'Cập nhật {time}',
     detailRowsCount: '{n} hàng',
+    detailLocalOnly: 'Chưa thấy trên Google (chỉ có trên máy này): {list} · bấm Đồng bộ ngay để gửi.',
+    detailLocalOnlyItem: '{lot} ({n} hàng)',
     detailWarnCount: '{n} cảnh báo',
     detailNoWarn: 'Không có cảnh báo',
     detailDevice: 'Máy / người nhập: {device}',
@@ -1339,6 +1341,8 @@ const APP_I18N = {
     detailFoot: 'ជួរពណ៌លឿង៖ ផ្ទៀងផ្ទាត់ខុសគ្នាចាប់ពី 2 ដើម។ ជួរពណ៌ផ្កាឈូក៖ ខ្វះ/សរុបមិនត្រូវ ខ្វះ ឬស្ទួនលេខជួរ។ ទិន្នន័យនេះសម្រាប់តែមើល ត្រូវកែនៅឧបករណ៍ដែលបានបញ្ចូលដីឡូតិ៍។',
     detailUpdated: 'ធ្វើបច្ចុប្បន្នភាព {time}',
     detailRowsCount: '{n} ជួរ',
+    detailLocalOnly: 'មិនឃើញនៅ Google (មានតែនៅឧបករណ៍នេះ): {list} · ចុច ធ្វើសមកាលឥឡូវ ដើម្បីផ្ញើ។',
+    detailLocalOnlyItem: '{lot} ({n} ជួរ)',
     detailWarnCount: '{n} ការព្រមាន',
     detailNoWarn: 'គ្មានការព្រមាន',
     detailDevice: 'ឧបករណ៍ / អ្នកបញ្ចូល៖ {device}',
@@ -2676,10 +2680,12 @@ function onRowClick(e) {
     refreshLotDerived();
   }
   if (btn.dataset.act === 'del') {
-    if (rowHasData(row) && !confirm(t('confirmDelRow', { h: row.hang ?? '' }))) return;
+    const hadData = rowHasData(row);
+    if (hadData && !confirm(t('confirmDelRow', { h: row.hang ?? '' }))) return;
     const lot = ensureLot(state.lot);
     lot.rows = lot.rows.filter(r => r.uid !== row.uid);
     rowUndo.delete(row.uid);
+    if (hadData && !lot.rows.some(rowHasData)) lot.meta.clearedAt = new Date().toISOString();
     touchLot(state.lot);
     persist();
     rebuildRowsTable();
@@ -3841,6 +3847,7 @@ function buildSyncPayload(reason, lotKey) {
       doneAt: st.meta.doneAt || null,
       doneBy: st.meta.doneBy || '',
       updatedAt: (DB.lots[key] && DB.lots[key].updatedAt) || st.meta.doneAt || null,
+      clearedAt: st.meta.clearedAt || null,
       nguoi: st.meta.nguoi || '',
       ngay: st.meta.ngay || '',
       huong: st.meta.huong || '',
@@ -4002,6 +4009,7 @@ async function syncNow(reason = 'manual', lotKey = null) {
   } catch (err) {
     saveSyncCfg({ lastResult: 'Lỗi: ' + err.message });
     if (reason !== 'auto') toast(t('syncErrorToast', { err: err.message }), 'bad');
+    else if (/bận|busy/i.test(err.message || '')) setTimeout(() => syncNow('auto'), 10000);
   } finally {
     syncBusy = false;
     updateSyncUi();
@@ -4311,10 +4319,23 @@ function renderDetailLot() {
   if (sumPt) sumPt.textContent = rows.length ? fmt(sums.pt) : '0';
   if (sumPd) sumPd.textContent = rows.length ? signed(sums.pd) : '0';
 
+  const remoteSet = new Set(detailLotList().map(l => l.lot));
+  const localOnly = Object.keys(DB.lots)
+    .filter(k => !remoteSet.has(k) && (DB.lots[k].rows || []).some(rowHasData))
+    .map(k => ({ k, n: (DB.lots[k].rows || []).filter(rowHasData).length }))
+    .sort((a, b) => collator.compare(a.k, b.k));
+  const localOnlyBanner = () => {
+    if (!localOnly.length) return '';
+    const list = localOnly.slice(0, 5)
+      .map(x => t('detailLocalOnlyItem', { lot: esc(x.k), n: x.n }))
+      .join(', ') + (localOnly.length > 5 ? '…' : '');
+    return `<span class="warn">${t('detailLocalOnly', { list })}</span>`;
+  };
+
   if (!lot) {
     setDetailStatus('');
     const box = $('#detailSummary');
-    if (box) box.innerHTML = '';
+    if (box) box.innerHTML = localOnlyBanner();
     return;
   }
   setDetailStatus(t('detailUpdated', { time: dateTimeVN(lot.updatedAt || state.remoteDetail.at) }));
@@ -4326,8 +4347,10 @@ function renderDetailLot() {
   ];
   if (lot.device) bits.push(t('detailDevice', { device: `<b>${esc(lot.device)}</b>` }));
   if (lot.nguoi) bits.push(t('detailNguoi', { nguoi: `<b>${esc(lot.nguoi)}</b>` }));
-  const box = $('#detailSummary');
-  if (box) box.innerHTML = bits.map(b => `<span>${b}</span>`).join('');
+  const banner = localOnlyBanner();
+  if (banner) bits.push(banner);
+  const summaryEl = $('#detailSummary');
+  if (summaryEl) summaryEl.innerHTML = bits.map(b => `<span>${b}</span>`).join('');
 }
 
 async function loadRemoteDetail() {

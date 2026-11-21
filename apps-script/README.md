@@ -57,10 +57,12 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
   - **Nhật ký**: các lần lô hoàn tất và đồng bộ tay.
 - Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet. Mỗi lần gửi,
   script **gộp theo lô**: lô nào đã có số liệu và mới hơn (theo thời điểm lưu trên máy)
-  thì giữ bản mới, máy khác không xoá mất lô đã nhập. Ngoại lệ: máy nào **xoá hết
-  dữ liệu nháp của một lô rồi đồng bộ** (bản gửi có mốc cập nhật mới hơn) thì script
-  gỡ các dòng cũ của lô đó ở tab **Tiến độ** và **Chi tiết** — máy khác chỉ gửi mốc
-  giờ rỗng sẽ không xoá nhầm.
+  thì giữ bản mới, máy khác không xoá mất lô đã nhập. Các lần đồng bộ trùng nhau được
+  **xếp hàng bằng LockService**, nên máy gửi sau không đè mất lô máy khác vừa ghi.
+  Ngoại lệ duy nhất: máy nào **thực sự xoá hết hàng có số liệu của một lô** (app gửi
+  kèm mốc `clearedAt` mới hơn bản trên Sheet) thì script mới gỡ các dòng cũ của lô đó
+  ở tab **Tiến độ** và **Chi tiết**. Máy chỉ mở lô hoặc sửa thông tin phiếu (hướng,
+  ngày, người KK…) không còn xoá dữ liệu của máy khác.
 - Trong app, bấm **Đồng bộ Google → Tải tiến độ đội về máy** (hoặc mở tab **Bản đồ tiến độ**)
   để đọc tiến độ các máy khác về bản đồ: lô do máy khác nhập/hoàn tất hiện viền nét đứt.
   Dữ liệu chỉ để xem, không ghi vào dữ liệu của máy đang dùng.
