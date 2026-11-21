@@ -170,14 +170,16 @@ function userName() {
   return (syncCfg.device || '').trim();
 }
 
-function persist() {
-  DB.updatedAt = new Date().toISOString();
+function persist(opts) {
+  if (!opts || !opts.quiet) {
+    DB.updatedAt = new Date().toISOString();
+    scheduleSync();
+  }
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(DB));
   } catch (err) {
     toast('Không lưu được dữ liệu. Bộ nhớ trình duyệt có thể đã đầy.', 'bad');
   }
-  scheduleSync();
 }
 function touchLot(key) {
   const lot = key && DB.lots[key];
@@ -543,6 +545,7 @@ const state = {
   recentLot: null, gAuto: readGAuto(), remote: readRemote(),
   lang: readLang() || 'vi', langChosen: readLangChosen(),
   detailLot: null, remoteDetail: null,
+  lotRemoteNote: null, lotRemoteSeq: 0,
 };
 const QUICK_I18N = {
   vi: {
@@ -960,6 +963,14 @@ const APP_I18N = {
     detailEmpty: 'Chưa có dữ liệu chi tiết trên Google Sheets. Hãy đồng bộ từ máy đã nhập dữ liệu.',
     detailFoot: 'Dòng tô vàng: phúc tra lệch từ 2 cây. Dòng tô hồng: thiếu/lệch tổng, thiếu hoặc trùng số hàng. Dữ liệu này chỉ để xem, mọi chỉnh sửa phải thực hiện trên máy đã nhập lô.',
     detailUpdated: 'Cập nhật {time}',
+    lotRemoteLoading: 'Đang tải bản mới nhất từ Google Sheet…',
+    lotRemoteUpdated: 'Đã tải bản mới nhất do {device} lưu lúc {time}.',
+    lotRemoteUpdatedNoDev: 'Đã tải bản mới nhất từ Google Sheet lúc {time}.',
+    lotRemoteConflict: 'Lô này vừa được {device} sửa lúc {time} — đã tải bản mới nhất về máy.',
+    lotRemoteLocalNewer: 'Máy này có bản mới hơn chưa đồng bộ — giữ bản trên máy, không tải bản Google.',
+    lotRemoteDraft: 'Còn bản nháp đang nhập trên máy — không tự tải bản Google. Lưu xong rồi mở lại lô.',
+    lotRemoteEditing: 'Đang nhập trên máy — không tự tải bản Google để tránh ghi đè.',
+    lotRemoteError: 'Không tải được bản mới nhất từ Google: {err}',
     detailRowsCount: '{n} hàng',
     detailLocalOnly: 'Chưa thấy trên Google (chỉ có trên máy này): {list} · bấm Đồng bộ ngay để gửi.',
     detailLocalOnlyItem: '{lot} ({n} hàng)',
@@ -1366,6 +1377,14 @@ const APP_I18N = {
     detailEmpty: 'មិនទាន់មានទិន្នន័យលម្អិតនៅ Google Sheets។ សូមធ្វើសមកាលពីឧបករណ៍ដែលបានបញ្ចូលទិន្នន័យ។',
     detailFoot: 'ជួរពណ៌លឿង៖ ផ្ទៀងផ្ទាត់ខុសគ្នាចាប់ពី 2 ដើម។ ជួរពណ៌ផ្កាឈូក៖ ខ្វះ/សរុបមិនត្រូវ ខ្វះ ឬស្ទួនលេខជួរ។ ទិន្នន័យនេះសម្រាប់តែមើល ត្រូវកែនៅឧបករណ៍ដែលបានបញ្ចូលដីឡូតិ៍។',
     detailUpdated: 'ធ្វើបច្ចុប្បន្នភាព {time}',
+    lotRemoteLoading: 'កំពុងទាញកំណែថ្មីបំផុតពី Google Sheet…',
+    lotRemoteUpdated: 'បានទាញកំណែថ្មីបំផុតដែល {device} បានរក្សាទុកម៉ោង {time}។',
+    lotRemoteUpdatedNoDev: 'បានទាញកំណែថ្មីបំផុតពី Google Sheet ម៉ោង {time}។',
+    lotRemoteConflict: 'ដីឡូតិ៍នេះទើបត្រូវ {device} កែម៉ោង {time} — បានទាញកំណែថ្មីបំផុតមកឧបករណ៍នេះ។',
+    lotRemoteLocalNewer: 'ឧបករណ៍នេះមានកំណែថ្មីជាង មិនទាន់សមកាល — រក្សាកំណែលើឧបករណ៍ មិនទាញកំណែ Google ទេ។',
+    lotRemoteDraft: 'នៅមានសេចក្ដីព្រាងកំពុងបញ្ចូលលើឧបករណ៍ — មិនទាញកំណែ Google ដោយស្វ័យប្រវត្តិទេ។ រក្សាទុករួចបើកឡូតិ៍វិញ។',
+    lotRemoteEditing: 'កំពុងបញ្ចូលលើឧបករណ៍ — មិនទាញកំណែ Google ដើម្បីកុំឱ្យសរសេរជាន់ទេ។',
+    lotRemoteError: 'មិនអាចទាញកំណែថ្មីបំផុតពី Google៖ {err}',
     detailRowsCount: '{n} ជួរ',
     detailLocalOnly: 'មិនឃើញនៅ Google (មានតែនៅឧបករណ៍នេះ): {list} · ចុច ធ្វើសមកាលឥឡូវ ដើម្បីផ្ញើ។',
     detailLocalOnlyItem: '{lot} ({n} ជួរ)',
@@ -1438,9 +1457,11 @@ function openLot(key, push = true) {
   state.view = 'lot';
   state.lot = key;
   state.recentLot = null;
+  state.lotRemoteNote = null;
   $('#view-home').hidden = true;
   $('#view-lot').hidden = false;
   renderLot();
+  pullRemoteLot(key);
   if (push) history.pushState({ lot: key }, '', '#lo/' + encodeURIComponent(key));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1460,9 +1481,11 @@ function routeFromHash() {
     if (BASE_BY_LOT.has(key) || DB.lots[key]) {
       state.view = 'lot';
       state.lot = key;
+      state.lotRemoteNote = null;
       $('#view-home').hidden = true;
       $('#view-lot').hidden = false;
       renderLot();
+      pullRemoteLot(key);
       return;
     }
   }
@@ -1861,6 +1884,7 @@ function renderLot() {
   updateQuickLotBtn();
   rebuildRowsTable();
   refreshLotDerived();
+  renderLotRemoteNote();
 }
 
 function activeDir(key) {
@@ -4711,6 +4735,165 @@ async function openDetailDialog(lotKey) {
   state.detailLot = lotKey || (state.view === 'lot' ? state.lot : null) || state.detailLot;
   if (!dlg.open) dlg.showModal();
   await loadRemoteDetail();
+}
+
+/* ============================================================
+   Mở lô: tải bản mới nhất từ Google Sheet
+   ============================================================ */
+function lotHasDraft(key) {
+  const drafts = readDrafts();
+  return Object.keys(drafts).some(k => k === key || k.startsWith(key + '#'));
+}
+
+function lotInputFocused() {
+  const el = document.activeElement;
+  const view = $('#view-lot');
+  return !!(el && view && view.contains(el) && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+}
+
+function lotRemoteSet(key, level, text, retry) {
+  state.lotRemoteNote = text ? { key, level: level || 'info', text, retry: !!retry } : null;
+  renderLotRemoteNote();
+}
+
+function renderLotRemoteNote() {
+  const host = $('#lotRemoteNote');
+  if (!host) return;
+  const n = state.lotRemoteNote;
+  if (!n || state.view !== 'lot' || state.lot !== n.key) {
+    host.hidden = true;
+    host.innerHTML = '';
+    return;
+  }
+  host.hidden = false;
+  host.innerHTML = `<div class="alert ${n.level}">
+    <div class="alert-body">${esc(n.text)}</div>
+    ${n.retry ? `<button type="button" class="btn btn-sm" id="btnLotRemoteRetry">${esc(t('detailRefresh'))}</button>` : ''}
+  </div>`;
+  const btn = $('#btnLotRemoteRetry');
+  if (btn) btn.addEventListener('click', () => pullRemoteLot(n.key));
+}
+
+function remoteRowKey(row) {
+  return String(row.dir || '') + '|' + (row.hang == null ? '' : String(row.hang));
+}
+
+function applyRemoteLot(key, remote, meta, remoteAt, device) {
+  const lot = ensureLot(key);
+  const byKey = new Map();
+  (lot.rows || []).forEach(r => {
+    const k = remoteRowKey(r);
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push(r);
+  });
+  lot.rows = (remote.rows || []).map(r => {
+    const k = remoteRowKey(r);
+    const list = byKey.get(k);
+    const old = list && list.length ? list.shift() : null;
+    const row = {
+      uid: (old && old.uid) || uid(),
+      hang: r.hang == null ? null : Number(r.hang),
+      dir: String(r.dir || ''),
+    };
+    FIELDS.forEach(f => { row[f] = r[f] == null ? '' : r[f]; });
+    return row;
+  });
+  if (meta) {
+    lot.meta.done = !!meta.done;
+    if (meta.doneAt) lot.meta.doneAt = meta.doneAt;
+    if (meta.nguoi) lot.meta.nguoi = meta.nguoi;
+    if (meta.ngay) lot.meta.ngay = meta.ngay;
+  }
+  lot.updatedAt = remoteAt || new Date().toISOString();
+  persist({ quiet: true });
+
+  const dev = String(device || (meta && meta.nguoi) || '').trim();
+  const timeText = (remoteAt && dateTimeVN(remoteAt)) || remote.updatedAtDisplay || '—';
+  const same = dev && syncCfg.device && dev.toLowerCase() === syncCfg.device.trim().toLowerCase();
+  if (dev && !same) {
+    lotRemoteSet(key, 'warn', t('lotRemoteConflict', { device: dev, time: timeText }));
+  } else if (dev) {
+    lotRemoteSet(key, 'ok', t('lotRemoteUpdated', { device: dev, time: timeText }));
+  } else {
+    lotRemoteSet(key, 'info', t('lotRemoteUpdatedNoDev', { time: timeText }));
+  }
+  if (state.view === 'lot' && state.lot === key) renderLot();
+}
+
+async function fetchRemoteLotMeta(base, key, signal) {
+  const u = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'action=progress';
+  const res = await fetch(u, { redirect: 'follow', cache: 'no-store', signal });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data || data.ok === false || !Array.isArray(data.lots)) return null;
+  return data.lots.find(l => String(l.lot) === String(key)) || null;
+}
+
+async function pullRemoteLot(key) {
+  if (!key || !syncCfg.url || navigator.onLine === false) return;
+  const token = ++state.lotRemoteSeq;
+  const lotAtStart = (DB.lots[key] && DB.lots[key].updatedAt) || '';
+  const quickDlg = $('#quickDialog');
+  if (lotHasDraft(key) || (quickDlg && quickDlg.open && state.quickLot === key)) {
+    lotRemoteSet(key, 'warn', t(lotHasDraft(key) ? 'lotRemoteDraft' : 'lotRemoteEditing'));
+    return;
+  }
+  lotRemoteSet(key, 'info', t('lotRemoteLoading'));
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  const base = syncCfg.url.trim();
+  try {
+    const u = base + (base.indexOf('?') >= 0 ? '&' : '?')
+      + 'action=detail&lot=' + encodeURIComponent(key);
+    const res = await fetch(u, { redirect: 'follow', cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
+    const data = await res.json();
+    if (!data || data.ok === false) throw new Error((data && data.error) || t('syncAppError', { err: '' }));
+    if (!Array.isArray(data.lots)) throw new Error(t('remoteOldScript'));
+    if (token !== state.lotRemoteSeq || state.view !== 'lot' || state.lot !== key) return;
+    const remote = data.lots.find(l => String(l.lot) === String(key));
+    if (!remote || !(remote.rows || []).length) {
+      lotRemoteSet(key, '', '');
+      return;
+    }
+    const remoteAt = String(remote.updatedAt || '');
+    const remoteTs = Date.parse(remoteAt) || 0;
+    if (!remoteTs) {
+      lotRemoteSet(key, '', '');
+      return;
+    }
+    const localAt = (DB.lots[key] && DB.lots[key].updatedAt) || '';
+    const localTs = Date.parse(localAt) || 0;
+    if (localAt && localTs >= remoteTs) {
+      if (localTs > remoteTs) lotRemoteSet(key, 'warn', t('lotRemoteLocalNewer'));
+      else lotRemoteSet(key, '', '');
+      return;
+    }
+    if (lotHasDraft(key)) {
+      lotRemoteSet(key, 'warn', t('lotRemoteDraft'));
+      return;
+    }
+    if ((quickDlg && quickDlg.open && state.quickLot === key) || lotInputFocused()) {
+      lotRemoteSet(key, 'warn', t('lotRemoteEditing'));
+      return;
+    }
+    let meta = null;
+    try { meta = await fetchRemoteLotMeta(base, key, ctrl.signal); } catch (err) { meta = null; }
+    if (token !== state.lotRemoteSeq || state.view !== 'lot' || state.lot !== key) return;
+    if (((DB.lots[key] && DB.lots[key].updatedAt) || '') !== lotAtStart) return;
+    if (lotHasDraft(key) || (quickDlg && quickDlg.open && state.quickLot === key) || lotInputFocused()) {
+      lotRemoteSet(key, 'warn', t('lotRemoteEditing'));
+      return;
+    }
+    applyRemoteLot(key, remote, meta, remoteAt, remote.device);
+  } catch (err) {
+    if (token !== state.lotRemoteSeq) return;
+    if (state.view === 'lot' && state.lot === key && navigator.onLine !== false) {
+      lotRemoteSet(key, 'warn', t('lotRemoteError', { err: err.message }), true);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function syncUrlFromInput() {

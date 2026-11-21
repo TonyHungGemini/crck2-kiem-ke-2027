@@ -70,6 +70,11 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
   kèm mốc `clearedAt` mới hơn bản trên Sheet) thì script mới gỡ các dòng cũ của lô đó
   ở tab **Tiến độ** và **Chi tiết**. Máy chỉ mở lô hoặc sửa thông tin phiếu (hướng,
   ngày, người KK…) không còn xoá dữ liệu của máy khác.
+- Khi **mở một lô**, app tự đọc bản mới nhất của lô đó từ tab **Chi tiết** và **Tiến độ**.
+  Nếu máy khác lưu sau, app tải bản đó về máy và hiện cảnh báo “Lô này vừa được
+  … sửa lúc …”. Nếu máy đang dùng có bản chưa đồng bộ mới hơn, hoặc đang có bản nháp
+  nhập dở, app giữ bản trên máy để tránh ghi đè. Bản tải về gồm số liệu từng hàng,
+  trạng thái hoàn tất và người KK; hướng lô và ghi chú vẫn giữ trên máy.
 - Trong app, bấm **Đồng bộ Google → Tải tiến độ đội về máy** (hoặc mở tab **Bản đồ tiến độ**)
   để đọc tiến độ các máy khác về bản đồ: lô do máy khác nhập/hoàn tất hiện viền nét đứt.
   Dữ liệu chỉ để xem, không ghi vào dữ liệu của máy đang dùng.
