@@ -577,6 +577,17 @@ body.lang-km .rows-table input,body.lang-km .pt-ref,body.lang-km .pt-diff,body.l
 .noti-state.st-warn{background:var(--amber-soft);color:var(--amber)}
 .noti-state.st-doing{background:var(--blue-soft);color:var(--blue)}
 .noti-empty{margin:4px 0;padding:14px;border:1px dashed var(--line-strong);border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:13px;text-align:center}
+.noti-tabs{display:flex;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;margin:0 0 10px;width:max-content}
+.noti-tab{font-family:var(--font-ui);font-size:12.5px;font-weight:600;color:var(--muted);background:transparent;border:0;border-radius:9px;padding:6px 14px;cursor:pointer}
+.noti-tab:hover{color:var(--ink)}
+.noti-tab.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.noti-history-bar{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.noti-history-bar select{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);max-width:100%}
+.noti-day{display:flex;flex-direction:column;gap:6px;margin:0 0 10px}
+.noti-day-head{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:2px 2px 0}
+.noti-hist .noti-lot{font-size:13.5px}
+.noti-hist .noti-sub{white-space:normal}
+.noti-hist-changed{font-family:var(--tab-nums);font-weight:600;color:var(--ink)}
 .noti-foot-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
 .noti-foot-row .footnote{margin:0;flex:1;min-width:200px}
 .noti-foot-row .btn{flex:none;margin-left:auto}

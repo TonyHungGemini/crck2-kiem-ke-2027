@@ -25,6 +25,7 @@ const DAILY_HEADERS = [
 const LOG_HEADERS = [
   'Thời điểm', 'Lý do', 'Lô', 'KV', 'Trạng thái',
   'Tổng 2027', 'Tổng 2026', 'Lệch', 'Người KK',
+  'Máy / người nhập', 'Ngày', 'Số lô gửi', 'Số hàng gửi', 'Lô thay đổi',
 ];
 const DETAIL_HEADERS = [
   'Lô', 'KV', 'ID lô', 'Đội', 'Hàng', 'Tổng ĐT',
@@ -128,6 +129,57 @@ function doGet(e) {
       return json_({ ok: false, error: String((err && err.message) || err) });
     }
   }
+  if (action === 'history') {
+    try {
+      const days = Math.min(365, Math.max(1, Number((e.parameter && e.parameter.days) || 30) || 30));
+      const ss = getSpreadsheet_();
+      const sh = ss.getSheetByName('Nhật ký');
+      const entries = [];
+      if (sh && sh.getLastRow() > 1) {
+        const lastCol = sh.getLastColumn();
+        const head = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+        const ix = name => head.indexOf(name);
+        const c = {
+          at: ix('Thời điểm'), reason: ix('Lý do'), lot: ix('Lô'), kv: ix('KV'),
+          status: ix('Trạng thái'), dt: ix('Tổng 2027'), delta: ix('Lệch'),
+          nguoi: ix('Người KK'), device: ix('Máy / người nhập'), day: ix('Ngày'),
+          count: ix('Số lô gửi'), rows: ix('Số hàng gửi'), changed: ix('Lô thay đổi'),
+        };
+        const allowed = new Set();
+        const base = new Date().getTime();
+        for (let i = 0; i < days; i++) {
+          allowed.add(Utilities.formatDate(new Date(base - i * 86400000), TIMEZONE, 'yyyy-MM-dd'));
+        }
+        const start = Math.max(2, sh.getLastRow() - 2499);
+        const vals = sh.getRange(start, 1, sh.getLastRow() - start + 1, lastCol).getValues();
+        vals.forEach(r => {
+          const at = String(r[c.at] || '');
+          const day = c.day >= 0 && String(r[c.day] || '') ? String(r[c.day]) : vnDayKey_(at);
+          if (!day || !allowed.has(day)) return;
+          const cell = i => (i >= 0 && i < r.length ? r[i] : '');
+          entries.push({
+            at: at,
+            day: day,
+            device: String(cell(c.device) || ''),
+            nguoi: String(cell(c.nguoi) || ''),
+            reason: String(cell(c.reason) || ''),
+            lot: String(cell(c.lot) || ''),
+            kv: String(cell(c.kv) || ''),
+            status: String(cell(c.status) || ''),
+            lots: Number(cell(c.count)) || 0,
+            rows: Number(cell(c.rows)) || 0,
+            changed: String(cell(c.changed) || ''),
+            dt: cell(c.dt) === '' ? null : Number(cell(c.dt)),
+            delta: cell(c.delta) === '' ? null : Number(cell(c.delta)),
+          });
+        });
+        entries.reverse();
+      }
+      return json_({ ok: true, app: APP_ID, at: now_(), days: days, count: entries.length, entries: entries });
+    } catch (err) {
+      return json_({ ok: false, error: String((err && err.message) || err) });
+    }
+  }
   return json_({
     ok: true,
     app: APP_ID,
@@ -158,14 +210,16 @@ function doPost(e) {
 
     const ss = getSpreadsheet_();
     const progress = ensureSheet_(ss, 'Tiến độ', PROGRESS_HEADERS);
+    const oldTs = progressTimestamps_(progress);
     const mergedRows = writeProgress_(progress, payload);
     const totals = progressTotals_(mergedRows);
     writeDaily_(ensureSheet_(ss, 'Theo ngày', DAILY_HEADERS), payload, totals);
     const detail = writeDetails_(ss, payload);
     const warnCount = writeWarnings_(ss, detail);
     appendEntryLog_(ensureSheet_(ss, 'Nhật ký nhập', ENTRY_HEADERS), detail.logs);
-    if (payload.reason === 'lot_done' || payload.reason === 'manual') {
-      appendLog_(ensureSheet_(ss, 'Nhật ký', LOG_HEADERS), payload);
+    const changedLots = changedLots_(payload, oldTs);
+    if (payload.reason === 'manual' || payload.reason === 'test' || payload.reason === 'lot_done' || changedLots.length) {
+      appendLog_(ensureLogSheet_(ss), payload, { changedLots: changedLots });
     }
 
     let mail = false;
@@ -607,19 +661,79 @@ function writeDaily_(sh, payload, totals) {
   sh.getRange(2, 6, Math.max(1, sh.getLastRow() - 1), 3).setNumberFormat('#,##0');
 }
 
-function appendLog_(sh, payload) {
+function ensureLogSheet_(ss) {
+  const sh = ensureSheet_(ss, 'Nhật ký', LOG_HEADERS);
+  const width = LOG_HEADERS.length;
+  const lastCol = sh.getLastColumn();
+  if (lastCol >= width) {
+    const head = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+    if (head[width - 1] === LOG_HEADERS[width - 1]) return sh;
+  }
+  // Sheet cũ chỉ có 9 cột: nối thêm cột mới, giữ nguyên các dòng đã ghi.
+  sh.getRange(1, 1, 1, width).setValues([LOG_HEADERS]);
+  styleHeader_(sh, width);
+  return sh;
+}
+
+function progressTimestamps_(sh) {
+  const map = new Map();
+  if (!sh || sh.getLastRow() < 2) return map;
+  const vals = sh.getRange(2, 2, sh.getLastRow() - 1, PROGRESS_HEADERS.length - 1).getValues();
+  vals.forEach(r => {
+    const lot = String(r[0] || '');
+    if (!lot) return;
+    map.set(lot, isoTime_(r[18]));
+  });
+  return map;
+}
+
+function changedLots_(payload, oldTs) {
+  const out = [];
+  (payload.lots || []).forEach(l => {
+    const lot = String(l.lot || '');
+    if (!lot) return;
+    const active = Number(l.entered) > 0 || l.done;
+    if (!active) return;
+    const inTs = isoTime_(l.updatedAt) || isoTime_(l.doneAt) || isoTime_(l.clearedAt);
+    const old = oldTs.get(lot) || 0;
+    if (inTs > old) out.push(lot);
+  });
+  return out;
+}
+
+function reasonLabel_(reason) {
+  if (reason === 'lot_done') return 'Lô hoàn tất';
+  if (reason === 'test') return 'Kiểm tra kết nối';
+  if (reason === 'auto') return 'Tự động';
+  return 'Đồng bộ tay';
+}
+
+function vnDayKey_(text) {
+  const m = String(text || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+}
+
+function appendLog_(sh, payload, info) {
   const event = payload.event || {};
-  const lot = (payload.lots || []).find(l => l.lot === event.lot) || null;
+  const lots = (payload.lots || []).filter(l => Number(l.entered) > 0 || l.done);
+  const evLot = lots.find(l => String(l.lot) === String(event.lot)) || null;
+  const rowsTotal = lots.reduce((s, l) => s + (Number(l.entered) || 0), 0);
+  const at = formatDateTime_(payload.sentAt);
   sh.appendRow([
-    formatDateTime_(payload.sentAt),
-    payload.reason === 'lot_done' ? 'Lô hoàn tất' : 'Đồng bộ tay',
+    at,
+    reasonLabel_(payload.reason),
     event.lot || '',
-    lot ? (lot.kv || '') : '',
-    lot ? (lot.statusLabel || lot.status || '') : '',
-    lot && lot.dt != null ? lot.dt : '',
-    lot && lot.baseTotal != null ? lot.baseTotal : '',
-    lot && lot.delta != null ? lot.delta : '',
-    lot ? (lot.nguoi || lot.doneBy || '') : '',
+    evLot ? (evLot.kv || '') : '',
+    evLot ? (evLot.statusLabel || evLot.status || '') : '',
+    evLot && evLot.dt != null ? evLot.dt : '',
+    evLot && evLot.baseTotal != null ? evLot.baseTotal : '',
+    evLot && evLot.delta != null ? evLot.delta : '',
+    event.nguoi || (evLot && evLot.nguoi) || '',
+    payload.device || '',
+    vnDayKey_(at),
+    lots.length,
+    rowsTotal,
+    info && info.changedLots ? info.changedLots.join(', ') : '',
   ]);
 }
 
@@ -763,7 +877,7 @@ function testSetup() {
   const ss = getSpreadsheet_();
   ensureSheet_(ss, 'Tiến độ', PROGRESS_HEADERS);
   ensureSheet_(ss, 'Theo ngày', DAILY_HEADERS);
-  ensureSheet_(ss, 'Nhật ký', LOG_HEADERS);
+  ensureLogSheet_(ss);
   ensureSheet_(ss, 'Chi tiết', DETAIL_HEADERS);
   ensureSheet_(ss, 'Cảnh báo', WARN_HEADERS);
   ensureSheet_(ss, 'Nhật ký nhập', ENTRY_HEADERS);

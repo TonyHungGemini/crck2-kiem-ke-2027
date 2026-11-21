@@ -984,6 +984,25 @@ const APP_I18N = {
     notiLot: 'Lô {lot}',
     notiRows: '{n} hàng',
     notiTree: 'cây',
+    notiTabToday: 'Hôm nay',
+    notiTabHistory: 'Lịch sử',
+    historyLead: 'Lịch sử đồng bộ trên Google Sheets: theo ngày, máy nhập và lô thay đổi.',
+    historyRangeAria: 'Khoảng thời gian',
+    historyDeviceAria: 'Máy nhập',
+    historyDays7: '7 ngày',
+    historyDays30: '30 ngày',
+    historyDays90: '90 ngày',
+    historyDays365: '1 năm',
+    historyAllDevices: 'Tất cả máy',
+    historyEmpty: 'Chưa có lần đồng bộ nào trong khoảng này.',
+    historyLoading: 'Đang tải lịch sử…',
+    historyTitle: 'Nhật ký nhập',
+    historyEyebrow: 'Lịch sử đồng bộ',
+    historyFoot: 'Lịch sử lấy từ tab Nhật ký trên Google Sheets, giữ lại để xem sau.',
+    historyError: 'Chưa tải được lịch sử: {err}',
+    historyNoDevice: 'Không rõ máy',
+    historyChanged: 'Lô: {list}',
+    historySync: 'Gửi {n} lô · {rows} hàng',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1364,6 +1383,25 @@ const APP_I18N = {
     notiLot: 'ដីឡូតិ៍ {lot}',
     notiRows: '{n} ជួរ',
     notiTree: 'ដើម',
+    notiTabToday: 'ថ្ងៃនេះ',
+    notiTabHistory: 'ប្រវត្តិ',
+    historyLead: 'ប្រវត្តិធ្វើសមកាលនៅ Google Sheets៖ តាមថ្ងៃ ឧបករណ៍ និងដីឡូតិ៍ដែលបានផ្លាស់ប្តូរ។',
+    historyRangeAria: 'រយៈពេល',
+    historyDeviceAria: 'ឧបករណ៍បញ្ចូល',
+    historyDays7: '7 ថ្ងៃ',
+    historyDays30: '30 ថ្ងៃ',
+    historyDays90: '90 ថ្ងៃ',
+    historyDays365: '1 ឆ្នាំ',
+    historyAllDevices: 'គ្រប់ឧបករណ៍',
+    historyEmpty: 'មិនទាន់មានការធ្វើសមកាលក្នុងរយៈពេលនេះទេ។',
+    historyLoading: 'កំពុងផ្ទុកប្រវត្តិ…',
+    historyTitle: 'កំណត់ហេតុបញ្ចូល',
+    historyEyebrow: 'ប្រវត្តិធ្វើសមកាល',
+    historyFoot: 'ប្រវត្តិទាញពីផ្ទាំង Nhật ký នៅ Google Sheets ដើម្បីមើលពេលក្រោយ។',
+    historyError: 'មិនទាន់ទាញបានប្រវត្តិ៖ {err}',
+    historyNoDevice: 'មិនដឹងឧបករណ៍',
+    historyChanged: 'ដីឡូតិ៍៖ {list}',
+    historySync: 'ផ្ញើ {n} ដីឡូតិ៍ · {rows} ជួរ',
   },
 };
 function t(key, vars) {
@@ -3092,7 +3130,11 @@ function setLang(lang) {
     renderDetailLot();
   }
   const notiDlg = $('#notiDialog');
-  if (notiDlg && notiDlg.open) renderNotiList();
+  if (notiDlg && notiDlg.open) {
+    updateNotiChrome();
+    renderNotiList();
+    if (historyTab === 'history') renderHistory();
+  }
   refreshNotiUi();
 }
 
@@ -4215,13 +4257,187 @@ function openNoti() {
   renderNotiList();
   markNotiSeen();
   refreshNotiUi();
+  setNotiTab(historyTab);
   if (!dlg.open) dlg.showModal();
-  pullRemote(false).then(() => {
-    if (!dlg.open) return;
-    renderNotiList();
-    markNotiSeen();
-    refreshNotiUi();
+  if (historyTab === 'today') {
+    pullRemote(false).then(() => {
+      if (!dlg.open || historyTab !== 'today') return;
+      renderNotiList();
+      markNotiSeen();
+      refreshNotiUi();
+    });
+  }
+}
+
+/* ============================================================
+   Lịch sử đồng bộ (tab Nhật ký)
+   ============================================================ */
+let historyTab = 'today';
+let historyDays = 30;
+let historyDevice = '';
+let historyBusy = false;
+let historyData = { at: '', entries: [], error: '' };
+const REASON_KM = {
+  'Đồng bộ tay': 'ធ្វើសមកាលដោយដៃ',
+  'Tự động': 'ស្វ័យប្រវត្តិ',
+  'Lô hoàn tất': 'ដីឡូតិ៍រួចរាល់',
+  'Kiểm tra kết nối': 'ពិនិត្យការភ្ជាប់',
+};
+
+function historyReasonLabel(reason) {
+  const r = String(reason || '');
+  return state.lang === 'km' ? (REASON_KM[r] || r) : r;
+}
+
+function historyTime(at) {
+  const m = String(at || '').match(/(\d{2}):(\d{2})/);
+  return m ? m[1] + ':' + m[2] : String(at || '—');
+}
+
+const WEEKDAY_KM = ['ថ្ងៃអាទិត្យ', 'ថ្ងៃចន្ទ', 'ថ្ងៃអង្គារ', 'ថ្ងៃពុធ', 'ថ្ងៃព្រហស្បតិ៍', 'ថ្ងៃសុក្រ', 'ថ្ងៃសៅរ៍'];
+
+function historyDayLabel(day) {
+  const m = String(day || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(day || '');
+  const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  let wd = '';
+  if (state.lang === 'km') {
+    wd = WEEKDAY_KM[dt.getDay()] || '';
+  } else {
+    try {
+      // Chromium một số bản thiếu dữ liệu locale Khmer nên chỉ dựa vào Intl cho tiếng Việt.
+      wd = dt.toLocaleDateString('vi-VN', { weekday: 'long' });
+    } catch (err) { wd = ''; }
+  }
+  return (wd ? wd.charAt(0).toUpperCase() + wd.slice(1) + ', ' : '') + `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+function historyDevices() {
+  const set = new Set();
+  (historyData.entries || []).forEach(e => {
+    const d = e.device || e.nguoi;
+    if (d) set.add(d);
   });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function historyItemHtml(e) {
+  const dev = e.device || e.nguoi || t('historyNoDevice');
+  const bits = [];
+  if (Number(e.lots) > 0) bits.push(t('historySync', { n: fmt(e.lots), rows: fmt(e.rows || 0) }));
+  else if (Number(e.rows) > 0) bits.push(t('notiRows', { n: fmt(e.rows) }));
+  const changed = e.changed || e.lot;
+  if (changed) bits.push(t('historyChanged', { list: `<span class="noti-hist-changed">${esc(changed)}</span>` }));
+  return `<div class="noti-item noti-hist">
+    <span class="noti-item-main">
+      <span class="noti-lot">${esc(historyTime(e.at))}<span class="noti-kv">${esc(dev)}</span></span>
+      <span class="noti-sub">${esc(historyReasonLabel(e.reason))}${bits.length ? ' · ' + bits.join(' · ') : ''}</span>
+    </span>
+  </div>`;
+}
+
+function renderHistory() {
+  const host = $('#notiHistory');
+  if (!host) return;
+  const sel = $('#notiHistoryDevice');
+  if (sel) {
+    const devices = historyDevices();
+    if (historyDevice && !devices.includes(historyDevice)) historyDevice = '';
+    sel.innerHTML = `<option value="">${esc(t('historyAllDevices'))}</option>`
+      + devices.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+    sel.value = historyDevice;
+  }
+  if (historyData.error) {
+    host.innerHTML = `<p class="noti-empty">${esc(t('historyError', { err: historyData.error }))}</p>`;
+    return;
+  }
+  if (!historyData.at) {
+    host.innerHTML = `<p class="noti-empty">${esc(t('historyLoading'))}</p>`;
+    return;
+  }
+  const entries = historyData.entries.filter(e => !historyDevice || (e.device || e.nguoi || '') === historyDevice);
+  if (!entries.length) {
+    host.innerHTML = `<p class="noti-empty">${esc(t('historyEmpty'))}</p>`;
+    return;
+  }
+  const groups = new Map();
+  entries.forEach(e => {
+    const key = e.day || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  });
+  host.innerHTML = [...groups.keys()].map(day => `<div class="noti-day">
+    <div class="noti-day-head">${esc(historyDayLabel(day))}</div>
+    ${groups.get(day).map(historyItemHtml).join('')}
+  </div>`).join('');
+}
+
+async function loadHistory(force) {
+  if (historyBusy) return;
+  if (!syncCfg.url) {
+    historyData = { at: '', entries: [], error: t('syncNoUrl') };
+    renderHistory();
+    return;
+  }
+  historyBusy = true;
+  if (force || !historyData.at) {
+    historyData = { at: '', entries: historyData.entries, error: '' };
+    renderHistory();
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const u = syncCfg.url.trim();
+    const url = u + (u.indexOf('?') >= 0 ? '&' : '?') + 'action=history&days=' + historyDays;
+    const res = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
+    const data = await res.json();
+    if (!data || data.ok === false) throw new Error((data && data.error) || t('syncAppError', { err: '' }));
+    if (!Array.isArray(data.entries)) throw new Error(t('remoteOldScript'));
+    historyData = { at: data.at || '', entries: data.entries, error: '' };
+  } catch (err) {
+    historyData = { at: '', entries: [], error: err.message };
+  } finally {
+    clearTimeout(timer);
+    historyBusy = false;
+    renderHistory();
+  }
+}
+
+function updateNotiChrome() {
+  const isHist = historyTab === 'history';
+  const title = $('#notiTitle');
+  const eyebrow = $('#notiEyebrow');
+  const footToday = $('#notiFootToday');
+  const footHist = $('#notiFootHistory');
+  if (title) title.textContent = t(isHist ? 'historyTitle' : 'notiTitle');
+  if (eyebrow) eyebrow.textContent = t(isHist ? 'historyEyebrow' : 'notiEyebrow');
+  if (footToday) footToday.hidden = isHist;
+  if (footHist) footHist.hidden = !isHist;
+}
+
+function setNotiTab(tab) {
+  historyTab = tab === 'history' ? 'history' : 'today';
+  const isHist = historyTab === 'history';
+  updateNotiChrome();
+  $$('[data-noti-tab]').forEach(btn => {
+    const on = btn.dataset.notiTab === historyTab;
+    btn.classList.toggle('is-active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  const list = $('#notiList');
+  const hist = $('#notiHistory');
+  const bar = $('#notiHistoryBar');
+  const leadToday = $('#notiLeadToday');
+  const leadHist = $('#notiLeadHistory');
+  if (list) list.hidden = isHist;
+  if (hist) hist.hidden = !isHist;
+  if (bar) bar.hidden = !isHist;
+  if (leadToday) leadToday.hidden = isHist;
+  if (leadHist) leadHist.hidden = !isHist;
+  const daysSel = $('#notiHistoryDays');
+  if (daysSel) daysSel.value = String(historyDays);
+  if (isHist) loadHistory(false);
 }
 
 let detailBusy = false;
@@ -4611,11 +4827,26 @@ function setupDialogs() {
   $('#btnNotiRefresh').addEventListener('click', async () => {
     const btn = $('#btnNotiRefresh');
     btn.disabled = true;
-    await pullRemote(false);
-    renderNotiList();
-    markNotiSeen();
-    refreshNotiUi();
+    if (historyTab === 'history') {
+      await loadHistory(true);
+    } else {
+      await pullRemote(false);
+      renderNotiList();
+      markNotiSeen();
+      refreshNotiUi();
+    }
     btn.disabled = false;
+  });
+  $$('[data-noti-tab]').forEach(btn => {
+    btn.addEventListener('click', () => setNotiTab(btn.dataset.notiTab));
+  });
+  $('#notiHistoryDays').addEventListener('change', e => {
+    historyDays = Number(e.target.value) || 30;
+    loadHistory(true);
+  });
+  $('#notiHistoryDevice').addEventListener('change', e => {
+    historyDevice = e.target.value;
+    renderHistory();
   });
   $('#notiList').addEventListener('click', e => {
     const item = e.target.closest('[data-noti-lot]');

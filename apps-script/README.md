@@ -54,7 +54,11 @@ Ngoài tổng tiến độ, script còn ghi **chi tiết từng hàng**, **danh 
     của lô chia hướng ghi rõ “Hướng A/B/C”.
   - **Nhật ký nhập**: ai/máy nào thêm, sửa hay xoá hàng nào, giá trị cũ → mới.
     Lần đồng bộ đầu tiên ghi gọn “Nhập lần đầu: N hàng” cho mỗi lô.
-  - **Nhật ký**: các lần lô hoàn tất và đồng bộ tay.
+  - **Nhật ký**: mỗi lần đồng bộ có thay đổi, lô hoàn tất hoặc đồng bộ tay là một
+    dòng: thời điểm, lý do, lô/KV/trạng thái, tổng 2027–2026, lệch, người KK, máy
+    nhập, ngày, số lô & số hàng gửi, danh sách lô vừa thay đổi. Tab này giữ lâu
+    dài để xem lại; app đọc qua `?action=history&days=N` cho mục **Thông báo →
+    Lịch sử** (lọc 7/30/90/365 ngày và theo máy nhập).
 - Nhiều máy/điện thoại dùng **cùng một URL** sẽ ghi về cùng một Sheet. Mỗi lần gửi,
   script **gộp theo lô**: lô nào đã có số liệu và mới hơn (theo thời điểm lưu trên máy)
   thì giữ bản mới, máy khác không xoá mất lô đã nhập. Các lần đồng bộ trùng nhau được
