@@ -3583,6 +3583,143 @@ function downloadWorkbook(wb, filename) {
   }
 }
 
+/* Thư viện xlsx không ghi được hướng giấy: xuất zip không nén rồi chèn
+   pageSetup + sheetPr vào XML của sheet đầu tiên để in khổ ngang. */
+const ZIP_CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function zipCrc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = ZIP_CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function xlsxLandscape(bytes) {
+  const dec = new TextDecoder();
+  const enc = new TextEncoder();
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const entries = [];
+  let off = 0;
+  while (off + 30 <= bytes.length && dv.getUint32(off, true) === 0x04034b50) {
+    const flags = dv.getUint16(off + 6, true);
+    const method = dv.getUint16(off + 8, true);
+    const nlen = dv.getUint16(off + 26, true);
+    const elen = dv.getUint16(off + 28, true);
+    if (flags & 8) throw new Error('zip data descriptor');
+    const nameBytes = bytes.subarray(off + 30, off + 30 + nlen);
+    const extra = bytes.subarray(off + 30 + nlen, off + 30 + nlen + elen);
+    const start = off + 30 + nlen + elen;
+    const csize = dv.getUint32(off + 18, true);
+    const entry = {
+      flags,
+      method,
+      time: dv.getUint16(off + 10, true),
+      date: dv.getUint16(off + 12, true),
+      crc: dv.getUint32(off + 14, true),
+      csize,
+      usize: dv.getUint32(off + 22, true),
+      nameBytes,
+      extra,
+      data: bytes.subarray(start, start + csize),
+    };
+    if (dec.decode(nameBytes) === 'xl/worksheets/sheet1.xml') {
+      if (method !== 0) throw new Error('sheet xml is compressed');
+      let xml = dec.decode(entry.data);
+      if (xml.indexOf('<pageSetup ') === -1) {
+        const pageSetup = '<pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0"/>';
+        xml = /<pageMargins[^>]*\/>/.test(xml)
+          ? xml.replace(/(<pageMargins[^>]*\/>)/, '$1' + pageSetup)
+          : xml.replace('</worksheet>', pageSetup + '</worksheet>');
+        if (xml.indexOf('<sheetPr') === -1) {
+          const open = xml.match(/<worksheet[^>]*>/);
+          if (open) xml = xml.replace(open[0], open[0] + '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+        }
+      }
+      entry.data = enc.encode(xml);
+      entry.method = 0;
+      entry.crc = zipCrc32(entry.data);
+      entry.csize = entry.usize = entry.data.length;
+    }
+    entries.push(entry);
+    off = start + csize;
+  }
+  if (!entries.length) throw new Error('empty zip');
+  const locals = [];
+  const central = [];
+  let offset = 0;
+  entries.forEach(e => {
+    const lh = new Uint8Array(30 + e.nameBytes.length + e.extra.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, e.flags, true);
+    lv.setUint16(8, e.method, true);
+    lv.setUint16(10, e.time, true);
+    lv.setUint16(12, e.date, true);
+    lv.setUint32(14, e.crc, true);
+    lv.setUint32(18, e.csize, true);
+    lv.setUint32(22, e.usize, true);
+    lv.setUint16(26, e.nameBytes.length, true);
+    lv.setUint16(28, e.extra.length, true);
+    lh.set(e.nameBytes, 30);
+    lh.set(e.extra, 30 + e.nameBytes.length);
+    locals.push(lh, e.data);
+    const ch = new Uint8Array(46 + e.nameBytes.length);
+    const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, e.flags, true);
+    cv.setUint16(10, e.method, true);
+    cv.setUint16(12, e.time, true);
+    cv.setUint16(14, e.date, true);
+    cv.setUint32(16, e.crc, true);
+    cv.setUint32(20, e.csize, true);
+    cv.setUint32(24, e.usize, true);
+    cv.setUint16(28, e.nameBytes.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(e.nameBytes, 46);
+    central.push(ch);
+    offset += lh.length + e.data.length;
+  });
+  const centralSize = central.reduce((s, c) => s + c.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, entries.length, true);
+  ev.setUint16(10, entries.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, offset, true);
+  const parts = locals.concat(central, [eocd]);
+  const total = parts.reduce((s, p) => s + p.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  parts.forEach(p => { out.set(p, pos); pos += p.length; });
+  return out;
+}
+function downloadLandscapeWorkbook(wb, filename) {
+  try {
+    const raw = new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx', compression: false, cellStyles: true }));
+    const blob = new Blob([xlsxLandscape(raw)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast(t('toastExportOk', { file: filename }), 'ok');
+  } catch (err) {
+    downloadWorkbook(wb, filename);
+  }
+}
+
 function buildLotSheet(key, meta, rows, agg, dirLabel, refMap) {
   const sorted = rows.filter(rowHasData).slice().sort((a, b) => (a.hang || 0) - (b.hang || 0));
   const map = new Map(sorted.map(r => [r.hang, r]));
@@ -3905,14 +4042,15 @@ function exportSummaryForm() {
     total.c += agg.c; total.k1 += agg.k1; total.k2 += agg.k2; total.o += agg.o;
   });
   const totalExcel = 10 + n;
-  aoa.push(['Tổng cộng', '', '', '', '', '', '', total.area, total.dt, total.g, total.plus, total.c, total.k1, total.k2, total.o]);
+  const signRow = 13 + n;
+  aoa.push(['Tổng cộng', null, null, null, null, null, null, total.area, total.dt, total.g, total.plus, total.c, total.k1, total.k2, total.o]);
   aoa.push([]);
   aoa.push([]);
-  aoa.push(['', '', 'LẬP BIỂU', '', '', '', '', '', '', '', '', 'ĐỘI TRƯỞNG']);
+  aoa.push([null, null, 'LẬP BIỂU', null, null, null, null, null, null, null, null, 'ĐỘI TRƯỞNG']);
 
   const ws = makeSheet(
     aoa,
-    ['I1:N1', 'I2:N2', 'I3:N3', 'B6:O6', 'B7:O7', `A${totalExcel}:G${totalExcel}`],
+    ['I1:N1', 'I2:N2', 'I3:N3', 'B6:O6', 'B7:O7', `A${totalExcel}:G${totalExcel}`, `C${signRow}:E${signRow}`, `L${signRow}:N${signRow}`],
     [4.16, 16.5, 6, 4.5, 6, 6.16, 7.83, 9],
     { 7: '#,##0.00' }
   );
@@ -3946,8 +4084,8 @@ function exportSummaryForm() {
     xlStyleRow(ws, 9 + i, 0, 14, { font: TNR(11, i === n), alignment: center, border: XL_BORDER });
   }
   xlStyleRow(ws, 9 + n, 8, 14, { font: TNR(11, true), alignment: center, border: XL_BORDER });
-  xlCell(ws, 12 + n, 2).s = { font: TNR(11, true) };
-  xlCell(ws, 12 + n, 11).s = { font: TNR(11, true) };
+  xlCell(ws, 12 + n, 2).s = { font: TNR(11, true), alignment: center };
+  xlCell(ws, 12 + n, 11).s = { font: TNR(11, true), alignment: center };
   ws['!rows'] = [];
   ws['!rows'][5] = { hpt: 19.5 };
   ws['!rows'][6] = { hpt: 14.25 };
@@ -3957,7 +4095,7 @@ function exportSummaryForm() {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Biểu tổng hợp');
-  downloadWorkbook(wb, `KK2027_BieuTongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
+  downloadLandscapeWorkbook(wb, `KK2027_BieuTongHop_D2_${todayISO().replace(/-/g, '')}.xlsx`);
 }
 
 /* ============================================================
