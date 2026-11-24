@@ -27,6 +27,7 @@ const BASE_BY_LOT = new Map(BASELINE.map(l => [l.lot, l]));
 const BASE_ORDER = new Map(BASELINE.map((l, i) => [l.lot, i]));
 const PHUC_TRA = (window.KK_PHUCTRA && window.KK_PHUCTRA.lots) || {};
 const PHUC_TRA_SUMS = (window.KK_PHUCTRA && window.KK_PHUCTRA.sums) || {};
+const PHUC_TRA_COMPS = (window.KK_PHUCTRA && window.KK_PHUCTRA.comps) || {};
 const PHUC_TRA_MIN = (window.KK_PHUCTRA && window.KK_PHUCTRA.minDiff) || 2;
 /* Lô chia hướng: nhập và kiểm tra riêng từng hướng, tổng chung so với 2026. */
 const LOT_DIRECTIONS = {
@@ -379,6 +380,15 @@ function phucTraRef(key, hang, dir, merged) {
   const ref = map[String(hang)];
   return Number.isFinite(ref) ? ref : null;
 }
+// 2026 từng chỉ tiêu của hàng, thứ tự [g, plus, c, k1, k2, o].
+function phucTraComps(key, hang, dir) {
+  if (!Number.isInteger(hang)) return null;
+  const all = PHUC_TRA_COMPS[key];
+  if (!all) return null;
+  const block = dir && all[dir] ? all[dir] : all;
+  const arr = block[String(hang)];
+  return Array.isArray(arr) ? arr : null;
+}
 function hasPhucTra(key) {
   return !!PHUC_TRA[key];
 }
@@ -722,7 +732,7 @@ const APP_I18N = {
     check2Sum27Ok: 'Tổng 6 cột khớp tổng ĐT của lô.',
     check2Sum27Diff: 'Tổng 6 cột lệch {n} so với tổng ĐT của lô.',
     check2Sum26Diff: 'Số 2026 tự lệch {n} giữa tổng và 6 cột (theo bảng gốc).',
-    check2RowsTitle: 'Đối chiếu từng hàng (2026 → 2027)',
+    check2RowsTitle: 'Đối chiếu từng hàng · từng chỉ tiêu 2026 | 2027',
     check2ColNote: 'Ghi chú',
     check2RowOk: 'Khớp',
     check2RowSmall: 'Lệch nhỏ',
@@ -735,6 +745,7 @@ const APP_I18N = {
     check2RowsDirsNote: '2026 đối chiếu theo từng hướng; hàng có trong 2026 mà chưa nhập sẽ hiện “—”.',
     check2RowsPlainNote: '2026 đối chiếu theo số phúc tra từng hàng; hàng chưa nhập sẽ hiện “—”.',
     check2RowsNoRefNote: 'Lô này chưa có bảng phúc tra từng hàng để so 2026.',
+    check2RowsPairNote: 'Mỗi chỉ tiêu xếp 2026 cạnh 2027 để so trực tiếp.',
     check2RowsSummary: 'Có {n} hàng · {d} lệch · {m} thiếu 2027.',
     markDone: 'Đánh dấu hoàn tất',
     reopenLot: 'Mở lại lô',
@@ -1181,7 +1192,7 @@ const APP_I18N = {
     check2Sum27Ok: 'ផលបូក 6 ជួរត្រូវនឹងផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
     check2Sum27Diff: 'ផលបូក 6 ជួរខុស {n} ពីផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
     check2Sum26Diff: 'លេខ 2026 ខ្លួនឯងខុស {n} រវាងផលបូក និង 6 ជួរ (តាមតារាងដើម)។',
-    check2RowsTitle: 'ប្រៀបធៀបជួរនីមួយៗ (2026 → 2027)',
+    check2RowsTitle: 'ប្រៀបធៀបជួរនីមួយៗ · ចំណុចនីមួយៗ 2026 | 2027',
     check2ColNote: 'កំណត់សម្គាល់',
     check2RowOk: 'ត្រូវ',
     check2RowSmall: 'ខុសតិច',
@@ -1194,6 +1205,7 @@ const APP_I18N = {
     check2RowsDirsNote: '2026 ប្រៀបធៀបតាមទិសដៅនីមួយៗ។ ជួរដែលមានក្នុង 2026 តែមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsPlainNote: '2026 ប្រៀបធៀបតាមលេខផ្ទៀងផ្ទាត់ជួរនីមួយៗ។ ជួរដែលមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsNoRefNote: 'ដីឡូតិ៍នេះមិនមានតារាងផ្ទៀងផ្ទាត់ជួរនីមួយៗសម្រាប់ប្រៀបធៀប 2026 ទេ។',
+    check2RowsPairNote: 'ចំណុចនីមួយៗ ដាក់ 2026 ជាប់នឹង 2027 ដើម្បីប្រៀបធៀបផ្ទាល់។',
     check2RowsSummary: 'មាន {n} ជួរ · ខុស {d} · ខ្វះ 2027 {m}។',
     markDone: 'សម្គាល់ថារួចរាល់',
     reopenLot: 'បើកដីឡូតិ៍ឡើងវិញ',
@@ -1591,6 +1603,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 66,
+    date: '24/11/2026',
+    vi: { title: 'So từng chỉ tiêu 2026 cạnh 2027', items: ['Bảng từng hàng xếp mỗi chỉ tiêu thành cặp 2026 | 2027: Tổng ĐT, G, +, C, K1, K2, O. Số 2027 lệch với 2026 được tô nhẹ để dễ thấy; vẫn sửa trực tiếp cột 2027 và lưu tại chỗ.'] },
+    km: { title: 'ប្រៀបធៀបចំណុចនីមួយៗ 2026 ជាប់នឹង 2027', items: ['តារាងជួរនីមួយៗដាក់ចំណុចនីមួយៗជាគូ 2026 | 2027៖ សរុប, G, +, C, K1, K2, O។ លេខ 2027 ដែលខុសពី 2026 ត្រូវបានដាក់ពណ៌ស្រាលដើម្បីមើលឃើញងាយ។ នៅតែកែជួរ 2027 និងរក្សាទុកនៅនឹងកន្លែងបាន។'] },
+  },
   {
     v: 65,
     date: '24/11/2026',
@@ -2580,7 +2598,7 @@ function check2RowsData(key) {
     mergeDirRows(lotRows(key)).filter(rowHasData).forEach(m => {
       seen.add(String(m.hang));
       const rv = mergedRef[String(m.hang)];
-      items.push({ dir: '', hang: m.hang, ref: Number.isFinite(rv) ? rv : null, vals: check2RowVals(m), editable: false });
+      items.push({ dir: '', hang: m.hang, ref: Number.isFinite(rv) ? rv : null, c26: phucTraComps(key, m.hang, ''), vals: check2RowVals(m), editable: false });
     });
     Object.keys(mergedRef).forEach(h => {
       if (seen.has(String(h))) return;
@@ -2588,7 +2606,7 @@ function check2RowsData(key) {
       if (!Number.isInteger(hang)) return;
       const ref = Number(mergedRef[h]);
       if (!Number.isFinite(ref)) return;
-      items.push({ dir: '', hang, ref, vals: null, editable: false });
+      items.push({ dir: '', hang, ref, c26: phucTraComps(key, hang, ''), vals: null, editable: false });
     });
     return { items: items.sort((a, b) => a.hang - b.hang), mode: 'merged' };
   }
@@ -2598,7 +2616,7 @@ function check2RowsData(key) {
       const block = [];
       rowsInDir(key, dir).filter(r => rowHasData(r) && Number.isInteger(r.hang)).forEach(r => {
         seen.add(String(r.hang));
-        block.push({ uid: r.uid, dir, hang: r.hang, ref: phucTraRef(key, r.hang, dir, false), vals: check2RowVals(r), editable: true });
+        block.push({ uid: r.uid, dir, hang: r.hang, ref: phucTraRef(key, r.hang, dir, false), c26: phucTraComps(key, r.hang, dir), vals: check2RowVals(r), editable: true });
       });
       const map = pt && pt.dirs && pt.dirs[dir];
       if (map) Object.keys(map).forEach(h => {
@@ -2607,7 +2625,7 @@ function check2RowsData(key) {
         if (!Number.isInteger(hang)) return;
         const ref = Number(map[h]);
         if (!Number.isFinite(ref)) return;
-        block.push({ uid: '', dir, hang, ref, vals: null, editable: true });
+        block.push({ uid: '', dir, hang, ref, c26: phucTraComps(key, hang, dir), vals: null, editable: true });
       });
       block.sort((a, b) => a.hang - b.hang).forEach(x => items.push(x));
     });
@@ -2616,7 +2634,7 @@ function check2RowsData(key) {
   const seen = new Set();
   lotRows(key).filter(r => rowHasData(r) && Number.isInteger(r.hang)).forEach(r => {
     seen.add(String(r.hang));
-    items.push({ uid: r.uid, dir: '', hang: r.hang, ref: phucTraRef(key, r.hang, '', false), vals: check2RowVals(r), editable: true });
+    items.push({ uid: r.uid, dir: '', hang: r.hang, ref: phucTraRef(key, r.hang, '', false), c26: phucTraComps(key, r.hang, ''), vals: check2RowVals(r), editable: true });
   });
   if (pt && !pt.dirs && !pt.ref) {
     Object.keys(pt).forEach(h => {
@@ -2625,7 +2643,7 @@ function check2RowsData(key) {
       if (!Number.isInteger(hang)) return;
       const ref = Number(pt[h]);
       if (!Number.isFinite(ref)) return;
-      items.push({ uid: '', dir: '', hang, ref, vals: null, editable: true });
+      items.push({ uid: '', dir: '', hang, ref, c26: phucTraComps(key, hang, ''), vals: null, editable: true });
     });
   }
   items.sort((a, b) => a.hang - b.hang);
@@ -2644,9 +2662,13 @@ function renderCheck2Rows(key) {
   if (!items.length) { host.hidden = true; return; }
   host.hidden = false;
   const dirs = mode === 'merged' ? null : lotDirs(key);
-  const heads = ['2027', 'G', '+', 'C', 'K1', 'K2', 'O'];
-  head.innerHTML = [t('thHang'), dirs ? t('thDir') : '', '2026', ...heads, t('thDelta'), t('check2ColNote')]
-    .filter(Boolean).map(h => `<th>${esc(h)}</th>`).join('');
+  const compLabels = ['G', '+', 'C', 'K1', 'K2', 'O'];
+  const group = label => `<th colspan="2">${esc(label)}</th>`;
+  head.innerHTML = `<tr class="c2-group"><th rowspan="2">${esc(t('thHang'))}</th>`
+    + (dirs ? `<th rowspan="2">${esc(t('thDir'))}</th>` : '')
+    + group(t('metricTotal')) + compLabels.map(group).join('')
+    + `<th rowspan="2">${esc(t('thDelta'))}</th><th rowspan="2">${esc(t('check2ColNote'))}</th></tr>`
+    + `<tr class="c2-year">${'<th>2026</th><th>2027</th>'.repeat(7)}</tr>`;
   let diff = 0;
   let miss = 0;
   body.innerHTML = items.map(item => {
@@ -2677,17 +2699,23 @@ function renderCheck2Rows(key) {
       sumBad = CHECK2_COMP.reduce((sum, k) => sum + (Number(v[k]) || 0), 0) - dt;
       if (sumBad !== 0) { cls = 'neg'; text = t('check2RowSumBad', { d: signed(sumBad) }); }
     }
-    const cell = field => {
+    const pair = (field, ref26) => {
       const val = v && v[field] != null ? v[field] : '';
-      if (!item.editable) return `<td>${val === '' ? '—' : fmt(val)}</td>`;
-      return `<td><input class="c2-in" type="number" inputmode="numeric" min="0" step="1"`
-        + ` data-field="${field}" data-uid="${esc(item.uid || '')}" data-hang="${item.hang}" data-dir="${esc(item.dir || '')}"`
-        + ` value="${val}" aria-label="${field}"></td>`;
+      const hasRef = ref26 != null;
+      const cellCls = hasRef && val !== '' && Number(val) !== Number(ref26) ? ' c2-v27-diff' : '';
+      const v26 = `<td class="c2-v26">${hasRef ? fmt(ref26) : '—'}</td>`;
+      const v27 = !item.editable
+        ? `<td class="${cellCls.trim()}">${val === '' ? '—' : fmt(val)}</td>`
+        : `<td class="${cellCls.trim()}"><input class="c2-in" type="number" inputmode="numeric" min="0" step="1"`
+          + ` data-field="${field}" data-uid="${esc(item.uid || '')}" data-hang="${item.hang}" data-dir="${esc(item.dir || '')}"`
+          + ` value="${val}" aria-label="${field}"></td>`;
+      return v26 + v27;
     };
     const dirCell = dirs ? `<td>${esc(item.dir || '—')}</td>` : '';
-    const cells = [cell('dt'), ...CHECK2_COMP.map(f => cell(f))];
+    const cells = [pair('dt', item.ref)];
+    CHECK2_COMP.forEach((f, i) => cells.push(pair(f, item.c26 ? item.c26[i] : null)));
     return `<tr><td>${esc(String(item.hang))}</td>${dirCell}`
-      + `<td>${has26 ? fmt(item.ref) : '—'}</td>${cells.join('')}`
+      + cells.join('')
       + `<td class="${dCls}">${dText}</td><td class="check2-row-note ${cls}">${esc(text)}</td></tr>`;
   }).join('');
   if (note) {
@@ -2695,7 +2723,7 @@ function renderCheck2Rows(key) {
       : mode === 'dirs' ? t('check2RowsDirsNote')
         : mode === 'rows' ? t('check2RowsPlainNote') : t('check2RowsNoRefNote');
     const edit = mode === 'merged' ? '' : t('check2RowsEditNote');
-    note.textContent = `${base} ${edit} ${t('check2RowsSummary', { n: items.length, d: diff, m: miss })}`.replace(/\s+/g, ' ').trim();
+    note.textContent = `${base} ${t('check2RowsPairNote')} ${edit} ${t('check2RowsSummary', { n: items.length, d: diff, m: miss })}`.replace(/\s+/g, ' ').trim();
   }
   if (check2Focus) {
     const el = body.querySelector(`input[data-uid="${CSS.escape(check2Focus.uid)}"][data-field="${check2Focus.field}"]`);

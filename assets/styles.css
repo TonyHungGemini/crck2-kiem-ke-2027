@@ -374,14 +374,25 @@ details[open] .wn-hint{display:none}
 .check2-dirs th,.check2-dirs td{font-size:12.5px;padding:6px 8px;white-space:nowrap}
 .check2-notes{display:flex;flex-direction:column;gap:4px}
 .check2-rows-wrap{max-height:46vh}
-.check2-rows th,.check2-rows td{font-size:12.5px;padding:6px 8px;white-space:nowrap}
+.check2-rows th,.check2-rows td{font-size:12.5px;padding:6px 6px;white-space:nowrap}
+.check2-rows th[rowspan]{vertical-align:bottom;padding-bottom:7px}
 .check2-rows td:first-child{color:var(--muted);font-weight:650}
+.check2-rows th{text-align:right}
+.check2-rows .c2-group th{font-size:11px;letter-spacing:.04em;color:var(--muted);font-weight:750;
+  text-align:center;border-left:1px solid var(--line);padding:5px 6px}
+.check2-rows .c2-group th:first-child{border-left:0}
+.check2-rows .c2-year th{font-size:11.5px;font-weight:600;color:var(--faint);text-align:right;padding:3px 6px 5px}
+.check2-rows .c2-year th:nth-child(odd){border-left:1px solid var(--line)}
+.check2-rows td.c2-v26{border-left:1px solid var(--line);background:#faf8f3;color:var(--muted);
+  font-family:var(--tab-nums);font-variant-numeric:tabular-nums;text-align:right}
+.check2-rows td.c2-v27-diff{background:var(--accent-soft)}
 .check2-row-note{color:var(--muted);font-size:12px}
 .check2-row-note.neg{color:var(--red);font-weight:600}
 .check2-row-note.pos{color:var(--green);font-weight:600}
 .check2-rows .c2-in{width:56px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fff;
   font-family:var(--tab-nums);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;outline:0;
   transition:border-color .12s,box-shadow .12s}
+.check2-rows .c2-in::-webkit-outer-spin-button,.check2-rows .c2-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .check2-rows .c2-in:hover{border-color:#d8d0be}
 .check2-rows .c2-in:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,119,87,.12)}
 .check2-note{font-size:12.5px;line-height:1.45;margin:0}
@@ -392,8 +403,9 @@ details[open] .wn-hint{display:none}
   .check2-dirs th,.check2-dirs td{font-size:11px;padding:5px 3px}
   .check2-dirs th:first-child,.check2-dirs td:first-child{padding-left:7px}
   .check2-dirs th:last-child,.check2-dirs td:last-child{padding-right:7px}
-  .check2-rows th,.check2-rows td{font-size:11.5px;padding:5px 6px}
-  .check2-rows .c2-in{width:46px;font-size:11.5px;padding:4px 4px}
+  .check2-rows th,.check2-rows td{font-size:11.5px;padding:5px 4px}
+  .check2-rows .c2-group th{font-size:10px;padding:4px 4px}
+  .check2-rows .c2-in{width:44px;font-size:11.5px;padding:4px 3px}
 }
 .footnote{font-size:12px;color:var(--faint);margin-top:8px;line-height:1.45}
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}

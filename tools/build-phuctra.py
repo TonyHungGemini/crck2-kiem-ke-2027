@@ -78,6 +78,14 @@ def parse_sheet(ws, block=0):
     if not cleaned:
         return None
     sums = {'dt': sum(cleaned.values())}
+    comps = {}
+    for hang in cleaned:
+        arr = []
+        for field, offset in COMP_COLS:
+            v = ws.cell(row_of[hang], col + offset).value
+            arr.append(int(v) if isinstance(v, (int, float)) and float(v).is_integer()
+                       else (v if isinstance(v, (int, float)) else None))
+        comps[str(hang)] = arr
     for field, offset in COMP_COLS:
         total = 0
         for hang in cleaned:
@@ -91,7 +99,7 @@ def parse_sheet(ws, block=0):
         if isinstance(a, str) and 'LÔ' in a.upper():
             label = re.split(r'[:：]', a, 1)[1].strip() if (';' not in a and (':' in a or '：' in a)) else a
             break
-    return {'rows': cleaned, 'label': label, 'sheet': ws.title, 'sums': sums}
+    return {'rows': cleaned, 'label': label, 'sheet': ws.title, 'sums': sums, 'comps': comps}
 
 
 # Lô chia hướng: file chi tiết tách sheet / khối bảng theo hướng.
@@ -142,13 +150,13 @@ if os.path.exists(DIR_FILE):
         if header_count:
             dir_blocks_by_sheet[norm(ws.title)] = [parse_sheet(ws, i) for i in range(header_count)]
 
-lots, missing, notes, sums_by_lot = {}, [], {}, {}
+lots, missing, notes, sums_by_lot, comps_by_lot = {}, [], {}, {}, {}
 for lot in base_total:
     use_dir_file = lot in DIR_FILE_DETAIL
     detail = DIR_FILE_DETAIL.get(lot) or DIR_DETAIL.get(lot)
     if detail:
         blocks_source = dir_blocks_by_sheet if use_dir_file else blocks_by_sheet
-        dirs, absent, dir_sums = {}, [], {}
+        dirs, absent, dir_sums, dir_comps = {}, [], {}, {}
         for sheet_name, block, dir_name in detail:
             blocks = blocks_source.get(norm(sheet_name), [])
             parsed = blocks[block] if len(blocks) > block else None
@@ -156,6 +164,7 @@ for lot in base_total:
                 absent.append(dir_name)
                 continue
             dirs[dir_name] = {str(h): v for h, v in sorted(parsed['rows'].items())}
+            dir_comps[dir_name] = parsed['comps']
             add_sums(dir_sums, parsed['sums'])
         if absent:
             notes[lot] = 'missing dirs: ' + ', '.join(absent)
@@ -163,10 +172,11 @@ for lot in base_total:
             continue
         lots[lot] = {'dirs': dirs}
         sums_by_lot[lot] = dir_sums
+        comps_by_lot[lot] = dir_comps
         dir_sum = sum(sum(d.values()) for d in dirs.values())
         ref_detail = MERGE_REF_DETAIL.get(lot)
         if ref_detail:
-            ref, absent_ref, ref_sums = {}, [], {}
+            ref, absent_ref, ref_sums, ref_comps = {}, [], {}, {}
             for sheet_name, block in ref_detail:
                 blocks = blocks_by_sheet.get(norm(sheet_name), [])
                 parsed = blocks[block] if len(blocks) > block else None
@@ -176,12 +186,18 @@ for lot in base_total:
                 add_sums(ref_sums, parsed['sums'])
                 for hang, value in parsed['rows'].items():
                     ref[hang] = ref.get(hang, 0) + value
+                for hang, arr in parsed['comps'].items():
+                    dst = ref_comps.setdefault(hang, [0] * len(COMP_COLS))
+                    for i, v in enumerate(arr):
+                        if isinstance(v, (int, float)):
+                            dst[i] += v
             if absent_ref:
                 notes[lot] = 'missing merge ref: ' + ', '.join(absent_ref)
             elif ref:
                 lots[lot]['ref'] = {str(h): int(v) if float(v).is_integer() else v
                                     for h, v in sorted(ref.items())}
                 sums_by_lot[lot] = ref_sums
+                comps_by_lot[lot] = ref_comps
                 ref_sum = sum(ref.values())
                 notes[lot] = f"ref sum {ref_sum}"
                 if dir_sum != ref_sum:
@@ -222,6 +238,7 @@ for lot in base_total:
     chosen = tied[0]
     lots[lot] = {str(h): v for h, v in sorted(chosen[2]['rows'].items())}
     sums_by_lot[lot] = chosen[2]['sums']
+    comps_by_lot[lot] = chosen[2]['comps']
     if chosen[1] != base_total[lot]:
         notes[lot] = f"sum {chosen[1]} vs baseline {base_total[lot]} (sheet {chosen[2]['sheet']})"
 
@@ -233,6 +250,7 @@ payload = {
     'missing': sorted(missing),
     'lots': lots,
     'sums': sums_by_lot,
+    'comps': comps_by_lot,
 }
 with open(OUT, 'w') as f:
     f.write('/* Sinh bởi tools/build-phuctra.py — dữ liệu Tổng điểm trồng 2026 theo từng hàng */\n')
