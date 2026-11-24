@@ -823,6 +823,7 @@ const APP_I18N = {
     rowCount: '{n} hàng đã nhập',
     calcTitle: 'Điền Tổng ĐT = tổng 6 cột',
     undoCalcTitle: 'Trả lại Tổng ĐT trước khi bấm =',
+    undoEditTitle: 'Hoàn tác lần sửa trước của hàng này',
     delRowTitle: 'Xoá hàng',
     confirmDelRow: 'Xoá hàng {h}? Dữ liệu của hàng này sẽ mất.',
     toastDone: 'Đã đánh dấu hoàn tất lô {lot} lúc {time}',
@@ -1283,6 +1284,7 @@ const APP_I18N = {
     rowCount: 'បានបញ្ចូល {n} ជួរ',
     calcTitle: 'បំពេញសរុប = ផលបូក 6 ជួរឈរ',
     undoCalcTitle: 'ស្ដារសរុបមុនពេលចុច =',
+    undoEditTitle: 'មិនធ្វើវិញការកែមុនរបស់ជួរនេះ',
     delRowTitle: 'លុបជួរ',
     confirmDelRow: 'លុបជួរ {h}? ទិន្នន័យជួរនេះនឹងបាត់។',
     toastDone: 'បានសម្គាល់ដីឡូតិ៍ {lot} ថាបានបញ្ចប់ នៅ {time}',
@@ -1603,6 +1605,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 67,
+    date: '24/11/2026',
+    vi: { title: 'Sửa vòng 2 đồng bộ vòng 1, hoàn tác và cân bằng', items: ['Sửa số trong Kiểm tra vòng 2 giờ cập nhật ngay bảng ở vòng 1. Mỗi hàng có nút “=” điền Tổng ĐT bằng tổng 6 cột và nút hoàn tác trả lại số trước khi sửa. Ô số có nút tăng/giảm như màn hình nhập.'] },
+    km: { title: 'កែជុំទី 2 សមស្របជុំទី 1 មិនធ្វើវិញ និងតម្រូវតុល្យ', items: ['កែលេខក្នុងត្រួតពិនិត្យជុំទី 2 ឥឡូវធ្វើបច្ចុប្បន្នភាពតារាងជុំទី 1 ភ្លាមៗ។ ជួរនីមួយៗមានប៊ូតុង “=” បំពេញសរុបស្មើផលបូក 6 ជួរ និងប៊ូតុងមិនធ្វើវិញ ត្រឡប់លេខមុនពេលកែ។ ប្រអប់លេខមានប៊ូតុងឡើង/ចុះដូចអេក្រង់បញ្ចូល។'] },
+  },
   {
     v: 66,
     date: '24/11/2026',
@@ -2651,6 +2659,14 @@ function check2RowsData(key) {
 }
 
 let check2Focus = null;
+const check2Undo = new Map();
+const CHECK2_UNDO_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 5.5L4.5 9 8 12.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.8 9H14a5.2 5.2 0 0 1 0 10.4h-3.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+
+function check2Remember(row) {
+  const vals = {};
+  FIELDS.forEach(k => { vals[k] = row[k] == null ? null : row[k]; });
+  check2Undo.set(row.uid, { vals });
+}
 
 function renderCheck2Rows(key) {
   const host = $('#check2Rows');
@@ -2714,9 +2730,16 @@ function renderCheck2Rows(key) {
     const dirCell = dirs ? `<td>${esc(item.dir || '—')}</td>` : '';
     const cells = [pair('dt', item.ref)];
     CHECK2_COMP.forEach((f, i) => cells.push(pair(f, item.c26 ? item.c26[i] : null)));
+    const tools = item.uid
+      ? '<span class="check2-tools">'
+        + `<button class="mini-btn undo" type="button" data-c2="undo" data-uid="${esc(item.uid)}" title="${esc(t('undoEditTitle'))}"${check2Undo.has(item.uid) ? '' : ' hidden'}>${CHECK2_UNDO_ICON}</button>`
+        + `<button class="mini-btn calc" type="button" data-c2="calc" data-uid="${esc(item.uid)}" title="${esc(t('calcTitle'))}">=</button>`
+        + '</span>'
+      : '';
     return `<tr><td>${esc(String(item.hang))}</td>${dirCell}`
       + cells.join('')
-      + `<td class="${dCls}">${dText}</td><td class="check2-row-note ${cls}">${esc(text)}</td></tr>`;
+      + `<td class="${dCls}">${dText}</td><td class="check2-row-note ${cls}">`
+      + `<span class="c2-note-text">${esc(text)}</span>${tools}</td></tr>`;
   }).join('');
   if (note) {
     const base = mode === 'merged' ? t('check2RowsMergedNote')
@@ -2741,20 +2764,64 @@ function onCheck2RowChange(e) {
   const dir = inp.dataset.dir || '';
   const val = inp.value.trim() === '' ? null : parseNum(inp.value);
   let row = inp.dataset.uid ? lotRows(key).find(r => r.uid === inp.dataset.uid) : null;
-  if (!row) {
+  if (row) {
+    const prev = row[field] == null ? null : Number(row[field]);
+    if (prev === val) return;
+    check2Remember(row);
+  } else {
     if (val == null) return;
     row = { uid: uid(), hang, dt: null, g: null, plus: null, c: null, k1: null, k2: null, o: null };
     if (dir) row.dir = dir;
     ensureLot(key).rows.push(row);
+    check2Undo.set(row.uid, { isNew: true });
     inp.dataset.uid = row.uid;
   }
   row[field] = val;
   touchLot(key);
   persist();
-  refreshLotDerived();
   check2Focus = { uid: row.uid, field };
   renderCheck2();
   check2Focus = null;
+  syncLotScreen();
+}
+
+function syncLotScreen() {
+  rebuildRowsTable();
+  refreshLotDerived();
+}
+
+function onCheck2RowAction(e) {
+  const btn = e.target.closest('button[data-c2]');
+  if (!btn || !state.lot) return;
+  const key = state.lot;
+  const rowUid = btn.dataset.uid;
+  if (!rowUid) return;
+  const lot = ensureLot(key);
+  const row = lotRows(key).find(r => r.uid === rowUid);
+  if (!row) return;
+  if (btn.dataset.c2 === 'calc') {
+    check2Remember(row);
+    row.dt = rowSum(row);
+    touchLot(key);
+    persist();
+    renderCheck2();
+    syncLotScreen();
+  }
+  if (btn.dataset.c2 === 'undo') {
+    const snap = check2Undo.get(rowUid);
+    if (!snap) return;
+    check2Undo.delete(rowUid);
+    if (snap.isNew) {
+      lot.rows = lot.rows.filter(r => r.uid !== rowUid);
+      if (!lot.rows.some(rowHasData)) lot.meta.clearedAt = new Date().toISOString();
+    } else {
+      Object.assign(row, snap.vals);
+    }
+    touchLot(key);
+    persist();
+    renderCheck2();
+    syncLotScreen();
+  }
 }
 
 function dirRefTotal(key, dir) {
@@ -6042,6 +6109,7 @@ function setupDialogs() {
   const check2Dlg = $('#check2Dialog');
   $('#btnCheck2').addEventListener('click', openCheck2);
   $('#check2RowsBody').addEventListener('change', onCheck2RowChange);
+  $('#check2RowsBody').addEventListener('click', onCheck2RowAction);
   $('#check2RowsBody').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.matches('input.c2-in')) { e.preventDefault(); e.target.blur(); }
   });

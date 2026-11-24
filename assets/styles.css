@@ -392,7 +392,9 @@ details[open] .wn-hint{display:none}
 .check2-rows .c2-in{width:56px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fff;
   font-family:var(--tab-nums);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;outline:0;
   transition:border-color .12s,box-shadow .12s}
-.check2-rows .c2-in::-webkit-outer-spin-button,.check2-rows .c2-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.check2-row-note .c2-note-text{vertical-align:middle}
+.check2-tools{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}
+.check2-tools .mini-btn{width:22px;height:22px;border-radius:6px}
 .check2-rows .c2-in:hover{border-color:#d8d0be}
 .check2-rows .c2-in:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(217,119,87,.12)}
 .check2-note{font-size:12.5px;line-height:1.45;margin:0}
@@ -406,6 +408,8 @@ details[open] .wn-hint{display:none}
   .check2-rows th,.check2-rows td{font-size:11.5px;padding:5px 4px}
   .check2-rows .c2-group th{font-size:10px;padding:4px 4px}
   .check2-rows .c2-in{width:44px;font-size:11.5px;padding:4px 3px}
+  .check2-tools{margin-left:4px}
+  .check2-tools .mini-btn{width:20px;height:20px}
 }
 .footnote{font-size:12px;color:var(--faint);margin-top:8px;line-height:1.45}
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
