@@ -324,9 +324,9 @@ function writeProgress_(sh, payload) {
     if (!l || !l.lot) return;
     const entered = Number(l.entered) || 0;
     const old = byLot.get(l.lot);
-    if (!entered && !l.done) {
-      // Chỉ gỡ khi máy gửi chủ động xoá dữ liệu (clearedAt mới hơn bản trên
-      // sheet). Máy chưa từng nhập lô này không được xoá dữ liệu máy khác.
+    if (!entered) {
+      // Payload 0 hàng không được tạo/ghi đè dòng Tiến độ. Chỉ gỡ khi máy gửi
+      // chủ động xoá dữ liệu (clearedAt mới hơn bản trên sheet).
       if (old) {
         const cl = isoTime_(l.clearedAt);
         if (cl && cl > isoTime_(old[19])) byLot.delete(l.lot);

@@ -722,6 +722,18 @@ const APP_I18N = {
     check2Sum27Ok: 'Tổng 6 cột khớp tổng ĐT của lô.',
     check2Sum27Diff: 'Tổng 6 cột lệch {n} so với tổng ĐT của lô.',
     check2Sum26Diff: 'Số 2026 tự lệch {n} giữa tổng và 6 cột (theo bảng gốc).',
+    check2RowsTitle: 'Đối chiếu từng hàng (2026 → 2027)',
+    check2ColNote: 'Ghi chú',
+    check2RowOk: 'Khớp',
+    check2RowSmall: 'Lệch nhỏ',
+    check2RowDiff: 'Cần phúc tra',
+    check2RowNoRef: 'Không có 2026',
+    check2RowMissing27: 'Thiếu 2027',
+    check2RowsMergedNote: '2026 theo hàng là số ghép A/B của tổng lô gốc; hàng chưa nhập 2027 hiện “—”.',
+    check2RowsDirsNote: '2026 đối chiếu theo từng hướng; hàng có trong 2026 mà chưa nhập sẽ hiện “—”.',
+    check2RowsPlainNote: '2026 đối chiếu theo số phúc tra từng hàng; hàng chưa nhập sẽ hiện “—”.',
+    check2RowsNoRefNote: 'Lô này chưa có bảng phúc tra từng hàng để so 2026.',
+    check2RowsSummary: 'Có {n} hàng · {d} lệch · {m} thiếu 2027.',
     markDone: 'Đánh dấu hoàn tất',
     reopenLot: 'Mở lại lô',
     compareTitle: 'Đối chiếu 2026 → 2027',
@@ -801,6 +813,7 @@ const APP_I18N = {
     delRowTitle: 'Xoá hàng',
     confirmDelRow: 'Xoá hàng {h}? Dữ liệu của hàng này sẽ mất.',
     toastDone: 'Đã đánh dấu hoàn tất lô {lot} lúc {time}',
+    toastDoneEmpty: 'Lô chưa nhập hàng nào — không thể đánh dấu hoàn tất.',
     issueMissing: 'thiếu Tổng ĐT (tổng 6 cột = {sum})',
     issueDiff: 'Tổng ĐT {dt} ≠ tổng 6 cột {sum} (lệch {d})',
     hangMapTitle: 'Sơ đồ hàng',
@@ -1166,6 +1179,18 @@ const APP_I18N = {
     check2Sum27Ok: 'ផលបូក 6 ជួរត្រូវនឹងផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
     check2Sum27Diff: 'ផលបូក 6 ជួរខុស {n} ពីផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
     check2Sum26Diff: 'លេខ 2026 ខ្លួនឯងខុស {n} រវាងផលបូក និង 6 ជួរ (តាមតារាងដើម)។',
+    check2RowsTitle: 'ប្រៀបធៀបជួរនីមួយៗ (2026 → 2027)',
+    check2ColNote: 'កំណត់សម្គាល់',
+    check2RowOk: 'ត្រូវ',
+    check2RowSmall: 'ខុសតិច',
+    check2RowDiff: 'ត្រូវផ្ទៀងផ្ទាត់',
+    check2RowNoRef: 'គ្មាន 2026',
+    check2RowMissing27: 'ខ្វះ 2027',
+    check2RowsMergedNote: '2026 តាមជួរ គឺជាលេខបញ្ជូល A/B នៃសរុបដើម។ ជួរដែលមិនទាន់បញ្ចូល 2027 នឹងបង្ហាញ “—”។',
+    check2RowsDirsNote: '2026 ប្រៀបធៀបតាមទិសដៅនីមួយៗ។ ជួរដែលមានក្នុង 2026 តែមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
+    check2RowsPlainNote: '2026 ប្រៀបធៀបតាមលេខផ្ទៀងផ្ទាត់ជួរនីមួយៗ។ ជួរដែលមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
+    check2RowsNoRefNote: 'ដីឡូតិ៍នេះមិនមានតារាងផ្ទៀងផ្ទាត់ជួរនីមួយៗសម្រាប់ប្រៀបធៀប 2026 ទេ។',
+    check2RowsSummary: 'មាន {n} ជួរ · ខុស {d} · ខ្វះ 2027 {m}។',
     markDone: 'សម្គាល់ថារួចរាល់',
     reopenLot: 'បើកដីឡូតិ៍ឡើងវិញ',
     compareTitle: 'ប្រៀបធៀប 2026 → 2027',
@@ -1245,6 +1270,7 @@ const APP_I18N = {
     delRowTitle: 'លុបជួរ',
     confirmDelRow: 'លុបជួរ {h}? ទិន្នន័យជួរនេះនឹងបាត់។',
     toastDone: 'បានសម្គាល់ដីឡូតិ៍ {lot} ថាបានបញ្ចប់ នៅ {time}',
+    toastDoneEmpty: 'ដីឡូតិ៍មិនទាន់បញ្ចូលជួរណាមួយ — មិនអាចសម្គាល់ថារួចរាល់បានទេ។',
     issueMissing: 'ខ្វះសរុប (ផលបូក 6 ជួរឈរ = {sum})',
     issueDiff: 'សរុប {dt} ≠ ផលបូក 6 ជួរឈរ {sum} (ខុសគ្នា {d})',
     hangMapTitle: 'តារាងជួរ',
@@ -1561,6 +1587,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 64,
+    date: '24/11/2026',
+    vi: { title: 'Kiểm tra vòng 2 đối chiếu từng hàng', items: ['Hộp Kiểm tra vòng 2 thêm bảng đối chiếu từng hàng: 2026, 2027, lệch và ghi chú khớp/lệch/thiếu. Lô chưa nhập hàng thì không đánh dấu hoàn tất được, tránh ghi đè tiến độ bằng dòng 0 hàng.'] },
+    km: { title: 'ត្រួតពិនិត្យជុំទី 2 ប្រៀបធៀបជួរនីមួយៗ', items: ['ប្រអប់ត្រួតពិនិត្យជុំទី 2 បន្ថែមតារាងប្រៀបធៀបជួរនីមួយៗ៖ 2026, 2027, ខុស និងកំណត់សម្គាល់ត្រូវ/ខុស/ខ្វះ។ ដីឡូតិ៍ដែលមិនទាន់បញ្ចូលជួរណាមួយ មិនអាចសម្គាល់ថារួចរាល់បានទេ។'] },
+  },
   {
     v: 62,
     date: '24/11/2026',
@@ -2520,6 +2552,114 @@ function renderCompare({ base, ref, agg, entered, delta, meta }) {
   }
 }
 
+function check2RowsData(key) {
+  const dirs = lotDirs(key);
+  const mergedRef = mergedRefMap(key);
+  const pt = PHUC_TRA[key];
+  const items = [];
+  if (mergedRef) {
+    const seen = new Set();
+    mergeDirRows(lotRows(key)).filter(rowHasData).forEach(m => {
+      seen.add(String(m.hang));
+      const rv = mergedRef[String(m.hang)];
+      items.push({ dir: '', hang: m.hang, ref: Number.isFinite(rv) ? rv : null, dt: Number(m.dt) || 0 });
+    });
+    Object.keys(mergedRef).forEach(h => {
+      if (seen.has(String(h))) return;
+      const hang = Number(h);
+      if (!Number.isInteger(hang)) return;
+      const ref = Number(mergedRef[h]);
+      if (!Number.isFinite(ref)) return;
+      items.push({ dir: '', hang, ref, dt: null });
+    });
+    return { items: items.sort((a, b) => a.hang - b.hang), mode: 'merged' };
+  }
+  if (dirs) {
+    dirs.forEach(dir => {
+      const seen = new Set();
+      const block = [];
+      rowsInDir(key, dir).filter(r => rowHasData(r) && Number.isInteger(r.hang)).forEach(r => {
+        seen.add(String(r.hang));
+        block.push({ dir, hang: r.hang, ref: phucTraRef(key, r.hang, dir, false), dt: Number(r.dt) || 0 });
+      });
+      const map = pt && pt.dirs && pt.dirs[dir];
+      if (map) Object.keys(map).forEach(h => {
+        if (seen.has(String(h))) return;
+        const hang = Number(h);
+        if (!Number.isInteger(hang)) return;
+        const ref = Number(map[h]);
+        if (!Number.isFinite(ref)) return;
+        block.push({ dir, hang, ref, dt: null });
+      });
+      block.sort((a, b) => a.hang - b.hang).forEach(x => items.push(x));
+    });
+    return { items, mode: 'dirs' };
+  }
+  const seen = new Set();
+  lotRows(key).filter(r => rowHasData(r) && Number.isInteger(r.hang)).forEach(r => {
+    seen.add(String(r.hang));
+    items.push({ dir: '', hang: r.hang, ref: phucTraRef(key, r.hang, '', false), dt: Number(r.dt) || 0 });
+  });
+  if (pt && !pt.dirs && !pt.ref) {
+    Object.keys(pt).forEach(h => {
+      if (seen.has(String(h))) return;
+      const hang = Number(h);
+      if (!Number.isInteger(hang)) return;
+      const ref = Number(pt[h]);
+      if (!Number.isFinite(ref)) return;
+      items.push({ dir: '', hang, ref, dt: null });
+    });
+  }
+  items.sort((a, b) => a.hang - b.hang);
+  return { items, mode: pt ? 'rows' : 'none' };
+}
+
+function renderCheck2Rows(key) {
+  const host = $('#check2Rows');
+  const body = $('#check2RowsBody');
+  const head = $('#check2RowsHead');
+  const note = $('#check2RowsNote');
+  if (!host || !body || !head) return;
+  const { items, mode } = check2RowsData(key);
+  if (!items.length) { host.hidden = true; return; }
+  host.hidden = false;
+  const dirs = mode === 'merged' ? null : lotDirs(key);
+  head.innerHTML = [t('thHang'), dirs ? t('thDir') : '', '2026', '2027', t('thDelta'), t('check2ColNote')]
+    .filter(Boolean).map(h => `<th>${esc(h)}</th>`).join('');
+  let diff = 0;
+  let miss = 0;
+  body.innerHTML = items.map(item => {
+    const has26 = item.ref != null;
+    const has27 = item.dt != null;
+    let dText = '—';
+    let cls = '';
+    let text = '';
+    if (has26 && has27) {
+      const dv = item.dt - item.ref;
+      dText = signed(dv);
+      if (dv === 0) { cls = 'pos'; text = t('check2RowOk'); }
+      else if (Math.abs(dv) < PHUC_TRA_MIN) text = t('check2RowSmall');
+      else { cls = 'neg'; text = t('check2RowDiff'); diff += 1; }
+    } else if (has26 && !has27) {
+      cls = 'neg';
+      text = t('check2RowMissing27');
+      miss += 1;
+    } else if (!has26 && has27) {
+      text = t('check2RowNoRef');
+    }
+    const dirCell = dirs ? `<td>${esc(item.dir || '—')}</td>` : '';
+    return `<tr><td>${esc(String(item.hang))}</td>${dirCell}`
+      + `<td>${has26 ? fmt(item.ref) : '—'}</td><td>${has27 ? fmt(item.dt) : '—'}</td>`
+      + `<td class="${cls}">${dText}</td><td class="check2-row-note ${cls}">${esc(text)}</td></tr>`;
+  }).join('');
+  if (note) {
+    const base = mode === 'merged' ? t('check2RowsMergedNote')
+      : mode === 'dirs' ? t('check2RowsDirsNote')
+        : mode === 'rows' ? t('check2RowsPlainNote') : t('check2RowsNoRefNote');
+    note.textContent = `${base} ${t('check2RowsSummary', { n: items.length, d: diff, m: miss })}`;
+  }
+}
+
 function dirRefTotal(key, dir) {
   if (mergedRefMap(key) || !hasPhucTra(key)) return null;
   const lot = PHUC_TRA[key];
@@ -2588,6 +2728,7 @@ function renderCheck2() {
     }
   }
   $('#check2Notes').innerHTML = notes.join('');
+  renderCheck2Rows(key);
 
   const dirs = lotDirs(key);
   const dirsEl = $('#check2Dirs');
@@ -3006,6 +3147,10 @@ function toggleDone() {
   if (!state.lot) return;
   const lot = ensureLot(state.lot);
   const willDone = !lot.meta.done;
+  if (willDone && !lotState(state.lot).entered.length) {
+    toast(t('toastDoneEmpty'), 'bad');
+    return;
+  }
   const dirs = lotDirs(state.lot);
   if (willDone && dirs) {
     const empty = dirs.filter(d => !rowsInDir(state.lot, d).some(rowHasData));
