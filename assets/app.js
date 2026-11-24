@@ -709,6 +709,19 @@ const APP_I18N = {
     openLot: 'Mở lô',
     backList: 'Danh sách lô',
     exportLot: 'Xuất Excel lô',
+    check2Btn: 'Kiểm tra vòng 2',
+    check2Eyebrow: 'Kiểm tra vòng 2',
+    check2Lead: 'Dùng cho vòng kiểm tra thứ 2: so từng chỉ tiêu với 2026 và đối chiếu tổng 6 cột.',
+    check2DirsTitle: 'Theo hướng (2027)',
+    check2DirsNote: '2026 chỉ tách được tổng theo hướng ở lô phúc tra tách hướng; lô ghép A/B đối chiếu theo tổng lô gốc. 6 chỉ tiêu thành phần so sánh ở toàn lô.',
+    check2DirCol: 'Hướng',
+    check2NoData: 'Chưa nhập số liệu',
+    check2NoRef: 'Chưa có số 2026',
+    check2AllMatch: 'Khớp 2026',
+    check2DiffCount: 'Lệch {n}/{total} chỉ tiêu',
+    check2Sum27Ok: 'Tổng 6 cột khớp tổng ĐT của lô.',
+    check2Sum27Diff: 'Tổng 6 cột lệch {n} so với tổng ĐT của lô.',
+    check2Sum26Diff: 'Số 2026 tự lệch {n} giữa tổng và 6 cột (theo bảng gốc).',
     markDone: 'Đánh dấu hoàn tất',
     reopenLot: 'Mở lại lô',
     compareTitle: 'Đối chiếu 2026 → 2027',
@@ -1140,6 +1153,19 @@ const APP_I18N = {
     openLot: 'បើកដីឡូតិ៍',
     backList: 'បញ្ជីដីឡូតិ៍',
     exportLot: 'នាំចេញ Excel ដីឡូតិ៍',
+    check2Btn: 'ត្រួតពិនិត្យជុំទី 2',
+    check2Eyebrow: 'ត្រួតពិនិត្យជុំទី 2',
+    check2Lead: 'សម្រាប់ជុំត្រួតពិនិត្យទី 2៖ ប្រៀបធៀបគ្រប់ចំណុចជាមួយ 2026 និងផ្ទៀងផ្ទាត់ផលបូក 6 ជួរ។',
+    check2DirsTitle: 'តាមទិសដៅ (2027)',
+    check2DirsNote: '2026 អាចបំបែកសរុបតាមទិសដៅបានតែនៅដីឡូតិ៍ផ្ទៀងផ្ទាត់ដែលបំបែកតាមទិសដៅ។ ដីឡូតិ៍ផ្គុំ A/B ប្រៀបធៀបតាមសរុបដើម។ ចំណុច 6 ផ្នែកប្រៀបធៀបនៅកម្រិតដីឡូតិ៍ទាំងមូល។',
+    check2DirCol: 'ទិសដៅ',
+    check2NoData: 'មិនទាន់បញ្ចូលទិន្នន័យ',
+    check2NoRef: 'មិនមានលេខ 2026',
+    check2AllMatch: 'ត្រូវនឹង 2026',
+    check2DiffCount: 'ខុស {n}/{total} ចំណុច',
+    check2Sum27Ok: 'ផលបូក 6 ជួរត្រូវនឹងផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
+    check2Sum27Diff: 'ផលបូក 6 ជួរខុស {n} ពីផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
+    check2Sum26Diff: 'លេខ 2026 ខ្លួនឯងខុស {n} រវាងផលបូក និង 6 ជួរ (តាមតារាងដើម)។',
     markDone: 'សម្គាល់ថារួចរាល់',
     reopenLot: 'បើកដីឡូតិ៍ឡើងវិញ',
     compareTitle: 'ប្រៀបធៀប 2026 → 2027',
@@ -1535,6 +1561,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 62,
+    date: '24/11/2026',
+    vi: { title: 'Kiểm tra vòng 2 từng chỉ tiêu', items: ['Thêm nút “Kiểm tra vòng 2” trong lô: so 7 chỉ tiêu với 2026, kiểm tra tổng 6 cột và xem nhanh theo hướng A/B/C.'] },
+    km: { title: 'ត្រួតពិនិត្យជុំទី 2 តាមចំណុចនីមួយៗ', items: ['បន្ថែមប៊ូតុង “ត្រួតពិនិត្យជុំទី 2” ក្នុងដីឡូតិ៍៖ ប្រៀបធៀប 7 ចំណុចជាមួយ 2026 ផ្ទៀងផ្ទាត់ផលបូក 6 ជួរ និងមើលតាមទិសដៅ A/B/C។'] },
+  },
   {
     v: 61,
     date: '21/11/2026',
@@ -2486,6 +2518,104 @@ function renderCompare({ base, ref, agg, entered, delta, meta }) {
     }
     note.textContent = text;
   }
+}
+
+function dirRefTotal(key, dir) {
+  if (mergedRefMap(key) || !hasPhucTra(key)) return null;
+  const lot = PHUC_TRA[key];
+  const map = lot && lot.dirs && lot.dirs[dir];
+  if (!map) return null;
+  let sum = 0;
+  for (const v of Object.values(map)) sum += Number(v) || 0;
+  return sum;
+}
+
+function renderCheck2() {
+  const key = state.lot;
+  if (!key) return;
+  const st = lotState(key);
+  const r = st.ref || st.base;
+  const has = st.entered.length > 0;
+  const defs = [
+    { k: 'dt', label: t('metricTotal'), ref: r ? r.total : null, total: true },
+    ...CATS.map(([k, lk]) => ({ k, label: t(lk), ref: r ? r[k] : null, total: false })),
+  ];
+  let compared = 0;
+  let diff = 0;
+  const rows = defs.map(d => {
+    const v27 = has ? st.agg[d.k] : null;
+    const v26 = d.ref == null ? null : Number(d.ref);
+    let dText = '—';
+    let cls = '';
+    if (v26 != null && v27 != null) {
+      compared += 1;
+      const dv = Number(v27) - v26;
+      dText = signed(dv);
+      cls = dv === 0 ? 'pos' : 'neg';
+      if (dv !== 0) diff += 1;
+    }
+    return `<tr${d.total ? ' class="total-row"' : ''}><td>${esc(d.label)}</td>`
+      + `<td>${v26 == null ? '—' : fmt(v26)}</td><td>${v27 == null ? '—' : fmt(v27)}</td>`
+      + `<td class="${cls}">${dText}</td></tr>`;
+  });
+  $('#check2Body').innerHTML = rows.join('');
+
+  const badge = $('#check2Status');
+  if (!badge) return;
+  if (!has) {
+    badge.className = 'badge';
+    badge.textContent = t('check2NoData');
+  } else if (!r) {
+    badge.className = 'badge';
+    badge.textContent = t('check2NoRef');
+  } else if (diff === 0) {
+    badge.className = 'badge good';
+    badge.textContent = t('check2AllMatch');
+  } else {
+    badge.className = 'badge warn';
+    badge.textContent = t('check2DiffCount', { n: diff, total: compared });
+  }
+
+  const notes = [];
+  if (has) {
+    const sum27 = st.agg.g + st.agg.plus + st.agg.c + st.agg.k1 + st.agg.k2 + st.agg.o;
+    const d27 = sum27 - st.agg.dt;
+    notes.push(d27 === 0
+      ? `<p class="check2-note ok">${esc(t('check2Sum27Ok'))}</p>`
+      : `<p class="check2-note bad">${esc(t('check2Sum27Diff', { n: signed(d27) }))}</p>`);
+    if (r && r.mismatch) {
+      notes.push(`<p class="check2-note bad">${esc(t('check2Sum26Diff', { n: signed(r.mismatch) }))}</p>`);
+    }
+  }
+  $('#check2Notes').innerHTML = notes.join('');
+
+  const dirs = lotDirs(key);
+  const dirsEl = $('#check2Dirs');
+  if (!dirsEl) return;
+  if (!dirs) { dirsEl.hidden = true; return; }
+  dirsEl.hidden = false;
+  const short = ['G', '+', 'C', 'K1', 'K2', 'O'];
+  $('#check2DirsHead').innerHTML = [t('check2DirCol'), '2026', '2027', t('thDelta'), ...short]
+    .map(h => `<th>${esc(h)}</th>`).join('');
+  $('#check2DirsBody').innerHTML = st.dirStates.map(ds => {
+    const refTotal = dirRefTotal(key, ds.dir);
+    const v27 = ds.entered.length ? ds.agg.dt : null;
+    const diffT = refTotal != null && v27 != null ? v27 - refTotal : null;
+    return `<tr><td><b>${esc(ds.dir)}</b></td><td>${refTotal == null ? '—' : fmt(refTotal)}</td>`
+      + `<td>${v27 == null ? '—' : fmt(v27)}</td><td${diffT ? ' class="neg"' : ''}>${diffT == null ? '—' : signed(diffT)}</td>`
+      + short.map((_, i) => `<td>${ds.entered.length ? fmt(ds.agg[CATS[i][0]]) : '—'}</td>`).join('')
+      + '</tr>';
+  }).join('');
+}
+
+function openCheck2() {
+  if (!state.lot) return;
+  const dlg = $('#check2Dialog');
+  if (!dlg) return;
+  const title = $('#check2Title');
+  if (title) title.textContent = `${t('thLot')} ${state.lot}`;
+  renderCheck2();
+  if (!dlg.open) dlg.showModal();
 }
 
 function alertHtml(level, body, extraClass) {
@@ -5667,6 +5797,10 @@ function setupDialogs() {
   $('#btnDetailLot').addEventListener('click', () => openDetailDialog(state.lot));
   $('#btnDetailClose').addEventListener('click', () => detailDlg.close());
   $('#btnDetailRefresh').addEventListener('click', () => loadRemoteDetail());
+  const check2Dlg = $('#check2Dialog');
+  $('#btnCheck2').addEventListener('click', openCheck2);
+  $('#btnCheck2Close').addEventListener('click', () => check2Dlg.close());
+  check2Dlg.addEventListener('click', (e) => { if (e.target === check2Dlg) check2Dlg.close(); });
   const notiDlg = $('#notiDialog');
   $('#btnNoti').addEventListener('click', openNoti);
   $('#btnNotiClose').addEventListener('click', () => notiDlg.close());

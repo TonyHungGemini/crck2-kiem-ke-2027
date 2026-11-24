@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=61">
+<link rel="stylesheet" href="./assets/styles.css?v=62">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -170,6 +170,7 @@
         <div class="lot-head-actions">
           <button class="btn" id="btnQuickLot" type="button" data-i18n="quickEntry">Nhập nhanh</button>
           <button class="btn" id="btnDetailLot" type="button" data-i18n="btnDetailLot">Chi tiết đồng bộ</button>
+          <button class="btn" id="btnCheck2" type="button" data-i18n="check2Btn">Kiểm tra vòng 2</button>
           <button class="btn" id="btnExportLot" type="button" data-i18n="exportLot">Xuất Excel lô</button>
           <button class="btn" id="btnToggleDone" type="button" data-i18n="markDone">Đánh dấu hoàn tất</button>
         </div>
@@ -472,6 +473,44 @@
   </div>
 </dialog>
 
+<!-- ================= KIỂM TRA VÒNG 2 ================= -->
+<dialog id="check2Dialog" class="dialog check2-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow" data-i18n="check2Eyebrow">Kiểm tra vòng 2</div>
+        <h3 id="check2Title">Lô</h3>
+      </div>
+      <button class="btn btn-icon" id="btnCheck2Close" type="button" aria-label="Đóng" data-i18n-aria="close">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="check2-body">
+      <div class="check2-summary">
+        <span class="badge" id="check2Status"></span>
+        <span data-i18n="check2Lead">Dùng cho vòng kiểm tra thứ 2: so từng chỉ tiêu với 2026 và đối chiếu tổng 6 cột.</span>
+      </div>
+      <div class="table-wrap">
+        <table class="compare-table check2-table">
+          <thead><tr><th data-i18n="metric">Chỉ tiêu</th><th>2026</th><th>2027</th><th data-i18n="thDelta">Lệch</th></tr></thead>
+          <tbody id="check2Body"></tbody>
+        </table>
+      </div>
+      <div class="check2-notes" id="check2Notes"></div>
+      <div id="check2Dirs" hidden>
+        <h4 class="check2-sub" data-i18n="check2DirsTitle">Theo hướng (2027)</h4>
+        <div class="table-wrap">
+          <table class="compare-table check2-dirs">
+            <thead><tr id="check2DirsHead"></tr></thead>
+            <tbody id="check2DirsBody"></tbody>
+          </table>
+        </div>
+        <p class="footnote" data-i18n="check2DirsNote">2026 chỉ đối chiếu được tổng theo hướng khi có bảng phúc tra; 6 chỉ tiêu thành phần so sánh ở toàn lô.</p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <!-- ================= SYNCED DETAIL DIALOG ================= -->
 <dialog id="notiDialog" class="dialog noti-dialog">
   <div class="dialog-shell">
@@ -575,10 +614,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=61"></script>
+<script src="./assets/phuctra.js?v=62"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=61"></script>
+<script src="./assets/app.js?v=62"></script>
 </body>
 </html>
