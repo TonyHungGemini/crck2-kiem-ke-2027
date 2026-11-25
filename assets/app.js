@@ -37,6 +37,7 @@ const LOT_DIRECTIONS = {
   '12-13': ['A', 'B'],
   '117': ['A', 'B'],
   '351': ['A', 'B', 'C'],
+  '354': ['A', 'B'],
 };
 /* Hướng C của 117 là cách gọi cũ của hướng B trong file phân hướng mới. */
 const LEGACY_DIRS = { '117': { C: 'B' } };
@@ -282,6 +283,8 @@ function entryMap(key, dir) {
   const lot = PHUC_TRA[key];
   if (!lot) return null;
   if (lot.dirs) return dir ? (lot.dirs[dir] || null) : (lot.ref || null);
+  // Lô có chia hướng nhưng 2026 chưa tách hướng: không lấy cả bảng gán cho một hướng.
+  if (dir && lotDirs(key)) return null;
   return lot;
 }
 function expectedHangs(key, dir) {
@@ -368,13 +371,14 @@ function phucTraRef(key, hang, dir, merged) {
   const lot = PHUC_TRA[key];
   if (!lot) return null;
   let map;
-  if (lot.ref) {
+  if (lot.dirs) {
+    map = lot.dirs[dir] || null;
+  } else if (lot.ref) {
     if (!merged) return null;
     map = lot.ref;
-  } else if (lot.dirs) {
-    map = lot.dirs[dir] || null;
   } else {
-    map = lot;
+    // Không có bảng riêng theo hướng thì đối chiếu hàng chỉ dùng cho tổng lô.
+    map = dir && lotDirs(key) ? null : lot;
   }
   if (!map) return null;
   const ref = map[String(hang)];
@@ -385,7 +389,11 @@ function phucTraComps(key, hang, dir) {
   if (!Number.isInteger(hang)) return null;
   const all = PHUC_TRA_COMPS[key];
   if (!all) return null;
-  const block = dir && all[dir] ? all[dir] : all;
+  let block = all;
+  if (dir && lotDirs(key)) {
+    if (!all[dir]) return null;
+    block = all[dir];
+  }
   const arr = block[String(hang)];
   return Array.isArray(arr) ? arr : null;
 }
@@ -738,6 +746,7 @@ const APP_I18N = {
     check2RowSmall: 'Lệch nhỏ',
     check2RowDiff: 'Cần phúc tra',
     check2RowNoRef: 'Không có 2026',
+    check2RowNoDirRef: 'Chưa có 2026 theo hướng',
     check2RowMissing27: 'Thiếu 2027',
     check2RowSumBad: 'Tổng ≠ 6 cột ({d})',
     check2RowsEditNote: 'Sửa số 2027 ngay trong bảng, bấm ra ngoài ô để lưu.',
@@ -745,6 +754,7 @@ const APP_I18N = {
     check2RowsDirsNote: '2026 đối chiếu theo từng hướng; hàng có trong 2026 mà chưa nhập sẽ hiện “—”.',
     check2RowsPlainNote: '2026 đối chiếu theo số phúc tra từng hàng; hàng chưa nhập sẽ hiện “—”.',
     check2RowsNoRefNote: 'Lô này chưa có bảng phúc tra từng hàng để so 2026.',
+    check2RowsNoDirRefNote: 'Lô chưa có số 2026 tách theo hướng: phần theo hướng để trống, tổng lô vẫn đối chiếu ở bảng trên.',
     check2RowsPairNote: 'Mỗi chỉ tiêu xếp 2026 cạnh 2027 để so trực tiếp.',
     check2RowsSummary: 'Có {n} hàng · {d} lệch · {m} thiếu 2027.',
     markDone: 'Đánh dấu hoàn tất',
@@ -1199,6 +1209,7 @@ const APP_I18N = {
     check2RowSmall: 'ខុសតិច',
     check2RowDiff: 'ត្រូវផ្ទៀងផ្ទាត់',
     check2RowNoRef: 'គ្មាន 2026',
+    check2RowNoDirRef: 'មិនទាន់មាន 2026 តាមទិស',
     check2RowMissing27: 'ខ្វះ 2027',
     check2RowSumBad: 'សរុប ≠ 6 ជួរ ({d})',
     check2RowsEditNote: 'កែលេខ 2027 នៅក្នុងតារាង; ចុចចេញក្រៅប្រអប់ដើម្បីរក្សាទុក។',
@@ -1206,6 +1217,7 @@ const APP_I18N = {
     check2RowsDirsNote: '2026 ប្រៀបធៀបតាមទិសដៅនីមួយៗ។ ជួរដែលមានក្នុង 2026 តែមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsPlainNote: '2026 ប្រៀបធៀបតាមលេខផ្ទៀងផ្ទាត់ជួរនីមួយៗ។ ជួរដែលមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsNoRefNote: 'ដីឡូតិ៍នេះមិនមានតារាងផ្ទៀងផ្ទាត់ជួរនីមួយៗសម្រាប់ប្រៀបធៀប 2026 ទេ។',
+    check2RowsNoDirRefNote: 'ដីឡូតិ៍មិនទាន់មានលេខ 2026 បំបែកតាមទិស៖ ផ្នែកតាមទិសទុកទទេ សរុបដីឡូតិ៍នៅតែប្រៀបធៀបនៅតារាងខាងលើ។',
     check2RowsPairNote: 'ចំណុចនីមួយៗ ដាក់ 2026 ជាប់នឹង 2027 ដើម្បីប្រៀបធៀបផ្ទាល់។',
     check2RowsSummary: 'មាន {n} ជួរ · ខុស {d} · ខ្វះ 2027 {m}។',
     markDone: 'សម្គាល់ថារួចរាល់',
@@ -1605,6 +1617,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 68,
+    date: '25/11/2026',
+    vi: { title: 'Lô 354 chia 2 hướng A, B', items: ['Lô 354 nhập và kiểm tra riêng theo hướng A/B. Tổng lô vẫn đối chiếu 2026; phần đối chiếu theo hướng để trống vì 2026 chưa có số tách hướng.'] },
+    km: { title: 'ដីឡូតិ៍ 354 បែងចែក 2 ទិស A, B', items: ['ដីឡូតិ៍ 354 បញ្ចូល និងត្រួតពិនិត្យដោយឡែកតាមទិស A/B។ សរុបដីឡូតិ៍នៅតែប្រៀបធៀប 2026; ផ្នែកប្រៀបធៀបតាមទិសទុកទទេ ព្រោះ 2026 មិនទាន់មានលេខបំបែកតាមទិស។'] },
+  },
   {
     v: 67,
     date: '24/11/2026',
@@ -2677,6 +2695,7 @@ function renderCheck2Rows(key) {
   const { items, mode } = check2RowsData(key);
   if (!items.length) { host.hidden = true; return; }
   host.hidden = false;
+  const noDirRef = mode === 'dirs' && !(PHUC_TRA[key] && PHUC_TRA[key].dirs);
   const dirs = mode === 'merged' ? null : lotDirs(key);
   const compLabels = ['G', '+', 'C', 'K1', 'K2', 'O'];
   const group = label => `<th colspan="2">${esc(label)}</th>`;
@@ -2708,7 +2727,7 @@ function renderCheck2Rows(key) {
       text = t('check2RowMissing27');
       miss += 1;
     } else if (!has26 && has27) {
-      text = t('check2RowNoRef');
+      text = t(noDirRef ? 'check2RowNoDirRef' : 'check2RowNoRef');
     }
     let sumBad = null;
     if (has27 && v) {
@@ -2743,7 +2762,7 @@ function renderCheck2Rows(key) {
   }).join('');
   if (note) {
     const base = mode === 'merged' ? t('check2RowsMergedNote')
-      : mode === 'dirs' ? t('check2RowsDirsNote')
+      : mode === 'dirs' ? t(noDirRef ? 'check2RowsNoDirRefNote' : 'check2RowsDirsNote')
         : mode === 'rows' ? t('check2RowsPlainNote') : t('check2RowsNoRefNote');
     const edit = mode === 'merged' ? '' : t('check2RowsEditNote');
     note.textContent = `${base} ${t('check2RowsPairNote')} ${edit} ${t('check2RowsSummary', { n: items.length, d: diff, m: miss })}`.replace(/\s+/g, ' ').trim();
