@@ -397,7 +397,19 @@ function rowIssuesOf(rows) {
 }
 function mergedRefMap(key) {
   const lot = PHUC_TRA[key];
-  return lot && lot.ref ? lot.ref : null;
+  if (!lot) return null;
+  if (lot.ref) return lot.ref;
+  // Lô tách hướng trên app nhưng 2026 chưa tách hướng (vd 354): đối chiếu
+  // tổng gộp từng hàng với số 2026 của cả lô.
+  if (!lot.dirs && lotDirs(key)) {
+    const map = {};
+    Object.keys(lot).forEach(h => {
+      const v = Number(lot[h]);
+      if (Number.isInteger(Number(h)) && Number.isFinite(v)) map[h] = v;
+    });
+    return Object.keys(map).length ? map : null;
+  }
+  return null;
 }
 function phucTraRef(key, hang, dir, merged) {
   if (!Number.isInteger(hang)) return null;
@@ -785,6 +797,7 @@ const APP_I18N = {
     check2RowSumBad: 'Tổng ≠ 6 cột ({d})',
     check2RowsEditNote: 'Sửa số 2027 ngay trong bảng, bấm ra ngoài ô để lưu.',
     check2RowsMergedNote: '2026 theo hàng là số ghép A/B của tổng lô gốc; hàng chưa nhập 2027 hiện “—”. Lô ghép A/B sửa số ở màn hình lô.',
+    check2RowsDirSumNote: 'Lô tách hướng A/B nhưng 2026 chưa tách hướng: số 2027 cộng A+B theo từng hàng để so tổng hàng của 2026. Sửa số ở màn hình lô.',
     check2RowsDirsNote: '2026 đối chiếu theo từng hướng; hàng có trong 2026 mà chưa nhập sẽ hiện “—”.',
     check2RowsPlainNote: '2026 đối chiếu theo số phúc tra từng hàng; hàng chưa nhập sẽ hiện “—”.',
     check2RowsNoRefNote: 'Lô này chưa có bảng phúc tra từng hàng để so 2026.',
@@ -1264,6 +1277,7 @@ const APP_I18N = {
     check2RowSumBad: 'សរុប ≠ 6 ជួរ ({d})',
     check2RowsEditNote: 'កែលេខ 2027 នៅក្នុងតារាង; ចុចចេញក្រៅប្រអប់ដើម្បីរក្សាទុក។',
     check2RowsMergedNote: '2026 តាមជួរ គឺជាលេខបញ្ជូល A/B នៃសរុបដើម។ ជួរដែលមិនទាន់បញ្ចូល 2027 នឹងបង្ហាញ “—”។ ដីឡូតិ៍បញ្ជូល A/B សូមកែលេខនៅអេក្រង់ដីឡូតិ៍។',
+    check2RowsDirSumNote: 'ដីឡូតិ៍បែងចែកទិស A/B ប៉ុន្តែ 2026 មិនទាន់បែកតាមទិស៖ លេខ 2027 បូក A+B តាមជួរនីមួយៗ ដើម្បីប្រៀបធៀបសរុបជួររបស់ 2026។ សូមកែលេខនៅអេក្រង់ដីឡូតិ៍។',
     check2RowsDirsNote: '2026 ប្រៀបធៀបតាមទិសដៅនីមួយៗ។ ជួរដែលមានក្នុង 2026 តែមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsPlainNote: '2026 ប្រៀបធៀបតាមលេខផ្ទៀងផ្ទាត់ជួរនីមួយៗ។ ជួរដែលមិនទាន់បញ្ចូល នឹងបង្ហាញ “—”។',
     check2RowsNoRefNote: 'ដីឡូតិ៍នេះមិនមានតារាងផ្ទៀងផ្ទាត់ជួរនីមួយៗសម្រាប់ប្រៀបធៀប 2026 ទេ។',
@@ -1682,6 +1696,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 72,
+    date: '25/11/2026',
+    vi: { title: 'Lô 354 đối chiếu tổng gộp từng hàng', items: ['Kiểm tra vòng 2 của lô tách hướng (354): số 2027 cộng A+B theo từng hàng để so với tổng hàng 2026, thấy ngay mức lệch của từng chỉ tiêu trên mỗi hàng. Sửa số ở màn hình lô.'] },
+    km: { title: 'ដីឡូតិ៍ 354 ប្រៀបធៀបសរុបជួរនីមួយៗ', items: ['ត្រួតពិនិត្យជុំទី 2 នៃដីឡូតិ៍បែងចែកទិស (354)៖ លេខ 2027 បូក A+B តាមជួរនីមួយៗ ដើម្បីប្រៀបធៀបនឹងសរុបជួរ 2026 មើលឃើញភាពខុសគ្នានៃចំណុចនីមួយៗភ្លាមៗ។ សូមកែលេខនៅអេក្រង់ដីឡូតិ៍។'] },
+  },
   {
     v: 71,
     date: '25/11/2026',
@@ -2717,7 +2737,7 @@ function check2RowsData(key) {
       if (!Number.isFinite(ref)) return;
       items.push({ dir: '', hang, ref, c26: phucTraComps(key, hang, ''), vals: null, editable: false });
     });
-    return { items: items.sort((a, b) => a.hang - b.hang), mode: 'merged' };
+    return { items: items.sort((a, b) => a.hang - b.hang), mode: pt && pt.ref ? 'merged' : 'dirsum' };
   }
   if (dirs) {
     dirs.forEach(dir => {
@@ -2779,7 +2799,7 @@ function renderCheck2Rows(key) {
   if (!items.length) { host.hidden = true; return; }
   host.hidden = false;
   const noDirRef = mode === 'dirs' && !(PHUC_TRA[key] && PHUC_TRA[key].dirs);
-  const dirs = mode === 'merged' ? null : lotDirs(key);
+  const dirs = mode === 'merged' || mode === 'dirsum' ? null : lotDirs(key);
   const compLabels = ['G', '+', 'C', 'K1', 'K2', 'O'];
   const group = label => `<th colspan="2">${esc(label)}</th>`;
   head.innerHTML = `<tr class="c2-group"><th rowspan="2">${esc(t('thHang'))}</th>`
@@ -2846,9 +2866,10 @@ function renderCheck2Rows(key) {
   }).join('');
   if (note) {
     const base = mode === 'merged' ? t('check2RowsMergedNote')
-      : mode === 'dirs' ? t(noDirRef ? 'check2RowsNoDirRefNote' : 'check2RowsDirsNote')
-        : mode === 'rows' ? t('check2RowsPlainNote') : t('check2RowsNoRefNote');
-    const edit = mode === 'merged' ? '' : t('check2RowsEditNote');
+      : mode === 'dirsum' ? t('check2RowsDirSumNote')
+        : mode === 'dirs' ? t(noDirRef ? 'check2RowsNoDirRefNote' : 'check2RowsDirsNote')
+          : mode === 'rows' ? t('check2RowsPlainNote') : t('check2RowsNoRefNote');
+    const edit = mode === 'merged' || mode === 'dirsum' ? '' : t('check2RowsEditNote');
     note.textContent = `${base} ${t('check2RowsPairNote')} ${edit} ${t('check2RowsSummary', { n: items.length, d: diff, m: miss })}`.replace(/\s+/g, ' ').trim();
   }
   if (check2Focus) {
