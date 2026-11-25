@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=68">
+<link rel="stylesheet" href="./assets/styles.css?v=70">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -116,6 +116,7 @@
           <button class="chip" data-filter="warn" type="button" data-i18n="filterWarn">Cảnh báo</button>
         </div>
         <div class="toolbar-actions">
+          <button class="btn btn-sm" id="btnStats" type="button" data-i18n="statsBtn">Thống kê nhập</button>
           <button class="btn btn-sm" id="btnAddLot" type="button" data-i18n="addLot">+ Lô khác</button>
           <button class="btn btn-sm" id="btnBackup" type="button" data-i18n="backup">Sao lưu</button>
           <button class="btn btn-sm" id="btnRestore" type="button" data-i18n="restore">Phục hồi</button>
@@ -490,12 +491,15 @@
         <span class="badge" id="check2Status"></span>
         <span data-i18n="check2Lead">Dùng cho vòng kiểm tra thứ 2: so từng chỉ tiêu với 2026 và đối chiếu tổng 6 cột.</span>
       </div>
-      <div class="table-wrap">
-        <table class="compare-table check2-table">
-          <thead><tr><th data-i18n="metric">Chỉ tiêu</th><th>2026</th><th>2027</th><th data-i18n="thDelta">Lệch</th></tr></thead>
-          <tbody id="check2Body"></tbody>
-        </table>
-      </div>
+      <details class="check2-overview">
+        <summary data-i18n="check2OverviewTitle">Tổng quan 6 chỉ tiêu · 2026 | 2027</summary>
+        <div class="table-wrap">
+          <table class="compare-table check2-table">
+            <thead><tr><th data-i18n="metric">Chỉ tiêu</th><th>2026</th><th>2027</th><th data-i18n="thDelta">Lệch</th></tr></thead>
+            <tbody id="check2Body"></tbody>
+          </table>
+        </div>
+      </details>
       <div class="check2-notes" id="check2Notes"></div>
       <div id="check2Rows">
         <h4 class="check2-sub" data-i18n="check2RowsTitle">Đối chiếu từng hàng (2026 → 2027)</h4>
@@ -556,6 +560,27 @@
       <p class="footnote" id="notiFootToday" data-i18n="notiFoot">Thông báo tính riêng trên máy này — máy khác chưa xem vẫn thấy thông báo của họ.</p>
       <p class="footnote" id="notiFootHistory" data-i18n="historyFoot" hidden>Lịch sử lấy từ tab Nhật ký trên Google Sheets, giữ lại để xem sau.</p>
       <button class="btn btn-sm" id="btnNotiRefresh" type="button" data-i18n="notiRefresh">Tải lại</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="statsDialog" class="dialog stats-dialog">
+  <div class="dialog-shell">
+    <header class="dialog-head">
+      <div>
+        <div class="eyebrow" data-i18n="statsEyebrow">Danh sách nhập theo người</div>
+        <h3 data-i18n="statsTitle">Thống kê người nhập</h3>
+      </div>
+      <button class="btn btn-icon" id="btnStatsClose" type="button" aria-label="Đóng" data-i18n-aria="close">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <p class="noti-lead" data-i18n="statsLead">Lô tính theo người nhập đầu tiên. Người sửa lô sau đó không được tính. Số lô gồm lô trên máy này và lô đã tải từ Google.</p>
+    <div class="stats-sum" id="statsSummary"></div>
+    <div class="stats-people" id="statsPeople"></div>
+    <div class="noti-foot-row">
+      <p class="footnote" data-i18n="statsFoot">Chỉ chỉnh sửa sau đó cũng không đổi người nhập. Máy chưa đặt tên thì lô tính theo “Người KK” của lô.</p>
+      <button class="btn btn-sm" id="btnStatsRefresh" type="button" data-i18n="statsRefresh">Tải lại từ Google</button>
     </div>
   </div>
 </dialog>
@@ -624,10 +649,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=68"></script>
+<script src="./assets/phuctra.js?v=70"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=68"></script>
+<script src="./assets/app.js?v=70"></script>
 </body>
 </html>

@@ -186,7 +186,40 @@ function persist(opts) {
 }
 function touchLot(key) {
   const lot = key && DB.lots[key];
-  if (lot) lot.updatedAt = new Date().toISOString();
+  if (lot) {
+    lot.updatedAt = new Date().toISOString();
+    markEnteredBy(lot);
+  }
+}
+// Người nhập lô đầu tiên: chỉ ghi một lần, khi lô có số liệu lần đầu.
+const UNKNOWN_ENTRANT = '?';
+const FIRST_ENTRY_KEY = 'crck2.kk2027.firstentry.v1';
+function markEnteredBy(lot) {
+  const meta = lot && lot.meta;
+  if (!meta || meta.firstBy) return;
+  if (!(lot.rows || []).some(rowHasData)) return;
+  const who = userName() || (meta.nguoi || '').trim();
+  meta.firstBy = who || UNKNOWN_ENTRANT;
+  meta.firstAt = lot.updatedAt || new Date().toISOString();
+}
+// Dữ liệu trước bản 69 chưa có người nhập đầu tiên: khoá theo "Người KK" của lô,
+// lô nào cũng không rõ thì đánh dấu "?" để người sửa sau không bị tính nhầm.
+function migrateFirstEntry(force) {
+  try {
+    if (!force && localStorage.getItem(FIRST_ENTRY_KEY)) return;
+  } catch (err) {}
+  let changed = false;
+  Object.keys(DB.lots).forEach(key => {
+    const lot = DB.lots[key];
+    const meta = lot && lot.meta;
+    if (!meta || meta.firstBy) return;
+    if (!(lot.rows || []).some(rowHasData)) return;
+    meta.firstBy = (meta.nguoi || '').trim() || UNKNOWN_ENTRANT;
+    meta.firstAt = meta.firstAt || lot.updatedAt || meta.doneAt || null;
+    changed = true;
+  });
+  try { localStorage.setItem(FIRST_ENTRY_KEY, '1'); } catch (err) {}
+  if (changed) persist({ quiet: true });
 }
 function lotsKeys() {
   const set = new Set(BASELINE.map(l => l.lot));
@@ -195,7 +228,7 @@ function lotsKeys() {
 }
 function lotMeta(key) {
   return (DB.lots[key] && DB.lots[key].meta) || {
-    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key),
+    huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key), firstBy: '', firstAt: null,
   };
 }
 function lotRows(key) {
@@ -204,7 +237,7 @@ function lotRows(key) {
 function ensureLot(key) {
   if (!DB.lots[key]) {
     DB.lots[key] = {
-      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key) },
+      meta: { huong: '', ngay: '', nguoi: '', ghiChu: '', done: false, doneAt: null, doneBy: '', reportAt: null, custom: !BASE_BY_LOT.has(key), firstBy: '', firstAt: null },
       rows: [],
     };
   }
@@ -741,6 +774,7 @@ const APP_I18N = {
     check2Sum27Diff: 'Tổng 6 cột lệch {n} so với tổng ĐT của lô.',
     check2Sum26Diff: 'Số 2026 tự lệch {n} giữa tổng và 6 cột (theo bảng gốc).',
     check2RowsTitle: 'Đối chiếu từng hàng · từng chỉ tiêu 2026 | 2027',
+    check2OverviewTitle: 'Tổng quan 6 chỉ tiêu · 2026 | 2027',
     check2ColNote: 'Ghi chú',
     check2RowOk: 'Khớp',
     check2RowSmall: 'Lệch nhỏ',
@@ -1089,6 +1123,20 @@ const APP_I18N = {
     historyFromImport: 'theo Nhật ký nhập',
     historySparse: 'Bản ghi cũ, không có chi tiết',
     historyNoChanges: 'Không có thay đổi',
+    statsBtn: 'Thống kê nhập',
+    statsTitle: 'Thống kê người nhập',
+    statsEyebrow: 'Danh sách nhập theo người',
+    statsLead: 'Lô tính theo người nhập đầu tiên. Người sửa lô sau đó không được tính. Số lô gồm lô trên máy này và lô đã tải từ Google.',
+    statsFoot: 'Chỉnh sửa sau đó cũng không đổi người nhập. Máy chưa đặt tên thì lô tính theo “Người KK” của lô.',
+    statsRefresh: 'Tải lại từ Google',
+    statsTotalPeople: '{n} người',
+    statsTotalLots: '{n} lô',
+    statsTotalTrees: '{n} cây',
+    statsLotUnit: 'lô',
+    statsDone: '{n} hoàn tất',
+    statsUnknown: 'Chưa rõ người nhập',
+    statsFromSheet: 'Máy khác',
+    statsEmpty: 'Chưa có lô nào được nhập.',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1204,6 +1252,7 @@ const APP_I18N = {
     check2Sum27Diff: 'ផលបូក 6 ជួរខុស {n} ពីផលបូកផ្ទៃដីសរុបរបស់ដីឡូតិ៍។',
     check2Sum26Diff: 'លេខ 2026 ខ្លួនឯងខុស {n} រវាងផលបូក និង 6 ជួរ (តាមតារាងដើម)។',
     check2RowsTitle: 'ប្រៀបធៀបជួរនីមួយៗ · ចំណុចនីមួយៗ 2026 | 2027',
+    check2OverviewTitle: 'សង្ខេប 6 ចំណុច · 2026 | 2027',
     check2ColNote: 'កំណត់សម្គាល់',
     check2RowOk: 'ត្រូវ',
     check2RowSmall: 'ខុសតិច',
@@ -1552,6 +1601,20 @@ const APP_I18N = {
     historyFromImport: 'តាមកំណត់ហេតុបញ្ចូល',
     historySparse: 'កំណត់ត្រាចាស់ គ្មានព័ត៌មានលម្អិត',
     historyNoChanges: 'គ្មានការផ្លាស់ប្តូរ',
+    statsBtn: 'ស្ថិតិអ្នកបញ្ចូល',
+    statsTitle: 'ស្ថិតិអ្នកបញ្ចូល',
+    statsEyebrow: 'បញ្ជីបញ្ចូលតាមអ្នកប្រើ',
+    statsLead: 'ដីឡូតិ៍គិតតាមអ្នកបញ្ចូលដំបូង។ អ្នកកែដីឡូតិ៍ក្រោយមិនរាប់បញ្ចូលទេ។ ចំនួនដីឡូតិ៍រួមមានលើម៉ាស៊ីននេះ និងដីឡូតិ៍ដែលបានទាញពី Google។',
+    statsFoot: 'ការកែសម្រួលក្រោយក៏មិនប្តូរអ្នកបញ្ចូលដែរ។ បើម៉ាស៊ីនមិនទាន់ដាក់ឈ្មោះ ដីឡូតិ៍គិតតាម “អ្នករាប់” របស់ដីឡូតិ៍។',
+    statsRefresh: 'ទាញពី Google ឡើងវិញ',
+    statsTotalPeople: '{n} នាក់',
+    statsTotalLots: '{n} ដីឡូតិ៍',
+    statsTotalTrees: '{n} ដើម',
+    statsLotUnit: 'ដីឡូតិ៍',
+    statsDone: '{n} រួចរាល់',
+    statsUnknown: 'មិនដឹងអ្នកបញ្ចូល',
+    statsFromSheet: 'ម៉ាស៊ីនផ្សេង',
+    statsEmpty: 'មិនទាន់មានដីឡូតិ៍ដែលបានបញ្ចូលទេ។',
   },
 };
 function t(key, vars) {
@@ -1617,6 +1680,18 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 70,
+    date: '25/11/2026',
+    vi: { title: 'Kiểm vòng 2: tiêu đề dính, bảng rộng hơn', items: ['Hai hàng tiêu đề (nhóm chỉ tiêu và năm 2026/2027) dính khi cuộn bảng đối chiếu từng hàng. Hộp Kiểm tra vòng 2 rộng hơn, vùng bảng cao hơn; phần tổng quan 6 chỉ tiêu gấp gọn, bấm để mở.'] },
+    km: { title: 'ត្រួតពិនិត្យជុំទី 2៖ ក្បាលតារាងជាប់ តារាងធំជាង', items: ['ក្បាលតារាងពីរជួរ (ក្រុមចំណុច និងឆ្នាំ 2026/2027) ជាប់ពេលរំកិលតារាងប្រៀបធៀបជួរនីមួយៗ។ ប្រអប់ត្រួតពិនិត្យជុំទី 2 ធំជាង តំបន់តារាងខ្ពស់ជាង; ផ្នែកសង្ខេប 6 ចំណុចបត់តូច ចុចដើម្បីបើក។'] },
+  },
+  {
+    v: 69,
+    date: '25/11/2026',
+    vi: { title: 'Thống kê người nhập lô', items: ['Nút Thống kê nhập ở trang chủ: mỗi người nhập bao nhiêu lô, số cây và chi tiết từng lô. Lô tính theo người nhập đầu tiên — người sửa sau không bị tính; lô cũ lấy theo “Người KK”, gồm cả lô tải từ Google.'] },
+    km: { title: 'ស្ថិតិអ្នកបញ្ចូលដីឡូតិ៍', items: ['ប៊ូតុង ស្ថិតិអ្នកបញ្ចូល នៅទំព័រដើម៖ នាក់ម្នាក់បញ្ចូលប៉ុន្មានដីឡូតិ៍ ចំនួនដើម និងលម្អិតដីឡូតិ៍នីមួយៗ។ ដីឡូតិ៍គិតតាមអ្នកបញ្ចូលដំបូង — អ្នកកែក្រោយមិនរាប់បញ្ចូល; ដីឡូតិ៍ចាស់យកតាម “អ្នករាប់” រួមទាំងដីឡូតិ៍ដែលទាញពី Google។'] },
+  },
   {
     v: 68,
     date: '25/11/2026',
@@ -2704,6 +2779,7 @@ function renderCheck2Rows(key) {
     + group(t('metricTotal')) + compLabels.map(group).join('')
     + `<th rowspan="2">${esc(t('thDelta'))}</th><th rowspan="2">${esc(t('check2ColNote'))}</th></tr>`
     + `<tr class="c2-year">${'<th>2026</th><th>2027</th>'.repeat(7)}</tr>`;
+  measureCheck2Head();
   let diff = 0;
   let miss = 0;
   body.innerHTML = items.map(item => {
@@ -2940,6 +3016,15 @@ function openCheck2() {
   if (title) title.textContent = `${t('thLot')} ${state.lot}`;
   renderCheck2();
   if (!dlg.open) dlg.showModal();
+  measureCheck2Head();
+}
+// Hai hàng tiêu đề dính khi cuộn: hàng năm 2026/2027 nằm ngay dưới hàng nhóm.
+function measureCheck2Head() {
+  const head = $('#check2RowsHead');
+  if (!head) return;
+  const row = head.querySelector('.c2-group');
+  const h = row ? row.getBoundingClientRect().height : 0;
+  if (h) head.closest('table').style.setProperty('--c2-head', `${h}px`);
 }
 
 function alertHtml(level, body, extraClass) {
@@ -4824,6 +4909,7 @@ function restoreJSON(file) {
       }
       if (!confirm(t('restoreConfirm'))) return;
       DB = { version: 1, lots: data.lots, updatedAt: data.updatedAt || new Date().toISOString() };
+      migrateFirstEntry(true);
       clearAllDrafts();
       persist();
       renderHome();
@@ -5255,6 +5341,100 @@ function markNotiSeen() {
   items.forEach(it => { map[it.key] = it.at; });
   notiSeen = map;
   saveNotiSeen(map);
+}
+
+/* Thống kê người nhập lô đầu tiên */
+function entrantName(key, meta) {
+  const m = meta || lotMeta(key);
+  if (m.firstBy && m.firstBy !== UNKNOWN_ENTRANT) return m.firstBy;
+  return (m.nguoi || '').trim() || UNKNOWN_ENTRANT;
+}
+function statsGroups() {
+  const groups = new Map();
+  const add = (name, item) => {
+    const label = (name || '').trim() || UNKNOWN_ENTRANT;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(item);
+  };
+  lotsKeys().forEach(key => {
+    const st = lotState(key);
+    if (!st.entered.length) return;
+    const f = GEO_BY_LOT.get(key);
+    add(entrantName(key, st.meta), {
+      key, kv: f ? f.properties.kv : '', level: st.level, dt: st.agg.dt,
+      rows: st.entered.length,
+      at: st.meta.firstAt || (DB.lots[key] && DB.lots[key].updatedAt) || null,
+      remote: false,
+    });
+  });
+  // Lô chỉ có trên Google (máy này chưa nhập) vẫn tính cho người nhập trên máy kia.
+  const rem = (state.remote && state.remote.lots) || {};
+  Object.keys(rem).forEach(key => {
+    const local = DB.lots[key];
+    if (local && lotRows(key).some(rowHasData)) return;
+    const r = rem[key];
+    if (!r || !(Number(r.entered) > 0)) return;
+    add(r.nguoi, {
+      key, kv: r.kv || '', level: r.done ? 'done' : (r.status === 'warn' ? 'warn' : 'doing'),
+      dt: r.dt == null ? null : Number(r.dt), rows: Number(r.entered) || 0,
+      at: r.updatedAt || null, atLabel: r.updatedAtDisplay || '', remote: true,
+    });
+  });
+  return [...groups.entries()].map(([name, items]) => ({
+    name,
+    items: items.sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))),
+  })).sort((a, b) => b.items.length - a.items.length || a.name.localeCompare(b.name));
+}
+function renderStats() {
+  const host = $('#statsPeople');
+  const sumHost = $('#statsSummary');
+  if (!host || !sumHost) return;
+  const refreshBtn = $('#btnStatsRefresh');
+  if (refreshBtn) refreshBtn.hidden = !syncCfg.url;
+  const groups = statsGroups();
+  const lots = groups.reduce((s, g) => s + g.items.length, 0);
+  const trees = groups.reduce((s, g) => s + g.items.reduce((a, it) => a + (Number(it.dt) || 0), 0), 0);
+  sumHost.innerHTML = [
+    t('statsTotalPeople', { n: fmt(groups.length) }),
+    t('statsTotalLots', { n: fmt(lots) }),
+    t('statsTotalTrees', { n: fmt(trees) }),
+  ].map(x => `<span class="stats-pill">${esc(x)}</span>`).join('');
+  if (!groups.length) {
+    host.innerHTML = `<p class="noti-empty">${esc(t('statsEmpty'))}</p>`;
+    return;
+  }
+  host.innerHTML = groups.map(g => {
+    const personTrees = g.items.reduce((a, it) => a + (Number(it.dt) || 0), 0);
+    const done = g.items.filter(it => it.level === 'done').length;
+    const nameLabel = g.name === UNKNOWN_ENTRANT ? t('statsUnknown') : g.name;
+    const nums = [`${fmt(g.items.length)} ${t('statsLotUnit')}`];
+    if (personTrees) nums.push(`${fmt(personTrees)} ${t('notiTree')}`);
+    if (done) nums.push(t('statsDone', { n: fmt(done) }));
+    const items = g.items.map(it => {
+      const when = it.at ? dateTimeVN(it.at) : (it.atLabel || '');
+      const sub = [t('notiRows', { n: fmt(it.rows) })];
+      if (it.dt != null) sub.push(`${fmt(it.dt)} ${t('notiTree')}`);
+      if (when) sub.push(when);
+      const stateText = it.level === 'done' ? t('notiStatusDone') : (it.level === 'warn' ? t('notiStatusWarn') : t('notiStatusDoing'));
+      const stateCls = it.level === 'done' ? 'st-done' : (it.level === 'warn' ? 'st-warn' : 'st-doing');
+      return `<div class="noti-item stats-item">
+        <span class="noti-item-main">
+          <span class="noti-lot">${esc(t('notiLot', { lot: it.key }))}${it.kv ? `<span class="noti-kv">${esc(it.kv)}</span>` : ''}${it.remote ? `<span class="noti-kv">${esc(t('statsFromSheet'))}</span>` : ''}</span>
+          <span class="noti-sub">${esc(sub.join(' · '))}</span>
+        </span>
+        <span class="noti-state ${stateCls}">${esc(stateText)}</span>
+      </div>`;
+    }).join('');
+    return `<details class="stats-person">
+      <summary><span class="stats-name">${esc(nameLabel)}</span><span class="stats-nums">${esc(nums.join(' · '))}</span></summary>
+      <div class="stats-items">${items}</div>
+    </details>`;
+  }).join('');
+}
+function openStatsDialog() {
+  renderStats();
+  const dlg = $('#statsDialog');
+  if (dlg && !dlg.open) dlg.showModal();
 }
 function openNoti() {
   const dlg = $('#notiDialog');
@@ -5825,6 +6005,13 @@ function applyRemoteLot(key, remote, meta, remoteAt, device) {
     if (meta.ngay) lot.meta.ngay = meta.ngay;
   }
   lot.updatedAt = remoteAt || new Date().toISOString();
+  if (!lot.meta.firstBy && lot.rows.some(rowHasData)) {
+    const who = String((meta && meta.nguoi) || lot.meta.nguoi || device || '').trim();
+    if (who) {
+      lot.meta.firstBy = who;
+      lot.meta.firstAt = lot.updatedAt;
+    }
+  }
   persist({ quiet: true });
 
   const dev = String(device || (meta && meta.nguoi) || '').trim();
@@ -6125,6 +6312,17 @@ function setupDialogs() {
   $('#btnDetailLot').addEventListener('click', () => openDetailDialog(state.lot));
   $('#btnDetailClose').addEventListener('click', () => detailDlg.close());
   $('#btnDetailRefresh').addEventListener('click', () => loadRemoteDetail());
+  const statsDlg = $('#statsDialog');
+  $('#btnStats').addEventListener('click', openStatsDialog);
+  $('#btnStatsClose').addEventListener('click', () => statsDlg.close());
+  statsDlg.addEventListener('click', (e) => { if (e.target === statsDlg) statsDlg.close(); });
+  $('#btnStatsRefresh').addEventListener('click', async () => {
+    const btn = $('#btnStatsRefresh');
+    btn.disabled = true;
+    await pullRemote(false);
+    renderStats();
+    btn.disabled = false;
+  });
   const check2Dlg = $('#check2Dialog');
   $('#btnCheck2').addEventListener('click', openCheck2);
   $('#check2RowsBody').addEventListener('change', onCheck2RowChange);
@@ -6134,6 +6332,7 @@ function setupDialogs() {
   });
   $('#btnCheck2Close').addEventListener('click', () => check2Dlg.close());
   check2Dlg.addEventListener('click', (e) => { if (e.target === check2Dlg) check2Dlg.close(); });
+  window.addEventListener('resize', () => { if (check2Dlg.open) measureCheck2Head(); });
   const notiDlg = $('#notiDialog');
   $('#btnNoti').addEventListener('click', openNoti);
   $('#btnNotiClose').addEventListener('click', () => notiDlg.close());
@@ -6218,6 +6417,7 @@ function setupPWA() {
    Khởi động
    ============================================================ */
 function init() {
+  migrateFirstEntry();
   setupHomeEvents();
   setupDialogs();
   setupSyncUi();
