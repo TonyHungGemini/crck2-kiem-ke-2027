@@ -11,7 +11,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
-<link rel="stylesheet" href="./assets/styles.css?v=70">
+<link rel="stylesheet" href="./assets/styles.css?v=71">
 <title>Kiểm kê 2027 · Đội 2 CRCK2</title>
 </head>
 <body>
@@ -577,9 +577,10 @@
     </header>
     <p class="noti-lead" data-i18n="statsLead">Lô tính theo người nhập đầu tiên. Người sửa lô sau đó không được tính. Số lô gồm lô trên máy này và lô đã tải từ Google.</p>
     <div class="stats-sum" id="statsSummary"></div>
+    <p class="stats-note" id="statsNote" hidden></p>
     <div class="stats-people" id="statsPeople"></div>
     <div class="noti-foot-row">
-      <p class="footnote" data-i18n="statsFoot">Chỉ chỉnh sửa sau đó cũng không đổi người nhập. Máy chưa đặt tên thì lô tính theo “Người KK” của lô.</p>
+      <p class="footnote" data-i18n="statsFoot">Lô nhập trước bản 69 lấy tên máy ghi lô sớm nhất trong Nhật ký; máy chưa đặt tên thì theo “Người KK” của lô.</p>
       <button class="btn btn-sm" id="btnStatsRefresh" type="button" data-i18n="statsRefresh">Tải lại từ Google</button>
     </div>
   </div>
@@ -649,10 +650,10 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="./assets/baseline.js"></script>
-<script src="./assets/phuctra.js?v=70"></script>
+<script src="./assets/phuctra.js?v=71"></script>
 <script src="./assets/geo.js"></script>
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/xlsx.style.min.js"></script>
-<script src="./assets/app.js?v=70"></script>
+<script src="./assets/app.js?v=71"></script>
 </body>
 </html>

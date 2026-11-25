@@ -1127,16 +1127,17 @@ const APP_I18N = {
     statsTitle: 'Thống kê người nhập',
     statsEyebrow: 'Danh sách nhập theo người',
     statsLead: 'Lô tính theo người nhập đầu tiên. Người sửa lô sau đó không được tính. Số lô gồm lô trên máy này và lô đã tải từ Google.',
-    statsFoot: 'Chỉnh sửa sau đó cũng không đổi người nhập. Máy chưa đặt tên thì lô tính theo “Người KK” của lô.',
+    statsFoot: 'Lô nhập trước bản 69 lấy tên máy ghi lô sớm nhất trong Nhật ký; máy chưa đặt tên thì theo “Người KK” của lô.',
     statsRefresh: 'Tải lại từ Google',
     statsTotalPeople: '{n} người',
     statsTotalLots: '{n} lô',
     statsTotalTrees: '{n} cây',
     statsLotUnit: 'lô',
-    statsDone: '{n} hoàn tất',
     statsUnknown: 'Chưa rõ người nhập',
     statsFromSheet: 'Máy khác',
     statsEmpty: 'Chưa có lô nào được nhập.',
+    statsLoadingHistory: 'Đang tải Nhật ký để lấy tên người nhập…',
+    statsHistoryError: 'Chưa tải được Nhật ký: {err}',
   },
   km: {
     appTitle: 'ការរាប់ដើមឈើ 2027 · ក្រុមទី 2 CRCK2',
@@ -1605,16 +1606,17 @@ const APP_I18N = {
     statsTitle: 'ស្ថិតិអ្នកបញ្ចូល',
     statsEyebrow: 'បញ្ជីបញ្ចូលតាមអ្នកប្រើ',
     statsLead: 'ដីឡូតិ៍គិតតាមអ្នកបញ្ចូលដំបូង។ អ្នកកែដីឡូតិ៍ក្រោយមិនរាប់បញ្ចូលទេ។ ចំនួនដីឡូតិ៍រួមមានលើម៉ាស៊ីននេះ និងដីឡូតិ៍ដែលបានទាញពី Google។',
-    statsFoot: 'ការកែសម្រួលក្រោយក៏មិនប្តូរអ្នកបញ្ចូលដែរ។ បើម៉ាស៊ីនមិនទាន់ដាក់ឈ្មោះ ដីឡូតិ៍គិតតាម “អ្នករាប់” របស់ដីឡូតិ៍។',
+    statsFoot: 'ដីឡូតិ៍បញ្ចូលមុនកំណែ 69 យកឈ្មោះឧបករណ៍ដំបូងដែលកត់ត្រាក្នុងកំណត់ហេតុ; បើម៉ាស៊ីនមិនទាន់ដាក់ឈ្មោះ គិតតាម “អ្នករាប់” របស់ដីឡូតិ៍។',
     statsRefresh: 'ទាញពី Google ឡើងវិញ',
     statsTotalPeople: '{n} នាក់',
     statsTotalLots: '{n} ដីឡូតិ៍',
     statsTotalTrees: '{n} ដើម',
     statsLotUnit: 'ដីឡូតិ៍',
-    statsDone: '{n} រួចរាល់',
     statsUnknown: 'មិនដឹងអ្នកបញ្ចូល',
     statsFromSheet: 'ម៉ាស៊ីនផ្សេង',
     statsEmpty: 'មិនទាន់មានដីឡូតិ៍ដែលបានបញ្ចូលទេ។',
+    statsLoadingHistory: 'កំពុងទាញកំណត់ហេតុដើម្បីយកឈ្មោះអ្នកបញ្ចូល…',
+    statsHistoryError: 'មិនទាន់ទាញបានកំណត់ហេតុ៖ {err}',
   },
 };
 function t(key, vars) {
@@ -1680,6 +1682,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 71,
+    date: '25/11/2026',
+    vi: { title: 'Thống kê nhập lấy tên từ Nhật ký', items: ['Lô nhập trước đây chưa lưu tên người nhập giờ hiện đúng tên máy ghi lô sớm nhất trong Nhật ký (ví dụ “hien to8”, “Duong”, “Hung bv”) thay vì “Chưa rõ”. Mỗi người hiện số lô và danh sách lô kèm KV, gọn hơn.'] },
+    km: { title: 'ស្ថិតិបញ្ចូលយកឈ្មោះពីកំណត់ហេតុ', items: ['ដីឡូតិ៍ដែលបានបញ្ចូលពីមុនមិនបានរក្សាឈ្មោះអ្នកបញ្ចូល ឥឡូវបង្ហាញឈ្មោះឧបករណ៍ដំបូងដែលកត់ត្រាក្នុងកំណត់ហេតុ (ឧ. “hien to8”, “Duong”, “Hung bv”) ជំនួស “មិនដឹង”។ នាក់ម្នាក់បង្ហាញចំនួនដីឡូតិ៍ និងបញ្ជីដីឡូតិ៍ជាមួយ KV ខ្លីជាងមុន។'] },
+  },
   {
     v: 70,
     date: '25/11/2026',
@@ -5344,10 +5352,65 @@ function markNotiSeen() {
 }
 
 /* Thống kê người nhập lô đầu tiên */
+// Lô nhập trước bản 69 không lưu người nhập: lấy máy ghi lô sớm nhất trong Nhật ký.
+const HISTORY_STATS_DAYS = 365;
+function historyEntryLots(e) {
+  const out = [];
+  if (e.lot != null && String(e.lot).trim()) out.push(String(e.lot).trim());
+  String(e.changed || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => out.push(s));
+  return out;
+}
+let entrantsFromHistory = { ref: null, map: new Map() };
+function historyEntrants() {
+  const entries = statsHistory.entries;
+  if (entrantsFromHistory.ref === entries) return entrantsFromHistory.map;
+  const map = new Map();
+  entries.forEach(e => {
+    const name = String(e.device || e.nguoi || '').trim();
+    const stamp = historyStamp(e.at);
+    if (!name || !stamp) return;
+    historyEntryLots(e).forEach(key => {
+      const cur = map.get(key);
+      if (!cur || stamp < cur.stamp) map.set(key, { name, stamp });
+    });
+  });
+  entrantsFromHistory = { ref: entries, map };
+  return map;
+}
 function entrantName(key, meta) {
   const m = meta || lotMeta(key);
   if (m.firstBy && m.firstBy !== UNKNOWN_ENTRANT) return m.firstBy;
+  const h = historyEntrants().get(String(key));
+  if (h) return h.name;
   return (m.nguoi || '').trim() || UNKNOWN_ENTRANT;
+}
+// Nhật ký riêng cho thống kê (1 năm), không đụng bộ lọc ngày của hộp Nhật ký.
+let statsHistory = { at: '', entries: [], error: '' };
+let statsHistoryBusy = false;
+async function loadStatsHistory(force) {
+  if (statsHistoryBusy) return;
+  const u = syncCfg.url.trim();
+  if (!u) return;
+  if (!force && statsHistory.at) return;
+  statsHistoryBusy = true;
+  renderStats();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const url = u + (u.indexOf('?') >= 0 ? '&' : '?') + 'action=history&days=' + HISTORY_STATS_DAYS;
+    const res = await fetch(url, { redirect: 'follow', cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error(t('syncHttpError', { code: res.status }));
+    const data = await res.json();
+    if (!data || data.ok === false) throw new Error((data && data.error) || t('syncAppError', { err: '' }));
+    if (!Array.isArray(data.entries)) throw new Error(t('remoteOldScript'));
+    statsHistory = { at: data.at || '', entries: data.entries, error: '' };
+  } catch (err) {
+    statsHistory = { at: '', entries: [], error: err.message };
+  } finally {
+    clearTimeout(timer);
+    statsHistoryBusy = false;
+    renderStats();
+  }
 }
 function statsGroups() {
   const groups = new Map();
@@ -5374,7 +5437,8 @@ function statsGroups() {
     if (local && lotRows(key).some(rowHasData)) return;
     const r = rem[key];
     if (!r || !(Number(r.entered) > 0)) return;
-    add(r.nguoi, {
+    const h = historyEntrants().get(String(key));
+    add(String(r.nguoi || '').trim() || (h && h.name), {
       key, kv: r.kv || '', level: r.done ? 'done' : (r.status === 'warn' ? 'warn' : 'doing'),
       dt: r.dt == null ? null : Number(r.dt), rows: Number(r.entered) || 0,
       at: r.updatedAt || null, atLabel: r.updatedAtDisplay || '', remote: true,
@@ -5399,42 +5463,42 @@ function renderStats() {
     t('statsTotalLots', { n: fmt(lots) }),
     t('statsTotalTrees', { n: fmt(trees) }),
   ].map(x => `<span class="stats-pill">${esc(x)}</span>`).join('');
+  const noteEl = $('#statsNote');
+  if (noteEl) {
+    const note = statsHistoryBusy ? t('statsLoadingHistory')
+      : (statsHistory.error ? t('statsHistoryError', { err: statsHistory.error }) : '');
+    noteEl.hidden = !note;
+    noteEl.textContent = note;
+    noteEl.classList.toggle('bad', !!statsHistory.error);
+  }
   if (!groups.length) {
     host.innerHTML = `<p class="noti-empty">${esc(t('statsEmpty'))}</p>`;
     return;
   }
   host.innerHTML = groups.map(g => {
-    const personTrees = g.items.reduce((a, it) => a + (Number(it.dt) || 0), 0);
-    const done = g.items.filter(it => it.level === 'done').length;
     const nameLabel = g.name === UNKNOWN_ENTRANT ? t('statsUnknown') : g.name;
-    const nums = [`${fmt(g.items.length)} ${t('statsLotUnit')}`];
-    if (personTrees) nums.push(`${fmt(personTrees)} ${t('notiTree')}`);
-    if (done) nums.push(t('statsDone', { n: fmt(done) }));
-    const items = g.items.map(it => {
+    const chips = g.items.map(it => {
       const when = it.at ? dateTimeVN(it.at) : (it.atLabel || '');
-      const sub = [t('notiRows', { n: fmt(it.rows) })];
-      if (it.dt != null) sub.push(`${fmt(it.dt)} ${t('notiTree')}`);
-      if (when) sub.push(when);
-      const stateText = it.level === 'done' ? t('notiStatusDone') : (it.level === 'warn' ? t('notiStatusWarn') : t('notiStatusDoing'));
-      const stateCls = it.level === 'done' ? 'st-done' : (it.level === 'warn' ? 'st-warn' : 'st-doing');
-      return `<div class="noti-item stats-item">
-        <span class="noti-item-main">
-          <span class="noti-lot">${esc(t('notiLot', { lot: it.key }))}${it.kv ? `<span class="noti-kv">${esc(it.kv)}</span>` : ''}${it.remote ? `<span class="noti-kv">${esc(t('statsFromSheet'))}</span>` : ''}</span>
-          <span class="noti-sub">${esc(sub.join(' · '))}</span>
-        </span>
-        <span class="noti-state ${stateCls}">${esc(stateText)}</span>
-      </div>`;
+      const tip = [t('notiRows', { n: fmt(it.rows) })];
+      if (it.dt != null) tip.push(`${fmt(it.dt)} ${t('notiTree')}`);
+      if (when) tip.push(when);
+      tip.push(it.level === 'done' ? t('notiStatusDone') : (it.level === 'warn' ? t('notiStatusWarn') : t('notiStatusDoing')));
+      return `<span class="stats-lot" title="${esc(tip.join(' · '))}">
+        ${esc(t('notiLot', { lot: it.key }))}${it.kv ? `<span class="noti-kv">${esc(it.kv)}</span>` : ''}${it.remote ? `<span class="noti-kv">${esc(t('statsFromSheet'))}</span>` : ''}
+      </span>`;
     }).join('');
-    return `<details class="stats-person">
-      <summary><span class="stats-name">${esc(nameLabel)}</span><span class="stats-nums">${esc(nums.join(' · '))}</span></summary>
-      <div class="stats-items">${items}</div>
-    </details>`;
+    return `<div class="stats-person">
+      <div class="stats-row"><span class="stats-name">${esc(nameLabel)}</span><span class="stats-nums">${esc(`${fmt(g.items.length)} ${t('statsLotUnit')}`)}</span></div>
+      <div class="stats-lots">${chips}</div>
+    </div>`;
   }).join('');
 }
 function openStatsDialog() {
   renderStats();
   const dlg = $('#statsDialog');
   if (dlg && !dlg.open) dlg.showModal();
+  loadStatsHistory(false);
+  pullRemote(false).then(renderStats).catch(() => {});
 }
 function openNoti() {
   const dlg = $('#notiDialog');
@@ -6319,7 +6383,7 @@ function setupDialogs() {
   $('#btnStatsRefresh').addEventListener('click', async () => {
     const btn = $('#btnStatsRefresh');
     btn.disabled = true;
-    await pullRemote(false);
+    await Promise.all([pullRemote(false), loadStatsHistory(true)]);
     renderStats();
     btn.disabled = false;
   });
