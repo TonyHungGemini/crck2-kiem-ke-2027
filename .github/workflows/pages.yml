@@ -32,6 +32,25 @@ jobs:
         with:
           path: '.'
 
+      # Artifact vừa upload chưa tra metadata được ngay -> deploy-pages báo
+      # "No artifacts named github-pages". Chờ metadata sẵn sàng rồi mới deploy.
+      - name: Wait for artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 30); do
+            total=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" \
+              | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$')
+            if [ "${total:-0}" -ge 1 ]; then
+              echo "artifact metadata ready after $i s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "artifact metadata not ready after 60s" >&2
+          exit 1
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
