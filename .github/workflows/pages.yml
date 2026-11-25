@@ -43,7 +43,8 @@ jobs:
               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" \
               | grep -o '"total_count": *[0-9]*' | grep -o '[0-9]*$')
             if [ "${total:-0}" -ge 1 ]; then
-              echo "artifact metadata ready after $i s"
+              echo "artifact metadata ready after $i s; waiting a bit longer for Pages"
+              sleep 20
               exit 0
             fi
             sleep 2
