@@ -393,6 +393,11 @@ details[open] .wn-hint{display:none}
 .check2-rows td.c2-v26{border-left:1px solid var(--line);background:#faf8f3;color:var(--muted);
   font-family:var(--tab-nums);font-variant-numeric:tabular-nums;text-align:right}
 .check2-rows td.c2-v27-diff{background:var(--accent-soft)}
+.check2-rows td.c2-odiff{border-left:1px solid var(--line);text-align:right;
+  font-family:var(--tab-nums);font-variant-numeric:tabular-nums}
+.check2-rows td.c2-odiff.bad{background:#f7e3bd;color:var(--amber);font-weight:750}
+.check2-rows tr.c2-row-o td{background:var(--amber-soft)}
+.check2-rows tr.c2-row-o td.c2-odiff.bad{background:#f7e3bd}
 .check2-row-note{color:var(--muted);font-size:12px}
 .check2-row-note.neg{color:var(--red);font-weight:600}
 .check2-row-note.pos{color:var(--green);font-weight:600}

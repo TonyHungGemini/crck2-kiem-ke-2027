@@ -795,6 +795,8 @@ const APP_I18N = {
     check2RowNoDirRef: 'Chưa có 2026 theo hướng',
     check2RowMissing27: 'Thiếu 2027',
     check2RowSumBad: 'Tổng ≠ 6 cột ({d})',
+    check2ColODiff: 'Lệch O',
+    check2OdiffTitle: 'Chênh lệch hố trống 2027 − 2026; từ 3 trở lên tô vàng cam',
     check2RowsEditNote: 'Sửa số 2027 ngay trong bảng, bấm ra ngoài ô để lưu.',
     check2RowsMergedNote: '2026 theo hàng là số ghép A/B của tổng lô gốc; hàng chưa nhập 2027 hiện “—”. Lô ghép A/B sửa số ở màn hình lô.',
     check2RowsDirSumNote: 'Lô tách hướng A/B nhưng 2026 chưa tách hướng: số 2027 cộng A+B theo từng hàng để so tổng hàng của 2026. Sửa số ở màn hình lô.',
@@ -1275,6 +1277,8 @@ const APP_I18N = {
     check2RowNoDirRef: 'មិនទាន់មាន 2026 តាមទិស',
     check2RowMissing27: 'ខ្វះ 2027',
     check2RowSumBad: 'សរុប ≠ 6 ជួរ ({d})',
+    check2ColODiff: 'លំអៀង O',
+    check2OdiffTitle: 'ភាពខុសគ្នារណ្ដៅទទេ 2027 − 2026; ចាប់ពី 3 ឡើងទៅ ដាក់ពណ៌លឿងទុំ',
     check2RowsEditNote: 'កែលេខ 2027 នៅក្នុងតារាង; ចុចចេញក្រៅប្រអប់ដើម្បីរក្សាទុក។',
     check2RowsMergedNote: '2026 តាមជួរ គឺជាលេខបញ្ជូល A/B នៃសរុបដើម។ ជួរដែលមិនទាន់បញ្ចូល 2027 នឹងបង្ហាញ “—”។ ដីឡូតិ៍បញ្ជូល A/B សូមកែលេខនៅអេក្រង់ដីឡូតិ៍។',
     check2RowsDirSumNote: 'ដីឡូតិ៍បែងចែកទិស A/B ប៉ុន្តែ 2026 មិនទាន់បែកតាមទិស៖ លេខ 2027 បូក A+B តាមជួរនីមួយៗ ដើម្បីប្រៀបធៀបសរុបជួររបស់ 2026។ សូមកែលេខនៅអេក្រង់ដីឡូតិ៍។',
@@ -1696,6 +1700,12 @@ function routeFromHash() {
    Trang chủ
    ============================================================ */
 const CHANGELOG = [
+  {
+    v: 73,
+    date: '26/11/2026',
+    vi: { title: 'Kiểm vòng 2: lệch hố trống O', items: ['Thêm cột “Lệch O” ngay cạnh cột Lệch: chênh lệch hố trống 2027 − 2026 theo từng hàng. Hàng có hố trống lệch từ 3 trở lên được tô vàng cam để dễ thấy.'] },
+    km: { title: 'ត្រួតពិនិត្យជុំទី 2៖ លំអៀងរណ្ដៅទទេ O', items: ['បន្ថែមជួរឈរ “លំអៀង O” ជាប់នឹងជួរឈរលំអៀង៖ ភាពខុសគ្នារណ្ដៅទទេ 2027 − 2026 តាមជួរនីមួយៗ។ ជួរដែលរណ្ដៅទទេលំអៀងចាប់ពី 3 ឡើងទៅ ដាក់ពណ៌លឿងទុំ ដើម្បីមើលឃើញងាយ។'] },
+  },
   {
     v: 72,
     date: '25/11/2026',
@@ -2710,6 +2720,7 @@ function renderCompare({ base, ref, agg, entered, delta, meta }) {
 }
 
 const CHECK2_COMP = ['g', 'plus', 'c', 'k1', 'k2', 'o'];
+const CHECK2_O_DIFF = 3;
 
 function check2RowVals(row) {
   const v = {};
@@ -2805,7 +2816,7 @@ function renderCheck2Rows(key) {
   head.innerHTML = `<tr class="c2-group"><th rowspan="2">${esc(t('thHang'))}</th>`
     + (dirs ? `<th rowspan="2">${esc(t('thDir'))}</th>` : '')
     + group(t('metricTotal')) + compLabels.map(group).join('')
-    + `<th rowspan="2">${esc(t('thDelta'))}</th><th rowspan="2">${esc(t('check2ColNote'))}</th></tr>`
+    + `<th rowspan="2">${esc(t('thDelta'))}</th><th rowspan="2" title="${esc(t('check2OdiffTitle'))}">${esc(t('check2ColODiff'))}</th><th rowspan="2">${esc(t('check2ColNote'))}</th></tr>`
     + `<tr class="c2-year">${'<th>2026</th><th>2027</th>'.repeat(7)}</tr>`;
   measureCheck2Head();
   let diff = 0;
@@ -2838,6 +2849,14 @@ function renderCheck2Rows(key) {
       sumBad = CHECK2_COMP.reduce((sum, k) => sum + (Number(v[k]) || 0), 0) - dt;
       if (sumBad !== 0) { cls = 'neg'; text = t('check2RowSumBad', { d: signed(sumBad) }); }
     }
+    // Chênh lệch hố trống (O) theo hàng: từ 3 trở lên thì tô vàng cam cả hàng.
+    const o26 = item.c26 && item.c26[5] != null ? Number(item.c26[5]) : null;
+    const o27 = v && v.o != null && v.o !== '' ? Number(v.o) : null;
+    const oDiff = o26 != null && o27 != null ? o27 - o26 : null;
+    const oBad = oDiff != null && Math.abs(oDiff) >= CHECK2_O_DIFF;
+    const oCell = oDiff == null
+      ? '<td class="c2-odiff">—</td>'
+      : `<td class="c2-odiff${oBad ? ' bad' : ''}">${signed(oDiff)}</td>`;
     const pair = (field, ref26) => {
       const val = v && v[field] != null ? v[field] : '';
       const hasRef = ref26 != null;
@@ -2859,9 +2878,9 @@ function renderCheck2Rows(key) {
         + `<button class="mini-btn calc" type="button" data-c2="calc" data-uid="${esc(item.uid)}" title="${esc(t('calcTitle'))}">=</button>`
         + '</span>'
       : '';
-    return `<tr><td>${esc(String(item.hang))}</td>${dirCell}`
+    return `<tr${oBad ? ' class="c2-row-o"' : ''}><td>${esc(String(item.hang))}</td>${dirCell}`
       + cells.join('')
-      + `<td class="${dCls}">${dText}</td><td class="check2-row-note ${cls}">`
+      + `<td class="${dCls}">${dText}</td>${oCell}<td class="check2-row-note ${cls}">`
       + `<span class="c2-note-text">${esc(text)}</span>${tools}</td></tr>`;
   }).join('');
   if (note) {
